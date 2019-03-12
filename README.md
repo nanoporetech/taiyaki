@@ -100,6 +100,8 @@ Tests can be run as follows:
     make acctest            #runs acceptance tests
     make unittest           #runs unit tests
 
+If Taiyaki has install in a virtual environment, it will have to activated before running tests: `source venv/bin/activate`.  To deactivate, run `deactivate`.
+
 # Workflows
 
 ## Using the workflow Makefile 
