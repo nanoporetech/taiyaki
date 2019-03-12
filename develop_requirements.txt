@@ -1,0 +1,6 @@
+pep8==1.7.0
+autopep8==1.2.4
+ipython==6.1.0
+pytest==3.1.2
+parameterized==0.6.1
+pytest-xdist==1.15.0

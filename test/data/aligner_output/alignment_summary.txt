@@ -1,0 +1,6 @@
+read_id	alignment_genome	alignment_genome_start	alignment_genome_end	alignment_strand_start	alignment_strand_end	alignment_num_insertions	alignment_num_deletions	alignment_num_aligned	alignment_num_correct	alignment_identity	alignment_accuracy	alignment_score
+0f776a08-1101-41d4-8097-89136494a46e	Salmonella_enterica_snippet	11	2106	821	2827	72	161	1934	1858	0.960703	0.857407	2478
+de1508c4-755b-489e-9ffb-51af35c9a7e6	Salmonella_enterica_snippet_rc	2933	5002	2	1996	38	113	1956	1904	0.973415	0.903654	2962
+db6b45aa-5d21-45cf-a435-05fb8f12e839	Salmonella_enterica_snippet	4548	7605	89	3118	58	86	2971	2901	0.976439	0.9313	4854
+1f1a0f33-e2ac-431a-8f48-c3c687a7a7dc	*	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1
+b7096acd-b528-474e-a863-51295d18d3de	*	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1
