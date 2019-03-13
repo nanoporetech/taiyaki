@@ -4,6 +4,9 @@ Version numbers: major.minor.patch
 * Minor version bump indicates a change in functionality that may affect users.
 * Patch version bump indicates bug-fixes or minor improvements not expected to affect users.
 
+## v3.0.1
+* Bug fix: package version did not work in github's source releases
+
 ## v3.0.0
 Initial release:
 * Prepare data for training basecallers by remapping signal to reference sequence
