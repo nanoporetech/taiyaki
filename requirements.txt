@@ -1,5 +1,5 @@
 h5py >= 2.2.1,<=2.6.0
-numpy >= 1.9.0
+numpy >= 1.14.5
 biopython >= 1.63
 Cython >= 0.25.2
 wheel >= 0.29.0
@@ -8,4 +8,3 @@ pysam >= 0.10.0
 matplotlib >= 2.0.0
 scipy >= 1
 torch >= 1
-
