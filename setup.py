@@ -18,7 +18,7 @@ install_requires = [
     "Cython >= 0.25.2",
     "ont_fast5_api >= 1.2.0",
     "matplotlib >= 2.0.0",
-    "pysam >= 0.10.0",
+    "pysam >= 0.15.0",
     "scipy >= 1",
     "torch >= 1",
 ]
