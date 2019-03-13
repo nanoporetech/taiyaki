@@ -85,7 +85,8 @@ test: unittest
 
 .PHONY: unittest
 unittest:
-	${PYTHON} setup.py test --addopts "${pyTestArgs}"
+	mkdir -p build/unittest
+	cd build/unittest && ${PYTHON} -m pytest ${pyTestArgs} ../../test/unit
 
 
 .PHONY: acctest
