@@ -2,7 +2,7 @@
 
 from taiyaki.cmdargs import (AutoBool, DeviceAction, FileExists, Maybe, NonNegative,
                              ParseToNamedTuple, Positive, display_version_and_exit)
-from taiyaki.version import __version__
+from taiyaki import __version__
 
 
 def add_common_command_args(parser, arglist):

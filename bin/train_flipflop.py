@@ -12,7 +12,7 @@ import taiyaki.common_cmdargs as common_cmdargs
 from taiyaki.cmdargs import (FileExists, NonNegative, Positive, proportion)
 
 from taiyaki import chunk_selection, ctc, flipflopfings, helpers, mapped_signal_files, variables
-from taiyaki.version import __version__
+from taiyaki import __version__
 
 
 # This is here, not in main to allow documentation to be built
