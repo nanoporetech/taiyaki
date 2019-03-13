@@ -9,11 +9,16 @@ import taiyaki
 version = taiyaki.__version__
 
 
+# Minimal list of requirements for the package to work once installed
+# Used by pip
 install_requires = [
     "h5py >= 2.2.1",
-    "numpy >= 1.9.0",
+    "numpy >= 1.14.5",
     "biopython >= 1.63",
     "Cython >= 0.25.2",
+    "ont_fast5_api >= 1.2.0",
+    "scipy >= 1",
+    "torch >= 1",
 ]
 
 
