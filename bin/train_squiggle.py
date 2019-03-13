@@ -15,7 +15,7 @@ from taiyaki.cmdargs import (FileExists, Maybe, NonNegative, Positive, proportio
 from taiyaki import activation, layers
 #from taiyaki.optim import Adamski
 from taiyaki.squiggle_match import squiggle_match_loss, embed_sequence
-from taiyaki.version import __version__
+from taiyaki import __version__
 
 
 parser = argparse.ArgumentParser(

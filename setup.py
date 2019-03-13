@@ -1,11 +1,8 @@
 from glob import glob
-import imp
 import os
-import subprocess
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
 import sys
-import time
 
 import taiyaki
 

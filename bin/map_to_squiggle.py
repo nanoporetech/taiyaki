@@ -5,7 +5,7 @@ from taiyaki import common_cmdargs, fast5utils, helpers, squiggle_match
 from taiyaki.cmdargs import (display_version_and_exit, FileExists,
                              Maybe, NonNegative, Positive, proportion)
 from taiyaki.iterators import imap_mp
-from taiyaki.version import __version__
+from taiyaki import __version__
 
 
 parser = argparse.ArgumentParser(
