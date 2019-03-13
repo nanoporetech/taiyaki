@@ -9,10 +9,7 @@ dist
 RESULTS
 taiyaki/ctc/ctc.c
 taiyaki/squiggle_match/squiggle_match.c
-taiyaki/version.py
 venv
 run
 .cache
 .tox
-*.fasta
-*.hdf5
