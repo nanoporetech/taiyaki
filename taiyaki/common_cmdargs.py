@@ -25,7 +25,7 @@ def add_common_command_args(parser, arglist):
 
     if 'adam' in arglist:
         parser.add_argument('--adam', nargs=3, metavar=('rate', 'decay1', 'decay2'),
-                            default=(1e-3, 0.9, 0.999), type=(NonNegative(float), NonNegative(float),
+                            default=(5e-3, 0.9, 0.999), type=(NonNegative(float), NonNegative(float),
                                                               NonNegative(float)), action=ParseToNamedTuple,
                             help='Parameters for Exponential Decay Adaptive Momementum')
 
