@@ -218,7 +218,7 @@ so long as they produce data conformant with [this format](FILE_FORMATS.md).
 In order to train a model that is compatible with Guppy (version 2.2 at time of writing), we recommend that you
 use the model defined in `models/mGru_flipflop.py` and that you call `train_flipflop.py` with:
 
-    train_flipflop.py --stride 2 --winlen 19 mGru_flipflop.py <other options...>
+    train_flipflop.py --size 256 --stride 2 --winlen 19 mGru_flipflop.py <other options...>
 
 You should then be able to export your checkpoint to json (using bin/dump_json.py) that can be used to basecall with Guppy.
 
