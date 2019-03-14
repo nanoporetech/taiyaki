@@ -1,7 +1,5 @@
 from collections import OrderedDict
-from functools import reduce
 import numpy as np
-import operator
 
 import torch
 from torch import nn
@@ -29,10 +27,6 @@ def orthogonal_matrix(xsize, ysize):
     n = max(xsize, ysize)
     mat = ortho_group.rvs(n)
     return mat[:xsize, :ysize].astype('f4')
-
-
-def prod(iterable):
-    return reduce(operator.mul, iterable, 1)
 
 
 def truncated_normal(size, sd):
@@ -396,7 +390,7 @@ class Convolution(nn.Module):
     def reset_parameters(self):
         fanin = self.insize * self.winlen
         fanout = self.size * self.winlen / self.stride
-        winit = orthogonal_matrix(self.conv.weight.shape[0], prod(self.conv.weight.shape[1:]))
+        winit = orthogonal_matrix(self.conv.weight.shape[0], np.prod(self.conv.weight.shape[1:]))
         init_(self.conv.weight, winit.reshape(self.conv.weight.shape))
         binit = truncated_normal(list(self.conv.bias.shape), sd=0.5)
         init_(self.conv.bias, binit)
