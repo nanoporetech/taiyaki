@@ -6,7 +6,7 @@ Version numbers: major.minor.patch
 
 ## v3.0.2
 * Improved training parameters
-* Use othonormal initialisation of starting weights
+* Use orthonormal initialisation of starting weights
 
 ## v3.0.1
 * Bug fix: package version did not work in github's source releases
