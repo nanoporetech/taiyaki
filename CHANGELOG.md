@@ -4,6 +4,10 @@ Version numbers: major.minor.patch
 * Minor version bump indicates a change in functionality that may affect users.
 * Patch version bump indicates bug-fixes or minor improvements not expected to affect users.
 
+## v3.0.2
+* Improved training parameters
+* Use othonormal initialisation of starting weights
+
 ## v3.0.1
 * Bug fix: package version did not work in github's source releases
 
