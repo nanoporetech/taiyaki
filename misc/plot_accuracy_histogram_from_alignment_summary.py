@@ -23,8 +23,9 @@ if __name__ == "__main__":
     AccVals=readtsv(args.combined_read_file)['alignment_accuracy']
 
     fig, ax = plt.subplots()
-
-    ax.set_title(args.title)
+    
+    escaped_title = bytes(args.title, "utf-8").decode("unicode_escape")
+    ax.set_title(escaped_title, fontsize=7)
     ax.set_xlabel('Accuracy')
     ax.set_ylabel('Reads')
 
