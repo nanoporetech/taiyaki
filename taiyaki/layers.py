@@ -15,16 +15,51 @@ from taiyaki.config import taiyaki_dtype
 _FORGET_BIAS = 2.0
 
 
-def truncated_normal(size, sd):
-    """Truncated normal for Xavier style initiation"""
-    res = sd * truncnorm.rvs(-2, 2, size=size)
-    return res.astype('f4')
-
-
 def init_(param, value):
     """Set parameter value (inplace) from tensor, numpy array, list or tuple"""
     value_as_tensor = torch.tensor(value, dtype=param.data.dtype)
     param.data.detach_().set_(value_as_tensor)
+
+def random_orthonormal(n, m=None):
+    """  Generate random orthonormal matrix
+    :param n: rank of matrix to generate
+    :param m: second dimension of matrix, set equal to n if None.
+
+    Distribution may not be uniform over all orthonormal matrices
+    (see scipy.stats.ortho_group) but good enough.
+
+    A square matrix is generated if only one parameter is givn, otherwise a
+    rectangular matrix is generated.  The number of columns must be greater than
+    the number of rows.
+
+    :returns: orthonormal matrix
+    """
+    m = n if m is None else m
+    assert m >= n
+    x = np.random.rand(n, m)
+    _, _ , Vt = np.linalg.svd(x, full_matrices=False)
+    return Vt
+
+
+def orthonormal_matrix(nrow, ncol):
+    """ Generate random orthonormal matrix
+    """
+    nrep = nrow // ncol
+    out = np.zeros((nrow, ncol), dtype='f4')
+    for i in range(nrep):
+        out[i * ncol : i * ncol + ncol] = random_orthonormal(ncol)
+    #  Remaining
+    remsize = nrow - nrep * ncol
+    if remsize > 0 :
+        out[nrep * ncol : , :] = random_orthonormal(remsize, ncol)
+
+    return out
+
+
+def truncated_normal(size, sd):
+    """Truncated normal for Xavier style initiation"""
+    res = sd * truncnorm.rvs(-2, 2, size=size)
+    return res.astype('f4')
 
 
 def reverse(x):
@@ -36,10 +71,9 @@ def reverse(x):
 
 
 class Reverse(nn.Module):
-
     def __init__(self, layer):
         super().__init__()
-        self.layer = nn.ModuleList([layer])[0]
+        self.layer = layer
 
     def forward(self, x):
         return reverse(self.layer(reverse(x)))
@@ -50,10 +84,9 @@ class Reverse(nn.Module):
 
 
 class Residual(nn.Module):
-
     def __init__(self, layer):
         super().__init__()
-        self.layer = nn.ModuleList([layer])[0]
+        self.layer = layer
 
     def forward(self, x):
         return x + self.layer(x)
@@ -64,10 +97,9 @@ class Residual(nn.Module):
 
 
 class GatedResidual(nn.Module):
-
     def __init__(self, layer, gate_init=0.0):
         super().__init__()
-        self.layer = nn.ModuleList([layer])[0]
+        self.layer = layer
         self.alpha = Parameter(torch.tensor([gate_init]))
 
     def forward(self, x):
@@ -92,19 +124,18 @@ class FeedForward(nn.Module):
     :param has_bias: Whether layer has bias
     :param fun: The activation function.
     """
-
     def __init__(self, insize, size, has_bias=True, fun=activation.linear):
         super().__init__()
         self.insize = insize
         self.size = size
         self.has_bias = has_bias
-        self.linear = nn.ModuleList([nn.Linear(insize, size, bias=has_bias)])[0]
+        self.linear = nn.Linear(insize, size, bias=has_bias)
         self.activation = fun
         self.reset_parameters()
 
     def reset_parameters(self):
-        winit = truncated_normal(list(self.linear.weight.shape), sd=0.5)
-        init_(self.linear.weight, winit / np.sqrt(self.insize + self.size))
+        winit = orthonormal_matrix(self.size, self.insize)
+        init_(self.linear.weight, winit)
         if self.has_bias:
             binit = truncated_normal(list(self.linear.bias.shape), sd=0.5)
             init_(self.linear.bias, binit)
@@ -133,19 +164,18 @@ class Softmax(nn.Module):
     :param size: Layer size
     :param has_bias: Whether layer has bias
     """
-
     def __init__(self, insize, size, has_bias=True):
         super().__init__()
         self.insize = insize
         self.size = size
         self.has_bias = has_bias
-        self.linear = nn.ModuleList([nn.Linear(insize, size, bias=has_bias)])[0]
+        self.linear = nn.Linear(insize, size, bias=has_bias)
         self.activation = nn.LogSoftmax(2)
         self.reset_parameters()
 
     def reset_parameters(self):
-        winit = truncated_normal(list(self.linear.weight.shape), sd=0.5)
-        init_(self.linear.weight, winit / np.sqrt(self.insize + self.size))
+        winit = orthonormal_matrix(self.size, self.insize)
+        init_(self.linear.weight, winit)
         if self.has_bias:
             binit = truncated_normal(list(self.linear.bias.shape), sd=0.5)
             init_(self.linear.bias, binit)
@@ -171,7 +201,6 @@ class CudnnGru(nn.Module):
     :param size: Layer size
     :param has_bias: Whether layer has bias
     """
-
     def __init__(self, insize, size, bias=True):
         super().__init__()
         self.cudnn_gru = nn.GRU(insize, size, bias=bias)
@@ -184,9 +213,11 @@ class CudnnGru(nn.Module):
         for name, param in self.named_parameters():
             shape = list(param.shape)
             if 'weight_hh' in name:
-                init_(param, truncated_normal(shape, sd=0.5) / np.sqrt(2 * self.size))
+                winit = orthonormal_matrix(*shape)
+                init_(param, winit)
             elif 'weight_ih' in name:
-                init_(param, truncated_normal(shape, sd=0.5) / np.sqrt(self.insize + self.size))
+                winit = orthonormal_matrix(*shape)
+                init_(param, winit)
             else:
                 init_(param, truncated_normal(shape, sd=0.5))
 
@@ -232,7 +263,6 @@ class Lstm(nn.Module):
     :param size: Layer size
     :param has_bias: Whether layer has bias
     """
-
     def __init__(self, insize, size, has_bias=True):
         super().__init__()
         self.lstm = nn.LSTM(insize, size, bias=has_bias)
@@ -252,9 +282,11 @@ class Lstm(nn.Module):
         for name, param in self.named_parameters():
             shape = list(param.shape)
             if 'weight_hh' in name:
-                init_(param, truncated_normal(shape, sd=0.5) / np.sqrt(2 * self.size))
+                winit = orthonormal_matrix(*shape)
+                init_(param, winit)
             elif 'weight_ih' in name:
-                init_(param, truncated_normal(shape, sd=0.5) / np.sqrt(self.insize + self.size))
+                winit = orthonormal_matrix(*shape)
+                init_(param, winit)
             else:
                 # TODO: initialise forget gate bias to positive value
                 init_(param, truncated_normal(shape, sd=0.5))
@@ -292,7 +324,6 @@ class GruMod(nn.Module):
     :param size: Layer size
     :param has_bias: Whether layer has bias
     """
-
     def __init__(self, insize, size, has_bias=True):
         super().__init__()
         self.cudnn_gru = nn.GRU(insize, size, bias=has_bias)
@@ -306,9 +337,11 @@ class GruMod(nn.Module):
         for name, param in self.named_parameters():
             shape = list(param.shape)
             if 'weight_hh' in name:
-                init_(param, truncated_normal(shape, sd=0.5) / np.sqrt(2 * self.size))
+                winit = orthonormal_matrix(*shape)
+                init_(param, winit)
             elif 'weight_ih' in name:
-                init_(param, truncated_normal(shape, sd=0.5) / np.sqrt(self.insize + self.size))
+                winit = orthonormal_matrix(*shape)
+                init_(param, winit)
             else:
                 init_(param, truncated_normal(shape, sd=0.5))
 
@@ -367,7 +400,6 @@ class Convolution(nn.Module):
         case the padding used is (winlen // 2, (winlen - 1) // 2) which ensures
         that the output length does not depend on winlen
     """
-
     def __init__(self, insize, size, winlen, stride=1, pad=None, fun=activation.tanh, has_bias=True):
         super().__init__()
         self.insize = insize
@@ -383,10 +415,8 @@ class Convolution(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        fanin = self.insize * self.winlen
-        fanout = self.size * self.winlen / self.stride
-        winit = truncated_normal(list(self.conv.weight.shape), sd=0.5)
-        init_(self.conv.weight, winit / np.sqrt(fanin + fanout))
+        winit = orthonormal_matrix(self.conv.weight.shape[0], np.prod(self.conv.weight.shape[1:]))
+        init_(self.conv.weight, winit.reshape(self.conv.weight.shape))
         binit = truncated_normal(list(self.conv.bias.shape), sd=0.5)
         init_(self.conv.bias, binit)
 
@@ -410,7 +440,6 @@ class Convolution(nn.Module):
 
 
 class Parallel(nn.Module):
-
     def __init__(self, layers):
         super().__init__()
         self.sublayers = nn.ModuleList(layers)
@@ -425,7 +454,6 @@ class Parallel(nn.Module):
 
 
 class Serial(nn.Module):
-
     def __init__(self, layers):
         super().__init__()
         self.sublayers = nn.ModuleList(layers)
@@ -441,7 +469,6 @@ class Serial(nn.Module):
 
 
 class SoftChoice(nn.Module):
-
     def __init__(self, layers):
         super().__init__()
         self.sublayers = nn.ModuleList(layers)
@@ -470,7 +497,6 @@ def _reshape(x, shape):
 
 class Identity(nn.Module):
     """The identity transform"""
-
     def json(self, params=False):
         return OrderedDict([('type', 'Identity')])
 
@@ -550,8 +576,22 @@ def birnn(forward, backward):
     return Parallel([forward, Reverse(backward)])
 
 
-def logaddexp(x, y):
-    return torch.max(x, y) + torch.log1p(torch.exp(-abs(x - y)))
+class LogAddExp(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, y):
+        exp_neg_abs_diff = torch.exp(-torch.abs(x - y))
+        z = torch.max(x, y) + torch.log1p(exp_neg_abs_diff)
+        ctx.save_for_backward(x, y, z)
+        return z
+
+    @staticmethod
+    def backward(ctx, outgrad):
+        x, y , z = ctx.saved_tensors
+
+        return outgrad * (x - z).exp_(), outgrad * (y - z).exp_()
+
+logaddexp = LogAddExp.apply
+
 
 
 def global_norm_flipflop(scores):
@@ -581,7 +621,6 @@ def global_norm_flipflop(scores):
 
 
 class GlobalNormFlipFlop(nn.Module):
-
     def __init__(self, insize, nbase, has_bias=True, _never_use_cupy=False):
         super().__init__()
         self.insize = insize
@@ -604,8 +643,8 @@ class GlobalNormFlipFlop(nn.Module):
         return res
 
     def reset_parameters(self):
-        winit = truncated_normal(list(self.linear.weight.shape), sd=0.5)
-        init_(self.linear.weight, winit / np.sqrt(self.insize + self.size))
+        winit = orthonormal_matrix(*list(self.linear.weight.shape))
+        init_(self.linear.weight, winit)
         if self.has_bias:
             binit = truncated_normal(list(self.linear.bias.shape), sd=0.5)
             init_(self.linear.bias, binit)

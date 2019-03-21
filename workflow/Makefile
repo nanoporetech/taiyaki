@@ -116,7 +116,7 @@ USER_PER_READ_REFERENCE_FILE:= FOR_USER_PER_READ_REFERENCE_SET_THIS_AND_USE_MAKE
 REMAPMODELFILE := ${TAIYAKI_ROOT}/models/mGru256_flipflop_remapping_model_r9_DNA.checkpoint
 
 #Model definition for training
-TRAININGMODEL := ${TAIYAKI_ROOT}/models/mGru256_flipflop.py
+TRAININGMODEL := ${TAIYAKI_ROOT}/models/mGru_flipflop.py
 
 ######################
 # WHERE TO PUT THINGS

@@ -34,12 +34,12 @@ parser.add_argument('--chunk_len_max', default=4000, metavar='samples', type=Pos
 
 parser.add_argument('--input_strand_list', default=None, action=FileExists,
                     help='Strand summary file containing column read_id. Filenames in file are ignored.')
-parser.add_argument('--min_prob', default=1e-30, metavar='p', type=proportion,
-                    help='Minimum probability allowed for training')
 parser.add_argument('--seed', default=None, metavar='integer', type=Positive(int),
                     help='Set random number seed')
 parser.add_argument('--sharpen', default=1.0, metavar='factor',
                     type=Positive(float), help='Sharpening factor')
+parser.add_argument('--size', default=256, metavar='neurons',
+                    type=Positive(int), help='Base layer size for model')
 parser.add_argument('--smooth', default=0.45, metavar='factor', type=proportion,
                     help='Smoothing factor for reporting progress')
 parser.add_argument('--stride', default=2, metavar='samples', type=Positive(int),
@@ -136,6 +136,7 @@ if __name__ == '__main__':
         'stride': args.stride,
         'winlen': args.winlen,
         'insize': 1,  # Number of input features to model e.g. was >1 for event-based models (level, std, dwell)
+        'size' : args.size,
         'outsize': variables.nstate_flipflop(nbase)
     }
     network = helpers.load_model(args.model, **model_kwargs).to(device)
