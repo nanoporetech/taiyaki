@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn import Parameter
-from scipy.stats import ortho_group, truncnorm
+from scipy.stats import truncnorm
 
 from taiyaki import activation
 from taiyaki.config import taiyaki_dtype
@@ -20,13 +20,40 @@ def init_(param, value):
     value_as_tensor = torch.tensor(value, dtype=param.data.dtype)
     param.data.detach_().set_(value_as_tensor)
 
+def random_orthonormal(n, m=None):
+    """  Generate random orthonormal matrix
+    :param n: rank of matrix to generate
+    :param m: second dimension of matrix, set equal to n if None.
 
-def orthogonal_matrix(xsize, ysize):
-    """ Generate random orthonormal matrix and return submatrix
+    Distribution may not be uniform over all orthonormal matrices
+    (see scipy.stats.ortho_group) but good enough.
+
+    A square matrix is generated if only one parameter is givn, otherwise a
+    rectangular matrix is generated.  The number of columns must be greater than
+    the number of rows.
+
+    :returns: orthonormal matrix
     """
-    n = max(xsize, ysize)
-    mat = ortho_group.rvs(n)
-    return mat[:xsize, :ysize].astype('f4')
+    m = n if m is None else m
+    assert m >= n
+    x = np.random.rand(n, m)
+    _, _ , Vt = np.linalg.svd(x, full_matrices=False)
+    return Vt
+
+
+def orthonormal_matrix(nrow, ncol):
+    """ Generate random orthonormal matrix
+    """
+    nrep = nrow // ncol
+    out = np.zeros((nrow, ncol), dtype='f4')
+    for i in range(nrep):
+        out[i * ncol : i * ncol + ncol] = random_orthonormal(ncol)
+    #  Remaining
+    remsize = nrow - nrep * ncol
+    if remsize > 0 :
+        out[nrep * ncol : , :] = random_orthonormal(remsize, ncol)
+
+    return out
 
 
 def truncated_normal(size, sd):
@@ -107,7 +134,7 @@ class FeedForward(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        winit = orthogonal_matrix(self.size, self.insize)
+        winit = orthonormal_matrix(self.size, self.insize)
         init_(self.linear.weight, winit)
         if self.has_bias:
             binit = truncated_normal(list(self.linear.bias.shape), sd=0.5)
@@ -123,7 +150,7 @@ class FeedForward(nn.Module):
                            ('insize', self.insize),
                            ('bias', self.has_bias)])
         if params:
-            res['params'] = OrderedDict([('W', self.linear.weight)] + 
+            res['params'] = OrderedDict([('W', self.linear.weight)] +
                                         [('b', self.linear.bias)] if self.has_bias else [])
         return res
 
@@ -147,7 +174,7 @@ class Softmax(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        winit = orthogonal_matrix(self.size, self.insize)
+        winit = orthonormal_matrix(self.size, self.insize)
         init_(self.linear.weight, winit)
         if self.has_bias:
             binit = truncated_normal(list(self.linear.bias.shape), sd=0.5)
@@ -162,7 +189,7 @@ class Softmax(nn.Module):
                            ('insize', self.insize),
                            ('bias', self.has_bias)])
         if params:
-            res['params'] = OrderedDict([('W', self.linear.weight)] + 
+            res['params'] = OrderedDict([('W', self.linear.weight)] +
                                         [('b', self.linear.bias)] if self.has_bias else [])
         return res
 
@@ -186,10 +213,10 @@ class CudnnGru(nn.Module):
         for name, param in self.named_parameters():
             shape = list(param.shape)
             if 'weight_hh' in name:
-                winit = orthogonal_matrix(*shape)
+                winit = orthonormal_matrix(*shape)
                 init_(param, winit)
             elif 'weight_ih' in name:
-                winit = orthogonal_matrix(*shape)
+                winit = orthonormal_matrix(*shape)
                 init_(param, winit)
             else:
                 init_(param, truncated_normal(shape, sd=0.5))
@@ -255,10 +282,10 @@ class Lstm(nn.Module):
         for name, param in self.named_parameters():
             shape = list(param.shape)
             if 'weight_hh' in name:
-                winit = orthogonal_matrix(*shape)
+                winit = orthonormal_matrix(*shape)
                 init_(param, winit)
             elif 'weight_ih' in name:
-                winit = orthogonal_matrix(*shape)
+                winit = orthonormal_matrix(*shape)
                 init_(param, winit)
             else:
                 # TODO: initialise forget gate bias to positive value
@@ -310,10 +337,10 @@ class GruMod(nn.Module):
         for name, param in self.named_parameters():
             shape = list(param.shape)
             if 'weight_hh' in name:
-                winit = orthogonal_matrix(*shape)
+                winit = orthonormal_matrix(*shape)
                 init_(param, winit)
             elif 'weight_ih' in name:
-                winit = orthogonal_matrix(*shape)
+                winit = orthonormal_matrix(*shape)
                 init_(param, winit)
             else:
                 init_(param, truncated_normal(shape, sd=0.5))
@@ -388,9 +415,7 @@ class Convolution(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        fanin = self.insize * self.winlen
-        fanout = self.size * self.winlen / self.stride
-        winit = orthogonal_matrix(self.conv.weight.shape[0], np.prod(self.conv.weight.shape[1:]))
+        winit = orthonormal_matrix(self.conv.weight.shape[0], np.prod(self.conv.weight.shape[1:]))
         init_(self.conv.weight, winit.reshape(self.conv.weight.shape))
         binit = truncated_normal(list(self.conv.bias.shape), sd=0.5)
         init_(self.conv.bias, binit)
@@ -554,23 +579,16 @@ def birnn(forward, backward):
 class LogAddExp(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, y):
-        x_minus_y = x - y
         exp_neg_abs_diff = torch.exp(-torch.abs(x - y))
-        ctx.save_for_backward(x_minus_y, exp_neg_abs_diff)
-        return torch.max(x, y) + torch.log1p(torch.exp(-torch.abs(x_minus_y)))
+        z = torch.max(x, y) + torch.log1p(exp_neg_abs_diff)
+        ctx.save_for_backward(x, y, z)
+        return z
 
     @staticmethod
     def backward(ctx, outgrad):
-        one = outgrad.new_ones(1)
-        x_minus_y, exp_neg_abs_diff = ctx.saved_tensors
-        recip_denom = torch.reciprocal(one + exp_neg_abs_diff)
-        grad1 = outgrad * recip_denom
-        grad2 = exp_neg_abs_diff * grad1
+        x, y , z = ctx.saved_tensors
 
-        x_grad = torch.where(x_minus_y < 0, grad2, grad1)
-        y_grad = torch.where(x_minus_y > 0, grad2, grad1)
-
-        return  x_grad, y_grad
+        return outgrad * (x - z).exp_(), outgrad * (y - z).exp_()
 
 logaddexp = LogAddExp.apply
 
@@ -620,12 +638,12 @@ class GlobalNormFlipFlop(nn.Module):
             ('insize', self.insize),
             ('bias', self.has_bias)])
         if params:
-            res['params'] = OrderedDict([('W', self.linear.weight)] + 
+            res['params'] = OrderedDict([('W', self.linear.weight)] +
                                         [('b', self.linear.bias)] if self.has_bias else [])
         return res
 
     def reset_parameters(self):
-        winit = orthogonal_matrix(*list(self.linear.weight.shape))
+        winit = orthonormal_matrix(*list(self.linear.weight.shape))
         init_(self.linear.weight, winit)
         if self.has_bias:
             binit = truncated_normal(list(self.linear.bias.shape), sd=0.5)
