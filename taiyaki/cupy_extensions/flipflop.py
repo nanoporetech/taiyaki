@@ -93,6 +93,7 @@ def flipflop_fwd(scores):
     T, N, S = scores.shape
     nbase = int(np.sqrt(S / 2))
 
+    scores = scores.contiguous()
     fwd = torch.zeros((T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
     fact = torch.zeros((T + 1, N, 1), dtype=scores.dtype, device=scores.device)
     with cp.cuda.Device(index):
@@ -188,6 +189,7 @@ def flipflop_bwd(scores):
     T, N, S = scores.shape
     nbase = int(np.sqrt(S / 2))
 
+    scores = scores.contiguous()
     bwd = torch.zeros((T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
     fact = torch.zeros((T + 1, N, 1), dtype=scores.dtype, device=scores.device)
     with cp.cuda.Device(index):
@@ -252,6 +254,7 @@ def flipflop_make_trans(scores):
     nbase = int(np.sqrt(S / 2))
     fwd, fwd_fact = flipflop_fwd(scores)
     bwd, bwd_fact = flipflop_bwd(scores)
+    scores = scores.contiguous()
     trans = torch.zeros_like(scores)
     kernel_args = (
         scores.data_ptr(),
@@ -286,3 +289,108 @@ def logz(scores):
 
 def global_norm(scores):
     return scores - logz(scores)[:, None] / len(scores)
+
+
+_flipflop_viterbi = cp.RawKernel(r'''
+extern "C" __global__
+void flipflop_viterbi(
+  const float* scores,
+  float* fwd,
+  unsigned long long* tb,
+  unsigned long long* bp,
+  long long T,
+  long long N,
+  long long nbase
+) {
+  // scores is a (T,  N, S) tensor where S = 2 * nbase * (nbase + 1)
+  // fwd is the output tensor of shape (T + 1, N, 2 * nbase)
+  // fwd should be filled with zeros
+  // tb is the output tensor of shape (T + 1, N, 2 * nbase)
+  // tb should be filled with zeros
+  // bp is a (T + 1, N) tensor in which the best paths are written
+  // scores and fwd should both be contiguous
+  // a 1D grid parallelises over elements in the batch (N dimension)
+  // a 1D threadpool parallelises over the fwd calculations for each base
+  // should be launched with blockDim = (N, 1, 1) and threadDim = (nbase, 1, 1)
+  int S = 2 * nbase * (nbase + 1);
+
+  int in_batch_offset = S * blockIdx.x;
+  int flip_offset = in_batch_offset + 2 * nbase * threadIdx.x;
+  int flop_offset = in_batch_offset + 2 * nbase * nbase + threadIdx.x;
+  int in_stride = S * N;
+
+  int out_batch_offset = 2 * nbase * (N + blockIdx.x);
+  int out_prev_offset = 2 * nbase * blockIdx.x;
+  int out_offset = out_batch_offset + threadIdx.x;
+  int out_stride = 2 * nbase * N;
+
+  float u, v;
+  int s;
+  for (int t = 0; t < T; t++) {
+    s = 0;
+    u = scores[flip_offset] + fwd[out_prev_offset];
+    for (int i = 1; i < 2 * nbase; i++) {
+      v = scores[flip_offset + i] + fwd[out_prev_offset + i];
+      if (v > u) {
+        u = v;
+        s = i;
+      }
+    }
+    fwd[out_offset] = u;
+    tb[out_offset] = s;
+    u = scores[flop_offset] + fwd[out_prev_offset + threadIdx.x];
+    v = scores[flop_offset + nbase] + fwd[out_prev_offset + threadIdx.x + nbase];
+    fwd[out_offset + nbase] = max(u, v);
+    tb[out_offset + nbase] = (u > v) ? threadIdx.x : threadIdx.x + nbase;
+    flip_offset += in_stride;
+    flop_offset += in_stride;
+    out_prev_offset += out_stride;
+    out_offset += out_stride;
+    __syncthreads();
+  }
+
+  // traceback
+  int tb_offset = (T * N + blockIdx.x) * 2 * nbase;
+  int bp_offset = T * N + blockIdx.x;
+  if (threadIdx.x == 0) {
+    u = fwd[tb_offset];
+    s = 0;
+    for (int i = 1; i < 2 * nbase; i++) {
+      if (fwd[tb_offset + i] > u) {
+        u = fwd[tb_offset + i];
+        s = i;
+      }
+    }
+    for (int t = T - 1; t >= 0; t--) {
+      bp[bp_offset] = s;
+      s = tb[tb_offset + s];
+      tb_offset -= 2 * nbase * N;
+      bp_offset -= N;
+    }
+  }
+}
+''', 'flipflop_viterbi')
+
+
+def flipflop_viterbi(scores):
+    index = scores.device.index
+    T, N, S = scores.shape
+    nbase = int(np.sqrt(S / 2))
+
+    scores = scores.contiguous()
+    fwd = torch.zeros((T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
+    traceback = torch.zeros((T + 1, N, 2 * nbase), dtype=torch.long, device=scores.device)
+    best_path = torch.zeros((T + 1, N), dtype=torch.long, device=scores.device)
+    with cp.cuda.Device(index):
+        _flipflop_viterbi(
+            grid=(N, 1, 1),
+            block=(nbase, 1, 1),
+            args=(
+                scores.data_ptr(),
+                fwd.data_ptr(),
+                traceback.data_ptr(),
+                best_path.data_ptr(),
+                T, N, nbase
+            )
+        )
+    return fwd, traceback, best_path

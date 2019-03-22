@@ -38,3 +38,11 @@ def flip_flop_code(labels, alphabet_length=4):
     x = labels.copy()
     x[flopmask(x)] += alphabet_length
     return x
+
+
+def path_to_str(path, alphabet='ACGT'):
+    """ Convert flipflop path into a basecall string """
+    move = np.ediff1d(path, to_begin=1) != 0
+    alphabet = np.frombuffer((alphabet * 2).encode(), dtype='u1')
+    seq = alphabet[path[move]]
+    return seq.tobytes().decode()

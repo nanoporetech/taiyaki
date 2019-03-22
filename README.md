@@ -213,6 +213,19 @@ If it seems like remapping will not work for your data set, then you can use alt
 so long as they produce data conformant with [this format](FILE_FORMATS.md).
 
 
+## Basecalling
+
+Taiyaki comes with a script to perform flip-flop basecalling using a GPU.
+This script requries CUDA and cupy to be isntalled.
+
+Example usage:
+
+    bin/basecall.py <directory containing fast5s> <model checkpoint>  >  <output fasta>
+
+A limited range of models can also be used with Guppy, which will provide better performance and stability.
+See the section on [Guppy compatibility](#guppy-compatibility) for more details.
+
+
 # Guppy compatibility
 
 In order to train a model that is compatible with Guppy (version 2.2 at time of writing), we recommend that you
