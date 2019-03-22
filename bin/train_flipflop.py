@@ -73,7 +73,12 @@ if __name__ == '__main__':
 
     device = torch.device(args.device)
     if device.type == 'cuda':
-        torch.cuda.set_device(device)
+        try:
+            torch.cuda.set_device(device)
+        except AttributeError:
+            sys.stderr.write('ERROR: Torch not compiled with CUDA enabled ' +
+                             'and GPU device set.')
+            sys.exit(1)
 
     if not os.path.exists(args.output):
         os.mkdir(args.output)
