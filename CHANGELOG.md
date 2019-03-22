@@ -4,6 +4,9 @@ Version numbers: major.minor.patch
 * Minor version bump indicates a change in functionality that may affect users.
 * Patch version bump indicates bug-fixes or minor improvements not expected to affect users.
 
+## v3.1.0
+* Added basecaller script that uses GPU
+
 ## v3.0.2
 * Improved training parameters
 * Use orthonormal initialisation of starting weights
