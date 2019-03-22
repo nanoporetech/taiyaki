@@ -50,3 +50,5 @@ class TestStrandList(unittest.TestCase):
     def test_strand_list_no_read_id_multiread(self):
         strand_list = os.path.join(self.STRAND_LIST_DIR, "strand_list_no_read_id.txt")
         self._check_found_read_ids(iterate_fast5_reads(self.MULTIREAD_DIR, strand_list=strand_list))
+
+    # TODO add recursive test (requires adding recursive data dir

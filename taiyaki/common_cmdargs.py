@@ -79,6 +79,11 @@ def add_common_command_args(parser, arglist):
         parser.add_argument('--quiet', default=False, action=AutoBool,
                             help="Don't print progress information to stdout")
 
+    if 'recursive' in arglist:
+        parser.add_argument('--recursive', default=False, action=AutoBool,
+                            help='Search for fast5s recursively within ' +
+                            'input_folder. Default only search first level.')
+
     if 'sample_nreads_before_filtering' in arglist:
         parser.add_argument('--sample_nreads_before_filtering', metavar='n', type=NonNegative(int), default=1000,
                             help='Sample n reads to decide on bounds for filtering before training. Set to 0 to do all.')

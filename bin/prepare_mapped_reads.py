@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description=program_description,
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 
-common_cmdargs.add_common_command_args(parser, 'device input_folder input_strand_list jobs limit overwrite version'.split())
+common_cmdargs.add_common_command_args(parser, 'device input_folder input_strand_list jobs limit overwrite recursive version'.split())
 default_alphabet_str = variables.DEFAULT_ALPHABET.decode("utf-8")
 parser.add_argument('--alphabet', default=default_alphabet_str,
                     help='Alphabet for basecalling. Defaults to ' + default_alphabet_str)
@@ -38,9 +38,9 @@ def main(argv):
             sys.exit(1)
 
     # Make an iterator that yields all the reads we're interested in.
-    fast5_reads = fast5utils.iterate_fast5_reads(args.input_folder,
-                                                 limit=args.limit,
-                                                 strand_list=args.input_strand_list)
+    fast5_reads = fast5utils.iterate_fast5_reads(
+        args.input_folder, limit=args.limit, strand_list=args.input_strand_list,
+        recursive=args.recursive)
 
     # Set up arguments (kwargs) for the worker function for each read
     kwargs = helpers.get_kwargs(args, ['alphabet', 'collapse_alphabet', 'device'])

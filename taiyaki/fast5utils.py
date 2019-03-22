@@ -64,7 +64,7 @@ def iterate_files_reads_unpaired(filepaths, read_ids, limit=None, verbose=0):
 
 
 def iterate_fast5_reads(path,
-                        strand_list=None, limit=None, verbose=0):
+                        strand_list=None, limit=None, verbose=0, recursive=False):
     """Return iterator yielding reads in a directory of fast5 files or a single fast5 file.
 
     Each read is specified by a tuple (filepath, read_id)
@@ -92,6 +92,7 @@ def iterate_fast5_reads(path,
     :param verbose   : an integer. verbose=0 prints no progress messages, verbose=1
                        prints a message for every file read. Verbose =2 prints the
                        list of files before starting as well.
+    :param recursive: Search path recursively for fast5 files.
 
     Example usage:
 
@@ -131,7 +132,7 @@ def iterate_fast5_reads(path,
     if filepaths is None:
         # Filenames not supplied by strand list, so we get them from the path
         if os.path.isdir(path):
-            filepaths = ont_fast5_api.conversion_tools.conversion_utils.get_fast5_file_list(path, recursive=False)
+            filepaths = ont_fast5_api.conversion_tools.conversion_utils.get_fast5_file_list(path, recursive=recursive)
         else:
             filepaths = [path]
 

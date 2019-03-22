@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 
-common_cmdargs.add_common_command_args(parser, "limit jobs version".split())
+common_cmdargs.add_common_command_args(parser, "limit jobs recursive version".split())
 
 parser.add_argument('--back_prob', default=1e-15, metavar='probability',
                     type=proportion, help='Probability of backwards move')
@@ -38,9 +38,9 @@ if __name__ == '__main__':
 
     model = helpers.load_model(args.model)
 
-    fast5_reads = fast5utils.iterate_fast5_reads(args.read_dir,
-                                                 limit=args.limit,
-                                                 strand_list=args.input_strand_list)
+    fast5_reads = fast5utils.iterate_fast5_reads(
+        args.read_dir, limit=args.limit, strand_list=args.input_strand_list,
+        recursive=args.recursive)
 
     for res in imap_mp(squiggle_match.worker, fast5_reads, threads=args.jobs,
                        fix_kwargs=helpers.get_kwargs(args, worker_kwarg_names),
