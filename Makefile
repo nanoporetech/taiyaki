@@ -13,8 +13,6 @@ CUDA ?= $(shell (which nvcc && nvcc --version) | grep -oP "(?<=release )[0-9.]+"
 # Determine correct torch package to install
 TORCH_CUDA_8.0 = cu80
 TORCH_CUDA_9.0 = cu90
-TORCH_CUDA_9.1 = cu90
-TORCH_CUDA_9.2 = cu90
 TORCH_CUDA_10.0 = cu100
 TORCH_PLATFORM ?= $(if $(TORCH_CUDA_$(CUDA)),$(TORCH_CUDA_$(CUDA)),cpu)
 PY3_MINOR = $(shell $(PYTHON) -c "import sys; print(sys.version_info.minor)")
@@ -26,8 +24,6 @@ TORCH ?= $(TORCH_$(shell uname -s))
 # determine correct cupy package to install
 CUPY_8.0 = cupy-cuda80
 CUPY_9.0 = cupy-cuda90
-CUPY_9.1 = cupy-cuda91
-CUPY_9.2 = cupy-cuda92
 CUPY_10.0 = cupy-cuda100
 CUPY ?= $(CUPY_$(CUDA))
 
