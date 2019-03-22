@@ -40,6 +40,8 @@ envPrompt ?= "(taiyaki) "
 pyTestArgs ?=
 override pyTestArgs += --durations=20 -v
 
+buildDir = build
+
 
 .PHONY: install
 install:
@@ -47,9 +49,9 @@ install:
 	virtualenv --python=${PYTHON} --prompt=${envPrompt} ${envDir}
 	source ${envDir}/bin/activate && \
 	    pip install pip --upgrade && \
-	    mkdir -p build/wheelhouse && \
-	    pip download --dest build/wheelhouse ${TORCH} && \
-	    pip install --find-links build/wheelhouse --no-index torch && \
+	    mkdir -p ${buildDir}/wheelhouse/${CUDA} && \
+	    pip download --dest ${buildDir}/wheelhouse/${CUDA} ${TORCH} && \
+	    pip install --find-links ${buildDir}/wheelhouse/${CUDA} --no-index torch && \
 	    pip install -r requirements.txt ${CUPY} && \
 	    pip install -r develop_requirements.txt && \
 	    ${PYTHON} setup.py develop
@@ -81,21 +83,21 @@ test: unittest
 
 .PHONY: unittest
 unittest:
-	mkdir -p build/unittest
-	cd build/unittest && ${PYTHON} -m pytest ${pyTestArgs} ../../test/unit
+	mkdir -p ${buildDir}/unittest
+	cd ${buildDir}/unittest && ${PYTHON} -m pytest ${pyTestArgs} ../../test/unit
 
 
 .PHONY: acctest
 accset ?=
 acctest:
-	mkdir -p build/acctest
+	mkdir -p ${buildDir}/acctest
 	pip install -r test/acceptance/requirements.txt
-	cd build/acctest && ${PYTHON} -m pytest ${pyTestArgs} ../../test/acceptance/${accset}
+	cd ${buildDir}/acctest && ${PYTHON} -m pytest ${pyTestArgs} ../../test/acceptance/${accset}
 
 
 .PHONY: clean
 clean:
-	rm -rf build/ dist/ deb_dist/ *.egg-info/ ${envDir}/
+	rm -rf ${buildDir}/ dist/ deb_dist/ *.egg-info/ ${envDir}/
 	rm taiyaki/ctc/ctc.c \
 		taiyaki/squiggle_match/squiggle_match.c taiyaki/version.py
 	find . -name '*.pyc' -delete
