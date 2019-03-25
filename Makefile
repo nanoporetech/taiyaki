@@ -98,8 +98,7 @@ acctest:
 .PHONY: clean
 clean:
 	rm -rf ${buildDir}/ dist/ deb_dist/ *.egg-info/ ${envDir}/
-	rm taiyaki/ctc/ctc.c \
-		taiyaki/squiggle_match/squiggle_match.c taiyaki/version.py
+	rm -f taiyaki/ctc/ctc.c taiyaki/squiggle_match/squiggle_match.c
 	find . -name '*.pyc' -delete
 	find . -name '*.so' -delete
 
