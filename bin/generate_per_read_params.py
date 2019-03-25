@@ -16,7 +16,7 @@ from taiyaki.signal import Signal
 
 parser = argparse.ArgumentParser()
 
-common_cmdargs.add_common_command_args(parser, 'input_folder input_strand_list limit overwrite version jobs'.split())
+common_cmdargs.add_common_command_args(parser, 'input_folder input_strand_list limit overwrite recursive version jobs'.split())
 
 parser.add_argument('--trim', default=(200, 50), nargs=2, type=NonNegative(int),
                     metavar=('beginning', 'end'), help='Number of samples to trim off start and end')
@@ -60,9 +60,9 @@ if __name__ == '__main__':
             print("Cowardly refusing to overwrite {}".format(args.output))
             sys.exit(1)
 
-    fast5_reads = fast5utils.iterate_fast5_reads(args.input_folder,
-                                                 limit=args.limit,
-                                                 strand_list=args.input_strand_list)
+    fast5_reads = fast5utils.iterate_fast5_reads(
+        args.input_folder, limit=args.limit, strand_list=args.input_strand_list,
+        recursive=args.recursive)
     trim_start, trim_end = args.trim
 
     with open(args.output, 'w') as tsvfile:

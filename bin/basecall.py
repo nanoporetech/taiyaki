@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser(
     description="Basecall reads using a taiyaki model",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-common_cmdargs.add_common_command_args(parser, 'device input_folder input_strand_list limit version'.split())
+common_cmdargs.add_common_command_args(parser, 'device input_folder input_strand_list limit recursive version'.split())
 
 parser.add_argument("--alphabet", default=DEFAULT_ALPHABET.decode(), help="Alphabet used by basecaller")
 parser.add_argument("--chunk_size", type=Positive(int), default=1000, help="Size of signal chunks sent to GPU")
@@ -103,9 +103,9 @@ if __name__ == '__main__':
     model = load_model(args.model).to(device)
     stride = guess_model_stride(model, device=device)
 
-    fast5_reads = fast5utils.iterate_fast5_reads(args.input_folder,
-                                                 limit=args.limit,
-                                                 strand_list=args.input_strand_list)
+    fast5_reads = fast5utils.iterate_fast5_reads(
+        args.input_folder, limit=args.limit, strand_list=args.input_strand_list,
+        recursive=args.recursive)
 
     for read_filename, read_id in fast5_reads:
         signal = get_signal(read_filename, read_id)
