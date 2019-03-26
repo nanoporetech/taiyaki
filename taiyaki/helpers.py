@@ -8,7 +8,6 @@ import re
 import sys
 import torch
 
-from taiyaki import maths
 from taiyaki.fileio import readtsv
 from taiyaki.variables import DEFAULT_ALPHABET
 
@@ -19,6 +18,18 @@ def _load_python_model(model_file, **model_kwargs):
     netmodule = imp.load_source('netmodule', model_file)
     network = netmodule.network(**model_kwargs)
     return network
+
+
+def save_model(network, output, index=None):
+    if index is None:
+        basename = 'model_final'
+    else:
+        basename = 'model_checkpoint_{:05d}'.format(index)
+
+    model_file = os.path.join(output, basename + '.checkpoint')
+    torch.save(network, model_file)
+    params_file = os.path.join(output, basename + '.params')
+    torch.save(network.state_dict(), params_file)
 
 
 def load_model(model_file, params_file=None, **model_kwargs):

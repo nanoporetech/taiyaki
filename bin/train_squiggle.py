@@ -9,7 +9,7 @@ import time
 import torch
 
 from collections import defaultdict
-from taiyaki import chunk_selection, helpers, mapped_signal_files
+from taiyaki import chunk_selection, helpers, mapped_signal_files, optim, variables
 import taiyaki.common_cmdargs as common_cmdargs
 from taiyaki.cmdargs import (FileExists, Maybe, NonNegative, Positive, proportion)
 from taiyaki import activation, layers
@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 common_cmdargs.add_common_command_args(parser, """adam chunk_logging_threshold device filter_max_dwell filter_mean_dwell
-                                                  limit lrdecay niteration overwrite quiet save_every
+                                                  limit niteration overwrite quiet save_every
                                                   sample_nreads_before_filtering version weight_decay""".split())
 
 parser.add_argument('--batch_size', default=100, metavar='chunks', type=Positive(int),
@@ -36,6 +36,11 @@ parser.add_argument('--drop_slip', default=5, type=Maybe(Positive(int)), metavar
                     help='Drop chunks with slips greater than given length (None = off)')
 parser.add_argument('--input_strand_list', default=None, action=FileExists,
                     help='Strand summary file containing column read_id. Filenames in file are ignored.')
+parser.add_argument('--lr_decay', default=5000, metavar='n', type=Positive(float),
+                     help='Learning rate for batch i is lr_max / (1.0 + i / n)')
+parser.add_argument('--lr_max', default=1.0e-4, metavar='rate',
+                            type=Positive(float),
+                            help='Max (and starting) learning rate')
 parser.add_argument('--sd', default=0.5, metavar='value', type=Positive(float),
                     help='Standard deviation to initialise with')
 parser.add_argument('--seed', default=None, metavar='integer', type=Positive(int),
@@ -61,16 +66,6 @@ def create_convolution(size, depth, winlen):
     )
 
 
-def save_model(network, output, index=None):
-    if index is None:
-        basename = 'model_final'
-    else:
-        basename = 'model_checkpoint_{:05d}'.format(index)
-
-    model_file = os.path.join(output, basename + '.checkpoint')
-    torch.save(network, model_file)
-    params_file = os.path.join(output, basename + '.params')
-    torch.save(network.state_dict(), params_file)
 
 
 if __name__ == '__main__':
@@ -137,12 +132,10 @@ if __name__ == '__main__':
 
 
 
-    learning_rate = args.adam[0]
-    betas = args.adam[1:]
-    optimizer = torch.optim.Adam(conv_net.parameters(), lr=learning_rate,
-                                 betas=betas, weight_decay=args.weight_decay)
-    lr_decay = lambda step: args.lrdecay / (args.lrdecay + step)
-    lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_decay)
+    optimizer = torch.optim.Adam(conv_net.parameters(), lr=args.lr_max,
+                                 betas=args.adam, weight_decay=args.weight_decay)
+    
+    lr_scheduler = optim.ReciprocalLR(optimizer, args.lr_decay)
     
     rejection_dict = defaultdict(lambda : 0)  # To count the numbers of different sorts of chunk rejection
     t0 = time.time()
@@ -150,7 +143,7 @@ if __name__ == '__main__':
     total_chunks = 0
     
     for i in range(args.niteration):
-        learning_rate = args.adam.rate / (1.0 + (i**1.25) / args.lrdecay)
+        lr_scheduler.step()
         # If the logging threshold is 0 then we log all chunks, including those rejected, so pass the log
         # object into assemble_batch
         if args.chunk_logging_threshold == 0:
@@ -197,18 +190,17 @@ if __name__ == '__main__':
             chunk_log.write_batch(i, chunk_batch, batch_loss)
 
         if (i + 1) % args.save_every == 0:
-            save_model(conv_net, args.output, (i + 1) // args.save_every)
+            helpers.save_model(conv_net, args.output, (i + 1) // args.save_every)
             log.write('C')
         else:
             log.write('.')
 
 
-        ROWLENGTH = 50
-        if (i + 1) % ROWLENGTH == 0:
+        if (i + 1) % variables.DOTROWLENGTH == 0:
             tn = time.time()
             dt = tn - t0
             t = ' {:5d} {:5.3f}  {:5.2f}s'
-            log.write(t.format((i + 1) // ROWLENGTH, score_smoothed.value, dt))
+            log.write(t.format((i + 1) // variables.DOTROWLENGTH, score_smoothed.value, dt))
             t0 = tn
             # Write summary of chunk rejection reasons
             for k, v in rejection_dict.items():
@@ -216,4 +208,4 @@ if __name__ == '__main__':
             log.write("\n")
 
 
-    save_model(conv_net, args.output)
+    helpers.save_model(conv_net, args.output)

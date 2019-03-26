@@ -10,11 +10,11 @@ def add_common_command_args(parser, arglist):
     ['input_strand_list', 'jobs'], add these command line args
     to the parser.
     
-    Note that not all command line args used in the package are
+    Not all command line args used in the package are
     included in this func: only those that are used by more than
     one script and which have the same defaults.
 
-    Also note that some args are positional and some are optional.
+    Some args are positional and some are optional.
     The optional ones are listed first below."""
 
     ############################################################################
@@ -24,10 +24,10 @@ def add_common_command_args(parser, arglist):
     ############################################################################
 
     if 'adam' in arglist:
-        parser.add_argument('--adam', nargs=3, metavar=('rate', 'decay1', 'decay2'),
-                            default=(5e-3, 0.9, 0.999), type=(NonNegative(float), NonNegative(float),
-                                                              NonNegative(float)), action=ParseToNamedTuple,
-                            help='Parameters for Exponential Decay Adaptive Momementum')
+        parser.add_argument('--adam', nargs=2, metavar=('beta1', 'beta2'),
+                            default=(0.9, 0.999), type=(NonNegative(float),
+                                                        NonNegative(float)), action=ParseToNamedTuple,
+                            help='Parameters beta1, beta2 for Exponential Decay Adaptive Momentum')
 
     if 'chunk_logging_threshold' in arglist:
         parser.add_argument('--chunk_logging_threshold', default=10.0, metavar='multiple',
@@ -53,7 +53,7 @@ def add_common_command_args(parser, arglist):
 
     if 'input_strand_list' in arglist:
         parser.add_argument('--input_strand_list', default=None, action=FileExists,
-                            help='Strand summary file containing subset')
+                            help='Strand list TSV file with columns filename_fast5 or read_id or both')
 
     if 'jobs' in arglist:
         parser.add_argument('--jobs', default=1, metavar='n', type=Positive(int),
@@ -62,10 +62,6 @@ def add_common_command_args(parser, arglist):
     if 'limit' in arglist:
         parser.add_argument('--limit', default=None, type=Maybe(Positive(int)),
                             help='Limit number of reads to process')
-
-    if 'lrdecay' in arglist:
-        parser.add_argument('--lrdecay', default=5000, metavar='n', type=Positive(float),
-                            help='Learning rate for batch i is adam.rate / (1.0 + i / n)')
 
     if 'niteration' in arglist:
         parser.add_argument('--niteration', metavar='batches', type=Positive(int),
@@ -111,4 +107,4 @@ def add_common_command_args(parser, arglist):
 
     if 'input_folder' in arglist:
         parser.add_argument('input_folder', action=FileExists,
-                            help='Directory containing single-read fast5 files')
+                            help='Directory containing single or multi-read fast5 files')
