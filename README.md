@@ -71,7 +71,7 @@ If you intend to use Taiyaki with a GPU, make sure you have installed and set up
 
 ## Install Taiyaki in a new virtual environment
 
-We recommend installing Taiyaki in a self-contained [virtual environment](http://python-guide-pt-br.readthedocs.io/en/latest/dev/virtualenvs/).
+We recommend installing Taiyaki in a self-contained [virtual environment](https://docs.python.org/3/tutorial/venv.html).
 
 The following command creates a complete environment for developing and testing Taiyaki, in the directory **venv**:
 

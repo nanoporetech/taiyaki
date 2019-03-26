@@ -9,9 +9,10 @@ import time
 
 import torch
 import taiyaki.common_cmdargs as common_cmdargs
-from taiyaki.cmdargs import (FileExists, NonNegative, Positive, proportion)
+from taiyaki.cmdargs import (FileExists, Positive, proportion)
 
-from taiyaki import chunk_selection, ctc, flipflopfings, helpers, mapped_signal_files, variables
+from taiyaki import (chunk_selection, ctc, flipflopfings, helpers, mapped_signal_files,
+                     optim, variables)
 from taiyaki import __version__
 
 
@@ -21,7 +22,7 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 common_cmdargs.add_common_command_args(parser, """adam chunk_logging_threshold device filter_max_dwell filter_mean_dwell
-                                                  limit lrdecay niteration overwrite quiet save_every
+                                                  limit lr_max lr_min lr_cosine_iters niteration overwrite quiet save_every
                                                   sample_nreads_before_filtering version weight_decay""".split())
 
 parser.add_argument('--min_batch_size', default=50, metavar='chunks', type=Positive(int),
@@ -31,9 +32,15 @@ parser.add_argument('--chunk_len_min', default=2000, metavar='samples', type=Pos
                     help='Min length of each chunk in samples (chunk lengths are random between min and max)')
 parser.add_argument('--chunk_len_max', default=4000, metavar='samples', type=Positive(int),
                     help='Max length of each chunk in samples (chunk lengths are random between min and max)')
-
 parser.add_argument('--input_strand_list', default=None, action=FileExists,
                     help='Strand summary file containing column read_id. Filenames in file are ignored.')
+parser.add_argument('--lr_cosine_iters', default=40000, metavar='n', type=Positive(float),
+                    help='Learning rate decreases from max to min like cosine function over n batches')
+parser.add_argument('--lr_max', default=8.0e-3, metavar='rate',
+                    type=Positive(float),
+                    help='Max (and starting) learning rate')
+parser.add_argument('--lr_min', default=4.0e-4, metavar='rate',
+                    type=Positive(float), help='Min (and final) learning rate')
 parser.add_argument('--seed', default=None, metavar='integer', type=Positive(int),
                     help='Set random number seed')
 parser.add_argument('--sharpen', default=1.0, metavar='factor',
@@ -54,16 +61,7 @@ parser.add_argument('input', action=FileExists,
                     help='file containing mapped reads')
 
 
-def save_model(network, output, index=None):
-    if index is None:
-        basename = 'model_final'
-    else:
-        basename = 'model_checkpoint_{:05d}'.format(index)
 
-    model_file = os.path.join(output, basename + '.checkpoint')
-    torch.save(network, model_file)
-    params_file = os.path.join(output, basename + '.params')
-    torch.save(network.state_dict(), params_file)
 
 
 if __name__ == '__main__':
@@ -148,17 +146,15 @@ if __name__ == '__main__':
     log.write('* Network has {} parameters.\n'.format(sum([p.nelement()
                                                            for p in network.parameters()])))
 
-    learning_rate = args.adam.rate
-    betas = args.adam[1:]
-    optimizer = torch.optim.Adam(network.parameters(), lr=learning_rate,
-                                 betas=betas, weight_decay=args.weight_decay)
-    lr_decay = lambda step: args.lrdecay / (args.lrdecay + step)
-    lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_decay)
+    optimizer = torch.optim.Adam(network.parameters(), lr=args.lr_max,
+                                 betas=args.adam, weight_decay=args.weight_decay)
+    
+    lr_scheduler = optim.CosineFollowedByFlatLR(optimizer, args.lr_min, args.lr_cosine_iters)
 
     score_smoothed = helpers.ExponentialSmoother(args.smooth)
 
     log.write('* Dumping initial model\n')
-    save_model(network, args.output, 0)
+    helpers.save_model(network, args.output, 0)
 
     total_bases = 0
     total_samples = 0
@@ -230,19 +226,20 @@ if __name__ == '__main__':
             torch.cuda.empty_cache()
 
         if (i + 1) % args.save_every == 0:
-            save_model(network, args.output, (i + 1) // args.save_every)
+            helpers.save_model(network, args.output, (i + 1) // args.save_every)
             log.write('C')
         else:
             log.write('.')
 
-        if (i + 1) % 50 == 0:
+
+        if (i + 1) % variables.DOTROWLENGTH == 0:
             # In case of super batching, additional functionality must be
             # added here
             learning_rate = lr_scheduler.get_lr()[0]
             tn = time.time()
             dt = tn - t0
             t = ' {:5d} {:5.3f}  {:5.2f}s ({:.2f} ksample/s {:.2f} kbase/s) lr={:.2e}'
-            log.write(t.format((i + 1) // 50, score_smoothed.value,
+            log.write(t.format((i + 1) // variables.DOTROWLENGTH, score_smoothed.value,
                                dt, total_samples / 1000.0 / dt,
                                total_bases / 1000.0 / dt, learning_rate))
             # Write summary of chunk rejection reasons
@@ -253,4 +250,4 @@ if __name__ == '__main__':
             total_samples = 0
             t0 = tn
 
-    save_model(network, args.output)
+    helpers.save_model(network, args.output)
