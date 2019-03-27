@@ -78,12 +78,13 @@ def stitch_chunks(out, chunk_starts, chunk_ends, stride):
 def run_model(normed_signal, model, chunk_size, overlap, return_numpy=True):
     """ Hook for megalodon to run network via taiyaki
     """
-    stride = guess_model_stride(model, device=next(model.parameters()).device)
+    device = next(model.parameters()).device
+    stride = guess_model_stride(model, device=device)
     chunks, chunk_starts, chunk_ends = chunk_read(
         normed_signal, chunk_size, overlap)
     with torch.no_grad():
         out = model(torch.tensor(chunks, device=device))
-        stitched_chunks = stitch_chunks(out)
+        stitched_chunks = stitch_chunks(out, chunk_starts, chunk_ends, stride)
     if return_numpy:
-        return stitched_chunks.cup().numpy()
+        return stitched_chunks.cpu().numpy()
     return stitched_chunks
