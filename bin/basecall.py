@@ -24,8 +24,8 @@ parser = argparse.ArgumentParser(
 common_cmdargs.add_common_command_args(parser, 'device input_folder input_strand_list limit recursive version'.split())
 
 parser.add_argument("--alphabet", default=DEFAULT_ALPHABET.decode(), help="Alphabet used by basecaller")
-parser.add_argument("--chunk_size", type=Positive(int), default=1000, help="Size of signal chunks sent to GPU")
-parser.add_argument("--overlap", type=NonNegative(int), default=100, help="Overlap between signal chunks sent to GPU")
+parser.add_argument("--chunk_size", type=Positive(int), default=basecall_helper._DEFAULT_CHUNK_SIZE, help="Size of signal chunks sent to GPU")
+parser.add_argument("--overlap", type=NonNegative(int), default=basecall_helper._DEFAULT_OVERLAP, help="Overlap between signal chunks sent to GPU")
 parser.add_argument("model", action=FileExists, help="Model checkpoint file to use for basecalling")
 
 

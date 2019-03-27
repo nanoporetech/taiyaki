@@ -4,6 +4,10 @@ import torch
 from taiyaki.helpers import guess_model_stride
 
 
+_DEFAULT_CHUNK_SIZE = 1000
+_DEFAULT_OVERLAP = 100
+
+
 def chunk_read(signal, chunk_size, overlap):
     """ Divide signal into overlapping chunks """
     if len(signal) < chunk_size:
@@ -75,7 +79,9 @@ def stitch_chunks(out, chunk_starts, chunk_ends, stride):
         return torch.cat(stitched_out, 0)
 
 
-def run_model(normed_signal, model, chunk_size, overlap, return_numpy=True):
+def run_model(
+        normed_signal, model, chunk_size=_DEFAULT_CHUNK_SIZE,
+        overlap=_DEFAULT_OVERLAP, max_concur_chunks=None, return_numpy=True):
     """ Hook for megalodon to run network via taiyaki
     """
     device = next(model.parameters()).device
@@ -83,8 +89,19 @@ def run_model(normed_signal, model, chunk_size, overlap, return_numpy=True):
     chunks, chunk_starts, chunk_ends = chunk_read(
         normed_signal, chunk_size, overlap)
     with torch.no_grad():
-        out = model(torch.tensor(chunks, device=device))
-        stitched_chunks = stitch_chunks(out, chunk_starts, chunk_ends, stride)
+        if max_concur_chunks is None:
+            out = model(torch.tensor(chunks, device=device))
+        else:
+            out = []
+            for super_chunk_i in range(
+                    np.ceil(chunks.shape[1] / max_concur_chunks).astype(int)):
+                sc_start, sc_end = (super_chunk_i * max_concur_chunks,
+                                    (super_chunk_i + 1) * max_concur_chunks)
+                sc_chunks = np.ascontiguousarray(chunks[:,sc_start:sc_end])
+                out.append(model(torch.tensor(sc_chunks, device=device)))
+            out = torch.cat(out, 1)
+        stitched_chunks = stitch_chunks(
+            out, chunk_starts, chunk_ends, stride)
     if return_numpy:
         return stitched_chunks.cpu().numpy()
     return stitched_chunks
