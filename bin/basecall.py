@@ -7,7 +7,7 @@ import torch
 
 from ont_fast5_api import fast5_interface
 from taiyaki.cmdargs import FileExists, NonNegative, Positive
-from taiyaki import basecall_helper, common_cmdargs
+from taiyaki import basecall_helpers, common_cmdargs
 from taiyaki.cupy_extensions.flipflop import flipflop_make_trans, flipflop_viterbi
 import taiyaki.fast5utils as fast5utils
 from taiyaki.flipflopfings import path_to_str
@@ -24,8 +24,8 @@ parser = argparse.ArgumentParser(
 common_cmdargs.add_common_command_args(parser, 'device input_folder input_strand_list limit recursive version'.split())
 
 parser.add_argument("--alphabet", default=DEFAULT_ALPHABET.decode(), help="Alphabet used by basecaller")
-parser.add_argument("--chunk_size", type=Positive(int), default=basecall_helper._DEFAULT_CHUNK_SIZE, help="Size of signal chunks sent to GPU")
-parser.add_argument("--overlap", type=NonNegative(int), default=basecall_helper._DEFAULT_OVERLAP, help="Overlap between signal chunks sent to GPU")
+parser.add_argument("--chunk_size", type=Positive(int), default=basecall_helpers._DEFAULT_CHUNK_SIZE, help="Size of signal chunks sent to GPU")
+parser.add_argument("--overlap", type=NonNegative(int), default=basecall_helpers._DEFAULT_OVERLAP, help="Overlap between signal chunks sent to GPU")
 parser.add_argument("model", action=FileExists, help="Model checkpoint file to use for basecalling")
 
 
@@ -68,11 +68,11 @@ if __name__ == '__main__':
         if signal is None:
             continue
         normed_signal = med_mad_norm(signal)
-        chunks, chunk_starts, chunk_ends = basecall_helper.chunk_read(normed_signal, args.chunk_size, args.overlap)
+        chunks, chunk_starts, chunk_ends = basecall_helpers.chunk_read(normed_signal, args.chunk_size, args.overlap)
         with torch.no_grad():
             out = model(torch.tensor(chunks, device=device))
             trans, _, _ = flipflop_make_trans(out)
             _, _, chunk_best_paths = flipflop_viterbi(trans)
-            best_path = basecall_helper.stitch_paths(chunk_best_paths, chunk_starts, chunk_ends, stride)
+            best_path = basecall_helpers.stitch_chunks(chunk_best_paths, chunk_starts, chunk_ends, stride)
             basecall = path_to_str(best_path.cpu().numpy(), alphabet=args.alphabet)
             print(">{}\n{}".format(read_id, basecall))

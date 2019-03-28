@@ -26,34 +26,10 @@ def chunk_read(signal, chunk_size, overlap):
     return chunks, chunk_starts, chunk_ends
 
 
-def stitch_paths(best_paths, chunk_starts, chunk_ends, stride):
-    """ Stitch together Viterbi paths from overlapping chunks """
-    nchunks = best_paths.shape[1]
-
-    if nchunks == 1:
-        return baths_paths[:, 0]
-    else:
-        # first chunk
-        start = chunk_starts[0] // stride
-        end = (chunk_ends[0] + chunk_starts[1]) // (2 * stride)
-        stitched_paths = [best_paths[start:end, 0]]
-
-        # middle chunks
-        for i in range(1, nchunks - 1):
-            start = (chunk_ends[i - 1] - chunk_starts[i]) // (2 * stride)
-            end = (chunk_ends[i] + chunk_starts[i + 1] - 2 * chunk_starts[i]) // (2 * stride)
-            stitched_paths.append(best_paths[start:end, i])
-
-        # last chunk
-        start = (chunk_starts[-2] - chunk_ends[-1]) // (2 * stride)
-        end = (chunk_ends[-1] - chunk_starts[-1]) // stride
-        stitched_paths.append(best_paths[start:end, -1])
-
-        return torch.cat(stitched_paths, 0)
-
-
 def stitch_chunks(out, chunk_starts, chunk_ends, stride):
-    """ Stitch together neural network output from overlapping chunks """
+    """ Stitch together neural network output or viterbi path
+    from overlapping chunks
+    """
     nchunks = out.shape[1]
 
     if nchunks == 1:
