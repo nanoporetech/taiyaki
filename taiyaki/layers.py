@@ -20,6 +20,7 @@ def init_(param, value):
     value_as_tensor = torch.tensor(value, dtype=param.data.dtype)
     param.data.detach_().set_(value_as_tensor)
 
+
 def random_orthonormal(n, m=None):
     """  Generate random orthonormal matrix
     :param n: rank of matrix to generate
@@ -450,7 +451,30 @@ class Parallel(nn.Module):
 
     def json(self, params=False):
         return OrderedDict([('type', "parallel"),
-                            ('sublayers', [layer.json(params) for layer in self.sublayers])])
+                            ('sublayers', [layer.json(params)
+                                           for layer in self.sublayers])])
+
+
+class Product(nn.Module):
+    """  Element-wise product of list of input layers
+
+         E.g. Simple gated feed-forward layer
+         Product([FeedForward(insize, size, fun=sigmoid), FeedForward(insize, size, fun=linear)])
+    """
+    def __init__(self, layers):
+        super().__init__()
+        self.sublayers = nn.ModuleList(layers)
+
+    def forward(self, x):
+        ys = self.sublayers[0](x)
+        for layer in self.sublayers[1:]:
+            ys *= layer(x)
+        return ys
+
+    def json(self, params=False):
+        return OrderedDict([('type', "Product"),
+                            ('sublayers', [layer.json(params)
+                                           for layer in self.sublayers])])
 
 
 class Serial(nn.Module):
@@ -671,3 +695,46 @@ class GlobalNormFlipFlop(nn.Module):
             return flipflop.global_norm(y)
         else:
             return global_norm_flipflop(y)
+
+
+class TimeLinear(nn.Module):
+    """  Basic feedforward layer over time dimension
+         out = f( inMat W + b )
+
+    :param insize: Size of input to layer
+    :param size: Layer size
+    :param has_bias: Whether layer has bias
+    :param fun: The activation function.
+    """
+    def __init__(self, insize, size, has_bias=True, fun=activation.linear):
+        super().__init__()
+        self.insize = insize
+        self.size = size
+        self.has_bias = has_bias
+        self.linear = nn.Linear(insize, size, bias=has_bias)
+        self.activation = fun
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        winit = orthonormal_matrix(self.size, self.insize)
+        init_(self.linear.weight, winit)
+        if self.has_bias:
+            binit = truncated_normal(list(self.linear.bias.shape), sd=0.5)
+            init_(self.linear.bias, binit)
+
+    def forward(self, x):
+        xp = x.permute(1, 2, 0)
+        y = self.activation(self.linear(xp))
+        return y.permute(2, 0, 1)
+
+    def json(self, params=False):
+        res = OrderedDict([('type', "TimeLinear"),
+                           ('activation', self.activation.__name__),
+                           ('size', self.size),
+                           ('insize', self.insize),
+                           ('bias', self.has_bias)])
+        if params:
+            res['params'] = OrderedDict([('W', self.linear.weight)] +
+                                        [('b', self.linear.bias)] if self.has_bias else [])
+        return res
+

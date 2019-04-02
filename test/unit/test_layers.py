@@ -257,6 +257,32 @@ class DeltaSampleTest(LayerTest, unittest.TestCase):
         self.layer = nn.DeltaSample()
 
 
+class ProductTest(LayerTest, unittest.TestCase):
+    _INPUTS = [np.random.uniform(size=(100, 20, 12))]
+
+    def setUp(self):
+        self.linear1 = nn.FeedForward(12, 8)
+        self.linear2 = nn.FeedForward(12, 8)
+        self.layer = nn.Product([self.linear1, self.linear2])
+
+    def test_Product_gives_same_result_as_product(self):
+        for x in self._INPUTS:
+            xt = torch.tensor(x, dtype=torch_dtype)
+            with torch.no_grad():
+                y1 = self.linear1(xt)
+                y2 = self.linear2(xt)
+                y = self.layer(xt)
+                max_error = (y - y1 * y2).abs().max().float()
+            self.assertAlmostEqual(max_error, 0.0)
+
+
+class TimeLinearTest(LayerTest, unittest.TestCase):
+    _INPUTS = [np.random.uniform(size=(100, 20, 12))]
+
+    def setUp(self):
+        self.layer = nn.TimeLinear(100, 2)
+
+
 class GlobalNormFlipFlopTest(LayerTest, unittest.TestCase):
     _INPUTS = [np.random.uniform(size=(100, 20, 12))]
 
