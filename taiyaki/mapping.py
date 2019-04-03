@@ -191,11 +191,6 @@ class Mapping:
         ref_to_sig = np.append(putative_ref_to_sig, siglen * np.ones(reflen +
                                                                      1 - len(putative_ref_to_sig), dtype=np.int32))
 
-        if len(ref_to_sig) != (reflen + 1):
-            with open('/media/groups_cs2/res_algo/active/aevans/taiyakiExperiments/integrate/DUMP.txt', "w") as f:
-                f.write('[' + (','.join([str(i) for i in self.signalpos_to_refpos])) + ']\n')
-            raise Exception("Length of constructed reftosignal ({}) != reflen ({}) + 1".format(len(ref_to_sig), reflen))
-
         return ref_to_sig
 
     def get_read_dictionary(self, shift, scale, read_id, check=True, alphabet="ACGT", collapse_alphabet=None):
