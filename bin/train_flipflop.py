@@ -47,8 +47,6 @@ parser.add_argument('--sharpen', default=1.0, metavar='factor',
                     type=Positive(float), help='Sharpening factor')
 parser.add_argument('--size', default=256, metavar='neurons',
                     type=Positive(int), help='Base layer size for model')
-parser.add_argument('--smooth', default=0.45, metavar='factor', type=proportion,
-                    help='Smoothing factor for reporting progress')
 parser.add_argument('--stride', default=2, metavar='samples', type=Positive(int),
                     help='Stride for model')
 parser.add_argument('--winlen', default=19, type=Positive(int),
@@ -151,7 +149,7 @@ if __name__ == '__main__':
     
     lr_scheduler = optim.CosineFollowedByFlatLR(optimizer, args.lr_min, args.lr_cosine_iters)
 
-    score_smoothed = helpers.ExponentialSmoother(args.smooth)
+    score_smoothed = helpers.WindowedExpSmoother()
 
     log.write('* Dumping initial model\n')
     helpers.save_model(network, args.output, 0)

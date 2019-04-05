@@ -195,6 +195,36 @@ class ExponentialSmoother(object):
         self.weight = self.factor * self.weight + (1.0 - self.factor) * weight
 
 
+class WindowedExpSmoother(object):
+    """ Smooth values using exponential decay over a fixed range of values
+
+    :param alpha: exponential decay factor
+    :param n_vals: maximum number of values in reported smoothed value
+    """
+    def __init__(self, alpha=0.95, n_vals=100):
+        assert 0.0 <= alpha <= 1.0, (
+            "Alpha was {}, should be between 0.0 and 1.0.\n".format(
+                alpha))
+        self.alpha = alpha
+        self.weights = np.power(alpha, np.arange(n_vals))
+        self.vals = np.full(n_vals, np.NAN)
+        self.n_valid_vals = 0
+        return
+
+    @property
+    def value(self):
+        if self.n_valid_vals == 0: return np.NAN
+        return np.average(
+            self.vals[:self.n_valid_vals],
+            weights=self.weights[:self.n_valid_vals])
+
+    def update(self, val):
+        self.vals[1:] = self.vals[:-1]
+        self.vals[0] = val
+        self.n_valid_vals += 1
+        return
+
+
 class Logger(object):
 
     def __init__(self, log_file_name, quiet=False):

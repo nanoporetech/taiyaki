@@ -47,8 +47,6 @@ parser.add_argument('--seed', default=None, metavar='integer', type=Positive(int
                     help='Set random number seed')
 parser.add_argument('--size', metavar='n', default=32, type=Positive(int),
                     help='Size of layers in convolution network')
-parser.add_argument('--smooth', default=0.45, metavar='factor', type=proportion,
-                    help='Smoothing factor for reporting progress')
 parser.add_argument('--target_len', metavar='n', default=300, type=Positive(int),
                     help='Target length of sequence')
 parser.add_argument('--winlen', metavar='n', default=7, type=Positive(int),
@@ -139,7 +137,7 @@ if __name__ == '__main__':
     
     rejection_dict = defaultdict(lambda : 0)  # To count the numbers of different sorts of chunk rejection
     t0 = time.time()
-    score_smoothed = helpers.ExponentialSmoother(args.smooth)
+    score_smoothed = helpers.WindowedExpSmoother()
     total_chunks = 0
     
     for i in range(args.niteration):
