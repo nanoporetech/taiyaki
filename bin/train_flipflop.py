@@ -104,7 +104,7 @@ if __name__ == '__main__':
         read_ids = list(set(helpers.get_read_ids(args.input_strand_list)))
         log.write('* Will train from a subset of {} strands, determined by read_ids in input strand list\n'.format(len(read_ids)))
     else:
-        log.write('* Will train from all strands\n')
+        log.write('* Reads not filtered by id\n')
         read_ids = 'all'
 
     if args.limit is not None:
