@@ -91,7 +91,7 @@ void flipflop_fwd(
 def flipflop_fwd(scores):
     index = scores.device.index
     T, N, S = scores.shape
-    nbase = int(np.sqrt(S / 2))
+    nbase = flipflopfings.nbase_flipflop(S)
 
     scores = scores.contiguous()
     fwd = torch.zeros((T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
@@ -187,7 +187,7 @@ void flipflop_bwd(
 def flipflop_bwd(scores):
     index = scores.device.index
     T, N, S = scores.shape
-    nbase = int(np.sqrt(S / 2))
+    nbase = flipflopfings.nbase_flipflop(S)
 
     scores = scores.contiguous()
     bwd = torch.zeros((T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
@@ -251,7 +251,7 @@ void flipflop_make_trans(
 def flipflop_make_trans(scores):
     index = scores.device.index
     T, N, S = scores.shape
-    nbase = int(np.sqrt(S / 2))
+    nbase = flipflopfings.nbase_flipflop(S)
     fwd, fwd_fact = flipflop_fwd(scores)
     bwd, bwd_fact = flipflop_bwd(scores)
     scores = scores.contiguous()
@@ -375,7 +375,7 @@ void flipflop_viterbi(
 def flipflop_viterbi(scores):
     index = scores.device.index
     T, N, S = scores.shape
-    nbase = int(np.sqrt(S / 2))
+    nbase = flipflopfings.nbase_flipflop(S)
 
     scores = scores.contiguous()
     fwd = torch.zeros((T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)

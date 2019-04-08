@@ -6,7 +6,7 @@ from torch import nn
 from torch.nn import Parameter
 from scipy.stats import truncnorm
 
-from taiyaki import activation
+from taiyaki import activation, flipflopfings
 from taiyaki.config import taiyaki_dtype
 
 
@@ -620,9 +620,7 @@ logaddexp = LogAddExp.apply
 
 def global_norm_flipflop(scores):
     T, N, C = scores.shape
-    nbase = int(np.sqrt(C / 2))
-    assert 2 * nbase * (nbase + 1) == C,\
-        "Unexpected shape for flipflop scores: nbase = {}, shape = {}".format(nbase, (T, N, C))
+    nbase = flipflopfings.nbase_flipflop(C)
 
     def step(in_vec, in_state):
         in_vec_reshape = in_vec.reshape((-1, nbase + 1, 2 * nbase))
@@ -649,7 +647,7 @@ class GlobalNormFlipFlop(nn.Module):
         super().__init__()
         self.insize = insize
         self.nbase = nbase
-        self.size = 2 * nbase * (nbase + 1)
+        self.size = flipflopfings.nstate_flipflop(nbase)
         self.has_bias = has_bias
         self.linear = nn.Linear(insize, self.size, bias=has_bias)
         self.reset_parameters()
