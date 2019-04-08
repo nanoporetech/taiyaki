@@ -46,3 +46,27 @@ def path_to_str(path, alphabet='ACGT'):
     alphabet = np.frombuffer((alphabet * 2).encode(), dtype='u1')
     seq = alphabet[path[move]]
     return seq.tobytes().decode()
+
+
+def nstate_flipflop(nbase):
+    """  Number of states in output of flipflop network
+
+    :param nbase: Number of letters in alphabet
+
+    :returns: Number of states
+    """
+    return 2 * nbase * (nbase + 1)
+
+
+def nbase_flipflop(nstate):
+    """  Number of letters in alphabet from flipflop network output size
+
+    :param nstate: Flipflop network output size
+
+    :returns: Number of letters in alphabet
+    """
+    nbase_f = np.sqrt(0.25 + (0.5 * nstate)) - 0.5
+    assert np.mod(nbase_f, 1) == 0, (
+        'Number of states not valid for flip-flop model. ' +
+        'nstates: {}\tconverted nbases: {}').format(nstate, nbase_f)
+    return int(np.round(nbase_f))
