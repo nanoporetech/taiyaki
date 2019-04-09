@@ -11,7 +11,7 @@ from scipy.optimize import minimize_scalar
 import subprocess
 import sys
 import traceback
-from taiyaki.cmdargs import proportion, AutoBool, FileExists
+from taiyaki.cmdargs import AutoBool, proportion
 
 
 parser = argparse.ArgumentParser(
@@ -222,7 +222,7 @@ CIscore (Mbits): {:.5f}
     return res, f, ax
 
 
-if __name__ == '__main__':
+def main():
     args = parser.parse_args()
 
     # Set the mpl backend. The default, Agg, does not require an X server to be running
@@ -269,3 +269,7 @@ if __name__ == '__main__':
             exit_code = 1
 
     sys.exit(exit_code)
+
+
+if __name__ == '__main__':
+    main()

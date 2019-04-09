@@ -64,9 +64,7 @@ def create_convolution(size, depth, winlen):
     )
 
 
-
-
-if __name__ == '__main__':
+def main():
     args = parser.parse_args()
     np.random.seed(args.seed)
 
@@ -100,7 +98,7 @@ if __name__ == '__main__':
         # (each an instance of the Read class defined in mapped_signal_files.py, based on dict)
 
     log.write('* Loaded {} reads.\n'.format(len(read_data)))
-    
+
     # Create a logging file to save details of chunks.
     # If args.chunk_logging_threshold is set to 0 then we log all chunks including those rejected.
     chunk_log = chunk_selection.ChunkLog(args.output)
@@ -132,14 +130,14 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.Adam(conv_net.parameters(), lr=args.lr_max,
                                  betas=args.adam, weight_decay=args.weight_decay)
-    
+
     lr_scheduler = optim.ReciprocalLR(optimizer, args.lr_decay)
-    
+
     rejection_dict = defaultdict(lambda : 0)  # To count the numbers of different sorts of chunk rejection
     t0 = time.time()
     score_smoothed = helpers.WindowedExpSmoother()
     total_chunks = 0
-    
+
     for i in range(args.niteration):
         lr_scheduler.step()
         # If the logging threshold is 0 then we log all chunks, including those rejected, so pass the log
@@ -207,3 +205,7 @@ if __name__ == '__main__':
 
 
     helpers.save_model(conv_net, args.output)
+
+
+if __name__ == '__main__':
+    main()

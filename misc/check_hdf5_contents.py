@@ -12,10 +12,14 @@ parser.add_argument('input', help='HDF5 file')
 parser.add_argument("keys", nargs="+", help="Keys to check")
 
 
-if __name__ == "__main__":
+def main():
     args = parser.parse_args()
     with h5py.File(args.input, 'r') as h5:
         for key in args.keys:
             testobject = h5[key]
             print("Key ", key, "present in", args.input)
     print("All keys present")
+
+
+if __name__ == "__main__":
+    main()

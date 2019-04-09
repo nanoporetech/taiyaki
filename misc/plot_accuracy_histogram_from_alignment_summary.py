@@ -17,13 +17,13 @@ parser.add_argument('--bins', default=100, type=Positive(int), help='Number of b
 parser.add_argument('--title', default='', help='Figure title')
 parser.add_argument('--output_name', default='basecaller_histogram.png', help='Output file name')
 
-if __name__ == "__main__":
+def main():
     args = parser.parse_args()
 
     AccVals=readtsv(args.combined_read_file)['alignment_accuracy']
 
     fig, ax = plt.subplots()
-    
+
     escaped_title = bytes(args.title, "utf-8").decode("unicode_escape")
     ax.set_title(escaped_title, fontsize=7)
     ax.set_xlabel('Accuracy')
@@ -34,9 +34,11 @@ if __name__ == "__main__":
     ax.grid(which='minor', linestyle=':')
 
     plt.hist(np.array(AccVals[AccVals>=0]), bins = args.bins)
-    
+
     plt.tight_layout()
-    
+
     plt.savefig(args.output_name)
 
-    
+
+if __name__ == "__main__":
+    main()

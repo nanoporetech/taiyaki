@@ -51,8 +51,7 @@ def one_read_shift_scale(read_tuple):
         return (read_id, shift, scale)
 
 
-if __name__ == '__main__':
-
+def main():
     args = parser.parse_args()
 
     if not args.overwrite:
@@ -77,3 +76,6 @@ if __name__ == '__main__':
                 read_id, shift, scale = result
                 writer.writerow([read_id, trim_start, trim_end, shift, scale])
 
+
+if __name__ == '__main__':
+    main()

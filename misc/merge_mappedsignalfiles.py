@@ -17,7 +17,7 @@ parser.add_argument('--version', default=mapped_signal_files._version, type=Posi
 MAPPED_READ_CLASS = mapped_signal_files.HDF5
 
 
-if __name__ == '__main__':
+def main():
     args = parser.parse_args()
     reads_written = set()
     print("Writing reads to ", args.output)
@@ -38,4 +38,7 @@ if __name__ == '__main__':
                         copied_from_this_file += 1
             print("Copied",copied_from_this_file,"reads from",infile)
     print("Copied",len(reads_written),"reads in total")
-                        
+
+
+if __name__ == '__main__':
+    main()

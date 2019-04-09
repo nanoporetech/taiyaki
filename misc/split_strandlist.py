@@ -20,7 +20,8 @@ parser.add_argument('input', help='either a strand list file or a directory name
 
 strandlist_header = "filename"
 
-if __name__ == '__main__':
+
+def main():
     args = parser.parse_args()
     # If we can read strands from it, then it's a strand list
     try:
@@ -52,3 +53,7 @@ if __name__ == '__main__':
             endnum = min(len(strands), (filenumber + 1) * args.maxlistsize)
             for nstrand in range(startnum, endnum):
                 f.write(strands[nstrand] + "\n")
+
+
+if __name__ == '__main__':
+    main()

@@ -61,7 +61,7 @@ def get_refs(sam, ref_seq_dict, min_coverage=0.6, pad=0):
             yield (read.qname, fasta)
 
 
-if __name__ == '__main__':
+def main():
     args = parser.parse_args()
 
     sys.stderr.write("* Loading references (this may take a while for large genomes)\n")
@@ -71,3 +71,6 @@ if __name__ == '__main__':
     for samfile in args.input:
         for (name, fasta) in get_refs(samfile, references, args.min_coverage, args.pad):
             sys.stdout.write(fasta)
+
+if __name__ == '__main__':
+    main()

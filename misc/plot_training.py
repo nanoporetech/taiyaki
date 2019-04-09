@@ -14,13 +14,13 @@ parser = argparse.ArgumentParser(
 parser.add_argument('output', help='Output png file')
 parser.add_argument('input_directories',  nargs='+',
                     help='One or more directories containing files called model.log')
-parser.add_argument('--mav', default=None, 
+parser.add_argument('--mav', default=None,
                     type=int,
                     help='Moving average window applied to loss.' +
                          'e.g --mav 10 makes loss curves easier to separate visually')
-parser.add_argument('--upper_y_limit', default=None, 
+parser.add_argument('--upper_y_limit', default=None,
                     type=Positive(float), help='Upper limit of plot y(loss) axis')
-parser.add_argument('--lower_y_limit', default=None, 
+parser.add_argument('--lower_y_limit', default=None,
                     type=Positive(float), help='Lower limit of plot y(loss) axis')
 
 def ewma(x,timescale):
@@ -34,7 +34,7 @@ def ewma(x,timescale):
         y[t] = (1-a) * x[t] + a * y[t-1]
     return y
 
-if __name__=="__main__":
+def main():
     args = parser.parse_args()
     plt.figure()
     for training_directory in args.input_directories:
@@ -71,3 +71,7 @@ if __name__=="__main__":
     plt.tight_layout()
     print("Saving plot to", args.output)
     plt.savefig(args.output)
+
+
+if __name__=="__main__":
+    main()
