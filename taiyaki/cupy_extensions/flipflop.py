@@ -4,6 +4,9 @@ import torch
 from torch.autograd import Function
 
 
+from taiyaki import flipflopfings
+
+
 _flipflop_fwd = cp.RawKernel(r'''
 extern "C" __global__
 void flipflop_fwd(
