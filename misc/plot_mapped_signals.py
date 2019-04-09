@@ -18,7 +18,7 @@ parser.add_argument('--nreads', type=Positive(int), default=10,
 parser.add_argument('--read_ids',  nargs='+', default=[],
                     help='One or more read_ids. If not present, plots the first NREADS in the file')
 
-if __name__=="__main__":
+def main():
     args = parser.parse_args()
     print("Opening ", args.mapped_read_file)
     with mapped_signal_files.HDF5(args.mapped_read_file, "r") as h5:
@@ -49,3 +49,7 @@ if __name__=="__main__":
     plt.tight_layout()
     print("Saving plot to", args.output)
     plt.savefig(args.output)
+
+
+if __name__=="__main__":
+    main()

@@ -27,7 +27,7 @@ parser.add_argument('references', action=FileExists,
                     help='Single fasta file containing references for each read')
 
 
-def main(argv):
+def main():
     """Main function to process mapping for each read using functions in prepare_mapping_funcs"""
     args = parser.parse_args()
     print("Running prepare_mapping using flip-flop remapping")
@@ -58,4 +58,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[:]))
+    main()

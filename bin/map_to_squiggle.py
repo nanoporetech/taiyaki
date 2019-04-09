@@ -30,7 +30,7 @@ parser.add_argument('references', action=FileExists, help='Fasta file')
 parser.add_argument('read_dir', action=FileExists, help='Directory for fast5 reads')
 
 
-if __name__ == '__main__':
+def main():
     args = parser.parse_args()
 
     worker_kwarg_names = ['back_prob', 'localpen', 'minscore',
@@ -55,3 +55,7 @@ if __name__ == '__main__':
             print('{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(read_id, i, s, p,
                                                       bases[p], squiggle[p, 0],
                                                       squiggle[p, 1], squiggle[p, 2]))
+
+
+if __name__ == '__main__':
+    main()

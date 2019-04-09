@@ -19,7 +19,7 @@ parser.add_argument('model', action=FileExists, help='Model file')
 parser.add_argument('input', action=FileExists, help='Fasta file')
 
 
-if __name__ == '__main__':
+def main():
     args = parser.parse_args()
 
     predict_squiggle = helpers.load_model(args.model)
@@ -35,3 +35,7 @@ if __name__ == '__main__':
         print('base', 'current', 'sd', 'dwell', sep='\t')
         for base, (mean, logsd, dwell) in zip(seq.seq, squiggle):
             print(base, mean, np.exp(logsd), np.exp(-dwell), sep='\t')
+
+
+if __name__ == '__main__':
+    main()

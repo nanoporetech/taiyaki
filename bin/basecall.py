@@ -50,8 +50,7 @@ def get_signal(read_filename, read_id):
         return None
 
 
-if __name__ == '__main__':
-
+def main():
     args = parser.parse_args()
 
     assert args.device != 'cpu', "Flipflop basecalling in taiyaki requires a GPU and for cupy to be installed"
@@ -76,3 +75,7 @@ if __name__ == '__main__':
             best_path = basecall_helpers.stitch_chunks(chunk_best_paths, chunk_starts, chunk_ends, stride)
             basecall = path_to_str(best_path.cpu().numpy(), alphabet=args.alphabet)
             print(">{}\n{}".format(read_id, basecall))
+
+
+if __name__ == '__main__':
+    main()

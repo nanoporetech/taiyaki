@@ -59,10 +59,7 @@ parser.add_argument('input', action=FileExists,
                     help='file containing mapped reads')
 
 
-
-
-
-if __name__ == '__main__':
+def main():
     args = parser.parse_args()
 
     np.random.seed(args.seed)
@@ -128,7 +125,7 @@ if __name__ == '__main__':
                                                                  chunk_log=chunk_log)
 
     medmd, madmd = filter_parameters
-    
+
     log.write("* Sampled {} chunks: median(mean_dwell)={:.2f}, mad(mean_dwell)={:.2f}\n".format(
               args.sample_nreads_before_filtering, medmd, madmd))
     log.write('* Reading network from {}\n'.format(args.model))
@@ -146,7 +143,7 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.Adam(network.parameters(), lr=args.lr_max,
                                  betas=args.adam, weight_decay=args.weight_decay)
-    
+
     lr_scheduler = optim.CosineFollowedByFlatLR(optimizer, args.lr_min, args.lr_cosine_iters)
 
     score_smoothed = helpers.WindowedExpSmoother()
@@ -161,7 +158,7 @@ if __name__ == '__main__':
 
     t0 = time.time()
     log.write('* Training\n')
-    
+
 
 
     for i in range(args.niteration):
@@ -249,3 +246,7 @@ if __name__ == '__main__':
             t0 = tn
 
     helpers.save_model(network, args.output)
+
+
+if __name__ == '__main__':
+    main()

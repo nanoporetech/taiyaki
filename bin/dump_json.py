@@ -15,7 +15,7 @@ parser.add_argument('--params', default=True, action=AutoBool, help='Output para
 parser.add_argument('model', action=FileExists, help='Model file to read from')
 
 
-if __name__ == "__main__":
+def main():
     args = parser.parse_args()
     model = load_model(args.model)
 
@@ -27,3 +27,7 @@ if __name__ == "__main__":
             json.dump(json_out, f, indent=4, cls=JsonEncoder)
     else:
         print(json.dumps(json_out, indent=4, cls=JsonEncoder))
+
+
+if __name__ == "__main__":
+    main()
