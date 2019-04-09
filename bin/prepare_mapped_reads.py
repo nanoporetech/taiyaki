@@ -50,7 +50,7 @@ def main():
     workerFunction = prepare_mapping_funcs.oneread_remap  # remaps a single read using flip-flip network
 
     results = imap_mp(workerFunction, fast5_reads, threads=args.jobs,
-                      fix_kwargs=kwargs, unordered=True)
+                      fix_kwargs=kwargs, unordered=True, chunk_size=50)
 
     # results is an iterable of dicts
     # each dict is a set of return values from a single read
