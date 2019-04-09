@@ -5,16 +5,15 @@ import numpy as np
 import torch
 
 from taiyaki import helpers, squiggle_match
-from taiyaki.cmdargs import display_version_and_exit, FileExists, Positive
-from taiyaki import __version__
+from taiyaki.cmdargs import FileExists
+from taiyaki.common_cmdargs import add_common_command_args
 
 
-parser = argparse.ArgumentParser(
-    description='Predict squiggle from sequence',
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser = argparse.ArgumentParser(description='Predict squiggle from sequence',
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-parser.add_argument('--version', nargs=0, action=display_version_and_exit,
-                    metavar=__version__, help='Display version information')
+add_common_command_args(parser, "output version".split())
+
 parser.add_argument('model', action=FileExists, help='Model file')
 parser.add_argument('input', action=FileExists, help='Fasta file')
 
@@ -24,17 +23,18 @@ def main():
 
     predict_squiggle = helpers.load_model(args.model)
 
-    for seq in SeqIO.parse(args.input, 'fasta'):
-        seqstr = str(seq.seq).encode('ascii')
-        embedded_seq_numpy = np.expand_dims(squiggle_match.embed_sequence(seqstr), axis=1)
-        embedded_seq_torch = torch.tensor(embedded_seq_numpy, dtype=torch.float32)
+    with helpers.open_file_or_stdout(args.output) as fh:
+        for seq in SeqIO.parse(args.input, 'fasta'):
+            seqstr = str(seq.seq).encode('ascii')
+            embedded_seq_numpy = np.expand_dims(squiggle_match.embed_sequence(seqstr), axis=1)
+            embedded_seq_torch = torch.tensor(embedded_seq_numpy, dtype=torch.float32)
 
-        with torch.no_grad():
-            squiggle = np.squeeze(predict_squiggle(embedded_seq_torch).cpu().numpy(), axis=1)
+            with torch.no_grad():
+                squiggle = np.squeeze(predict_squiggle(embedded_seq_torch).cpu().numpy(), axis=1)
 
-        print('base', 'current', 'sd', 'dwell', sep='\t')
-        for base, (mean, logsd, dwell) in zip(seq.seq, squiggle):
-            print(base, mean, np.exp(logsd), np.exp(-dwell), sep='\t')
+            fh.write('base\tcurrent\tsd\tdwell\n')
+            for base, (mean, logsd, dwell) in zip(seq.seq, squiggle):
+                fh.write('{}\t{}\t{}\t{}\n'.format(base, mean, np.exp(logsd), np.exp(-dwell)))
 
 
 if __name__ == '__main__':

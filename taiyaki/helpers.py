@@ -292,3 +292,26 @@ class Progress(object):
     @property
     def is_newline(self):
         return self.count % (self.dotcount * self.line_len) == 0
+
+
+class open_file_or_stdout():
+    """  Simple context manager that acts like `open`
+
+    If filename is None, uses stdout.
+
+    :param filename: Name or file to open, or None for stdout
+    """
+    def __init__(self, filename):
+        self.filename = filename
+
+    def __enter__(self):
+        if self.filename is None:
+            self.fh = sys.stdout
+        else:
+            self.fh = open(self.filename, 'w')
+        return self.fh
+
+    def __exit__(self, *args):
+        if self.filename is not None:
+            self.fh.close()
+

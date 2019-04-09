@@ -8,22 +8,21 @@ import sys
 import time
 
 import torch
-import taiyaki.common_cmdargs as common_cmdargs
-from taiyaki.cmdargs import (FileExists, Positive, proportion)
+from taiyaki.cmdargs import FileExists, Positive
+from taiyaki.common_cmdargs import add_common_command_args
 
-from taiyaki import (chunk_selection, ctc, flipflopfings, helpers, mapped_signal_files,
-                     optim, variables)
+from taiyaki import (chunk_selection, ctc, flipflopfings, helpers,
+                     mapped_signal_files, optim, variables)
 from taiyaki import __version__
 
 
 # This is here, not in main to allow documentation to be built
-parser = argparse.ArgumentParser(
-    description='Train a flip-flop neural network',
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser = argparse.ArgumentParser(description='Train a flip-flop neural network',
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-common_cmdargs.add_common_command_args(parser, """adam chunk_logging_threshold device filter_max_dwell filter_mean_dwell
-                                                  limit lr_max lr_min lr_cosine_iters niteration overwrite quiet save_every
-                                                  sample_nreads_before_filtering version weight_decay""".split())
+add_common_command_args(parser, """adam chunk_logging_threshold device filter_max_dwell filter_mean_dwell
+                                   limit lr_max lr_min lr_cosine_iters niteration overwrite quiet save_every
+                                   sample_nreads_before_filtering version weight_decay""".split())
 
 parser.add_argument('--min_batch_size', default=50, metavar='chunks', type=Positive(int),
                     help='Number of chunks to run in parallel for chunk_len = chunk_len_max.' +

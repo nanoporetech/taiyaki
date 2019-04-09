@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 import argparse
 
-from taiyaki import common_cmdargs, fast5utils, helpers, squiggle_match
-from taiyaki.cmdargs import (display_version_and_exit, FileExists,
-                             Maybe, NonNegative, Positive, proportion)
+from taiyaki import fast5utils, helpers, squiggle_match
+from taiyaki.cmdargs import (FileExists, Maybe, NonNegative, proportion)
+from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.iterators import imap_mp
-from taiyaki import __version__
 
 
 parser = argparse.ArgumentParser(
@@ -13,7 +12,7 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 
-common_cmdargs.add_common_command_args(parser, "limit jobs recursive version".split())
+add_common_command_args(parser, "limit jobs output recursive version".split())
 
 parser.add_argument('--back_prob', default=1e-15, metavar='probability',
                     type=proportion, help='Probability of backwards move')
@@ -33,28 +32,31 @@ parser.add_argument('read_dir', action=FileExists, help='Directory for fast5 rea
 def main():
     args = parser.parse_args()
 
-    worker_kwarg_names = ['back_prob', 'localpen', 'minscore',
-                          'trim']
+    worker_kwarg_names = ['back_prob', 'localpen', 'minscore', 'trim']
 
     model = helpers.load_model(args.model)
 
-    fast5_reads = fast5utils.iterate_fast5_reads(
-        args.read_dir, limit=args.limit, strand_list=args.input_strand_list,
-        recursive=args.recursive)
+    fast5_reads = fast5utils.iterate_fast5_reads(args.read_dir,
+                                                 limit=args.limit,
+                                                 strand_list=args.input_strand_list,
+                                                 recursive=args.recursive)
 
-    for res in imap_mp(squiggle_match.worker, fast5_reads, threads=args.jobs,
-                       fix_kwargs=helpers.get_kwargs(args, worker_kwarg_names),
-                       unordered=True, init=squiggle_match.init_worker,
-                       initargs=[model, args.references]):
-        if res is None:
-            continue
-        read_id, sig, score, path, squiggle, bases = res
-        bases = bases.decode('ascii')
-        print('#{} {}'.format(read_id, score))
-        for i, (s, p) in enumerate(zip(sig, path)):
-            print('{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(read_id, i, s, p,
-                                                      bases[p], squiggle[p, 0],
-                                                      squiggle[p, 1], squiggle[p, 2]))
+    with helpers.open_file_or_stdout(args.output) as fh:
+        for res in imap_mp(squiggle_match.worker, fast5_reads, threads=args.jobs,
+                        fix_kwargs=helpers.get_kwargs(args, worker_kwarg_names),
+                        unordered=True, init=squiggle_match.init_worker,
+                        initargs=[model, args.references]):
+            if res is None:
+                continue
+            read_id, sig, score, path, squiggle, bases = res
+            bases = bases.decode('ascii')
+            fh.write('#{} {}\n'.format(read_id, score))
+            for i, (s, p) in enumerate(zip(sig, path)):
+                fh.write('{}\t{}\t{}\t{}\t{}\t{}\t{}i\n'.format(read_id, i, s, p,
+                                                                bases[p],
+                                                                squiggle[p, 0],
+                                                                squiggle[p, 1],
+                                                                squiggle[p, 2]))
 
 
 if __name__ == '__main__':

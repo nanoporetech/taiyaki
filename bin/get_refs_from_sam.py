@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 import argparse
-from Bio import SeqIO
-from collections import OrderedDict
-import os
 import pysam
 import sys
-import traceback
 
-from taiyaki.helpers import fasta_file_to_dict
 from taiyaki.bio import reverse_complement
 from taiyaki.cmdargs import proportion, FileExists
+from taiyaki.common_cmdargs import add_common_command_args
+from taiyaki.helpers import fasta_file_to_dict, open_file_or_stdout
 
 
 parser = argparse.ArgumentParser(
     description='Extract reference sequence for each read from a SAM alignment file',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+add_common_command_args(parser, ["output"])
+
 parser.add_argument('--min_coverage', metavar='proportion', default=0.6, type=proportion,
                     help='Ignore reads with alignments shorter than min_coverage * read length')
 parser.add_argument('--pad', type=int, default=0,
@@ -31,7 +31,6 @@ STRAND = {0: '+',
 def get_refs(sam, ref_seq_dict, min_coverage=0.6, pad=0):
     """Read alignments from sam file and return accuracy metrics
     """
-    res = []
     with pysam.Samfile(sam, 'r') as sf:
         for read in sf:
             if read.flag != 0 and read.flag != 16:
@@ -68,9 +67,11 @@ def main():
     references = fasta_file_to_dict(args.reference, allow_N=True)
 
     sys.stderr.write("* Extracting read references using SAM alignment\n")
-    for samfile in args.input:
-        for (name, fasta) in get_refs(samfile, references, args.min_coverage, args.pad):
-            sys.stdout.write(fasta)
+    with open_file_or_stdout(args.output) as fh:
+        for samfile in args.input:
+            for (name, fasta) in get_refs(samfile, references, args.min_coverage, args.pad):
+                fh.write(fasta)
+
 
 if __name__ == '__main__':
     main()

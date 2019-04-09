@@ -60,7 +60,7 @@ TAIYAKI_ROOT := $(shell pwd)
 NCPU := $(shell nproc)
 OPENBLAS_NUM_THREADS := 1
 export OPENBLAS_NUM_THREADS
-OMP_NUM_THREADS := 1
+OMP_NUM_THREADS := 4
 export OMP_NUM_THREADS
 
 #####################################
@@ -108,6 +108,7 @@ endif
 
 READDIR = READDIR_SHOULD_POINT_TO_DIRECTORY_CONTAINING_READS
 BAMFILE := BAMFILE_SHOULD_POINT_TO_BAM_ALIGNMENT_IF_USING_get_refs_from_sam
+PREDICT_SQUIGGLE_TEST_FASTA := 
 REFERENCEFILE := REFERENCEFILE_SHOULD_POINT_TO_GENOMIC_REFERENCE_IF_USING_get_refs_from_sam
 USER_PER_READ_REFERENCE_FILE:= FOR_USER_PER_READ_REFERENCE_SET_THIS_AND_USE_MAKE_TARGET_train_remapuser_ref
 
@@ -216,7 +217,7 @@ ${PERREADFILE}: | ${INGREDIENT_DIR}
 	@echo ""
 	@echo "------------Creating per-read parameter file for ${MAXREADS} reads"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/generate_per_read_params.py --limit ${MAXREADS} ${STRANDLISTOPT} --overwrite ${READDIR} $@
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/generate_per_read_params.py --limit ${MAXREADS} ${STRANDLISTOPT} --overwrite ${READDIR} > $@
 
 
 #Make file containing reference segment for each read, using alignment in sam or bam
@@ -285,11 +286,26 @@ ${RESULT_DIR}/train_%/trained: ${INGREDIENT_DIR}/mapped_%.hdf5
 
 .PHONY: squiggletrain_remap_samref
 
-squiggletrain_remap_samref: ${RESULT_DIR}/squiggletrain_remap_samref/trained
+squiggletrain_remap_samref: ${RESULT_DIR}/squiggletrain_remap_samref/trained/model_final.checkpoint
 
-${RESULT_DIR}/squiggletrain_%/trained: ${INGREDIENT_DIR}/mapped_%.hdf5
+${RESULT_DIR}/squiggletrain_%/model_final.checkpoint: ${INGREDIENT_DIR}/mapped_%.hdf5
 	@echo ""
 	@echo "------------Training squiggle model with $* map chunks"
 	@echo ""
 	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_squiggle.py --overwrite --chunk_logging_threshold ${CHUNK_LOGGING_THRESHOLD} --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} $< $(dir $@)
-	touch $@
+
+
+########################################
+# SQUIGGLE-PREDICTOR NETWORK CALLING
+########################################
+
+.PHONY: squigglepredict_remap_samref
+
+squigglepredict_remap_samref: ${RESULT_DIR}/squiggletrain_remap_samref/test.squiggle
+
+
+${RESULT_DIR}/squiggletrain_%/test.squiggle: ${RESULT_DIR}/squiggletrain_%/model_final.checkpoint
+	@echo ""
+	@echo "------------Predicting squiggles"
+	@echo ""
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/predict_squiggle.py $< ${PREDICT_SQUIGGLE_TEST_FASTA} > $@
