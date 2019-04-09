@@ -18,9 +18,11 @@ SAM_DIR=test/data/aligner_output
 # The |xargs puts spaces rather than newlines between the filenames
 SAMFILES=$(ls ${SAM_DIR}/*.sam |xargs)
 REFERENCEFILE=test/data/genomic_reference.fasta
+PREDICT_SQUIGGLE_TEST_FASTA=test/data/phiX174.fasta
 
 echo "SAMFILES=${SAMFILES}"
-echo "REFERENCEFILE=${REFERENCEFILE}"
+echo "REAFERENCEFILE=${REFERENCEFILE}"
+echo "PREDICT_SQUIGGLE_TEST_FASTA=${PREDICT_SQUIGGLE_TEST_FASTA}"
 
 TAIYAKI_DIR=`pwd`
 RESULT_DIR=${TAIYAKI_DIR}/RESULTS/squiggletrain_remap_samref
@@ -29,7 +31,18 @@ rm -rf $RESULT_DIR
 rm -rf ${TAIYAKI_DIR}/RESULTS/training_ingredients
 
 #TAIYAKIACTIVATE=(nothing) makes the test run without activating the venv at each step. Necessary for running on the git server.
-make -f workflow/Makefile MAXREADS=10 READDIR=${READ_DIR} TAIYAKI_ROOT=${TAIYAKI_DIR} DEVICE=cpu MAX_TRAINING_ITERS=2 BAMFILE="${SAMFILES}" REFERENCEFILE=${REFERENCEFILE} SEED=1 TAIYAKIACTIVATE= squiggletrain_remap_samref
+make -f workflow/Makefile \
+	MAXREADS=10 \
+	READDIR=${READ_DIR} \
+	TAIYAKI_ROOT=${TAIYAKI_DIR} \
+	DEVICE=cpu \
+	MAX_TRAINING_ITERS=2 \
+	BAMFILE="${SAMFILES}" \
+	REFERENCEFILE=${REFERENCEFILE} \
+	PREDICT_SQUIGGLE_TEST_FASTA=${PREDICT_SQUIGGLE_TEST_FASTA} \
+	SEED=1 \
+	TAIYAKIACTIVATE= \
+	squigglepredict_remap_samref
 
 
 # Check that training chunk log and training log exist and have enough rows for us to be sure something useful has happened
@@ -53,5 +66,5 @@ then
 fi
 
 echo ""
-echo "Test of remapping using references extracted from fast5s followed by basecall network training completed successfully"
+echo "Test of remapping using references extracted from fast5s followed by squiggle network training completed successfully"
 echo ""

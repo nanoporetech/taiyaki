@@ -52,14 +52,13 @@ class AcceptanceTest(unittest.TestCase):
         output_file = os.path.join(test_work_dir, "output.json")
         open(output_file, "w").close()
 
-        cmd = [self.script, self.model_file, "--out_file", output_file] + options
-        error_message = "RuntimeError: File/path for 'out_file' exists, {}".format(output_file)
+        cmd = [self.script, self.model_file, "--output", output_file] + options
+        error_message = "RuntimeError: File/path for 'output' exists, {}".format(output_file)
         util.run_cmd(self, cmd).expect_exit_code(1).expect_stderr(util.any_line_starts_with(error_message))
 
         os.remove(output_file)
 
-        info_message = "Writing to file:  {}".format(output_file)
-        util.run_cmd(self, cmd).expect_exit_code(0).expect_stdout(lambda o: o == [info_message])
+        util.run_cmd(self, cmd).expect_exit_code(0)
 
         self.assertTrue(os.path.exists(output_file))
         dump = open(output_file, 'r').read()

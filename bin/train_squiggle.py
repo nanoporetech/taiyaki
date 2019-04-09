@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-
-
 import argparse
 import numpy as np
 import os
@@ -10,21 +8,19 @@ import torch
 
 from collections import defaultdict
 from taiyaki import chunk_selection, helpers, mapped_signal_files, optim, variables
-import taiyaki.common_cmdargs as common_cmdargs
-from taiyaki.cmdargs import (FileExists, Maybe, NonNegative, Positive, proportion)
+from taiyaki.common_cmdargs import add_common_command_args
+from taiyaki.cmdargs import FileExists, Maybe, Positive, proportion
 from taiyaki import activation, layers
-#from taiyaki.optim import Adamski
 from taiyaki.squiggle_match import squiggle_match_loss, embed_sequence
 from taiyaki import __version__
 
 
-parser = argparse.ArgumentParser(
-    description='Train a model to predict ionic current levels from sequence',
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser = argparse.ArgumentParser(description='Train a model to predict ionic current levels from sequence',
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-common_cmdargs.add_common_command_args(parser, """adam chunk_logging_threshold device filter_max_dwell filter_mean_dwell
-                                                  limit niteration overwrite quiet save_every
-                                                  sample_nreads_before_filtering version weight_decay""".split())
+add_common_command_args(parser, """adam chunk_logging_threshold device filter_max_dwell filter_mean_dwell
+                                   limit niteration overwrite quiet save_every
+                                   sample_nreads_before_filtering version weight_decay""".split())
 
 parser.add_argument('--batch_size', default=100, metavar='chunks', type=Positive(int),
                     help='Number of chunks to run in parallel')

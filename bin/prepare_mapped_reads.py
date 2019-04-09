@@ -4,7 +4,7 @@ from taiyaki.iterators import imap_mp
 import os
 import sys
 from taiyaki.cmdargs import FileExists
-import taiyaki.common_cmdargs as common_cmdargs
+from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki import fast5utils, helpers, prepare_mapping_funcs, variables
 
 
@@ -12,8 +12,8 @@ program_description = "Prepare data for model training and save to hdf5 file by 
 parser = argparse.ArgumentParser(description=program_description,
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+add_common_command_args(parser, 'device input_folder input_strand_list jobs limit overwrite recursive version'.split())
 
-common_cmdargs.add_common_command_args(parser, 'device input_folder input_strand_list jobs limit overwrite recursive version'.split())
 default_alphabet_str = variables.DEFAULT_ALPHABET.decode("utf-8")
 parser.add_argument('--alphabet', default=default_alphabet_str,
                     help='Alphabet for basecalling. Defaults to ' + default_alphabet_str)

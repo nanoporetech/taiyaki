@@ -1,7 +1,8 @@
 # Command-line args used in more than one script defined here
 
-from taiyaki.cmdargs import (AutoBool, DeviceAction, FileExists, Maybe, NonNegative,
-                             ParseToNamedTuple, Positive, display_version_and_exit)
+from taiyaki.cmdargs import (AutoBool, DeviceAction, FileAbsent, FileExists,
+                             Maybe, NonNegative, ParseToNamedTuple, Positive,
+                             display_version_and_exit)
 from taiyaki import __version__
 
 
@@ -9,7 +10,7 @@ def add_common_command_args(parser, arglist):
     """Given an argparse parser object and a list of keys such as
     ['input_strand_list', 'jobs'], add these command line args
     to the parser.
-    
+
     Not all command line args used in the package are
     included in this func: only those that are used by more than
     one script and which have the same defaults.
@@ -45,7 +46,7 @@ def add_common_command_args(parser, arglist):
         parser.add_argument('--filter_max_dwell', default=10.0, metavar='multiple',
                             type=Maybe(Positive(float)),
                             help='Drop chunks with max dwell more than multiple of median (over chunks)')
-        
+
     if 'filter_mean_dwell' in arglist:
         parser.add_argument('--filter_mean_dwell', default=3.0, metavar='radius',
                             type=Maybe(Positive(float)),
@@ -66,6 +67,10 @@ def add_common_command_args(parser, arglist):
     if 'niteration' in arglist:
         parser.add_argument('--niteration', metavar='batches', type=Positive(int),
                             default=50000, help='Maximum number of batches to train for')
+
+    if 'output' in arglist:
+        parser.add_argument('--output', default=None, metavar='filename',
+                            action=FileAbsent, help='Write output to file')
 
     if 'overwrite' in arglist:
         parser.add_argument('--overwrite', default=False, action=AutoBool,
