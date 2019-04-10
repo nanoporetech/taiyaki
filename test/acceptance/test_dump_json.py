@@ -22,7 +22,7 @@ class AcceptanceTest(unittest.TestCase):
         test_directory = os.path.splitext(__file__)[0]
         self.testset_work_dir = os.path.basename(test_directory)
         self.script = os.path.join(util.BIN_DIR, "dump_json.py")
-        self.model_file = os.path.join(util.MODELS_DIR, "mGru256_flipflop_remapping_model_r9_DNA.checkpoint")
+        self.model_file = os.path.join(util.MODELS_DIR, "mGru_flipflop_remapping_model_r9_DNA.checkpoint")
 
     def work_dir(self, test_name):
         directory = os.path.join(self.testset_work_dir, test_name)
