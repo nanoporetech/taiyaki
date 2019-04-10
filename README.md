@@ -108,8 +108,6 @@ For a walk-through of Taiyaki model training, including how to obtain sample tra
 
 # Workflows
 
-A standard workflow is 
-
 ## Using the workflow Makefile 
 
 The file at **workflow/Makefile** can be used to direct the process of generating ingredients for training and then running the training itself.

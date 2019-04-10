@@ -5,7 +5,10 @@ Version numbers: major.minor.patch
 * Patch version bump indicates bug-fixes or minor improvements not expected to affect users.
 
 ## v3.1.0
-* Added basecaller script that uses GPU
+* Basecaller script that uses GPU
+* Training walk-through
+* Tweaks to optimisation parameters
+
 
 ## v3.0.2
 * Improved training parameters
