@@ -16,7 +16,7 @@ from taiyaki.signal import Signal
 
 parser = argparse.ArgumentParser()
 
-add_common_command_args(parser, 'input_folder input_strand_list limit output overwrite recursive version jobs'.split())
+add_common_command_args(parser, 'input_folder input_strand_list limit output recursive version jobs'.split())
 
 parser.add_argument('--trim', default=(200, 50), nargs=2, type=NonNegative(int),
                     metavar=('beginning', 'end'),
@@ -52,11 +52,6 @@ def one_read_shift_scale(read_tuple):
 
 def main():
     args = parser.parse_args()
-
-    if not args.overwrite:
-        if os.path.exists(args.output):
-            print("Cowardly refusing to overwrite {}".format(args.output))
-            sys.exit(1)
 
     trim_start, trim_end = args.trim
 
