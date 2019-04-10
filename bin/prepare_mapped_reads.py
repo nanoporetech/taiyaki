@@ -5,7 +5,8 @@ import os
 import sys
 from taiyaki.cmdargs import FileExists
 from taiyaki.common_cmdargs import add_common_command_args
-from taiyaki import fast5utils, helpers, prepare_mapping_funcs, variables
+from taiyaki import (alphabet, fast5utils, helpers, prepare_mapping_funcs,
+                     variables)
 
 
 program_description = "Prepare data for model training and save to hdf5 file by remapping with flip-flop model"
@@ -15,10 +16,17 @@ parser = argparse.ArgumentParser(description=program_description,
 add_common_command_args(parser, 'device input_folder input_strand_list jobs limit overwrite recursive version'.split())
 
 default_alphabet_str = variables.DEFAULT_ALPHABET.decode("utf-8")
-parser.add_argument('--alphabet', default=default_alphabet_str,
-                    help='Alphabet for basecalling. Defaults to ' + default_alphabet_str)
-parser.add_argument('--collapse_alphabet', default=default_alphabet_str,
-                    help='Collapsed alphabet for basecalling. Defaults to ' + default_alphabet_str)
+parser.add_argument(
+    '--alphabet', default=default_alphabet_str,
+    help='Alphabet for basecalling. Defaults to ' + default_alphabet_str)
+parser.add_argument(
+    '--collapse_alphabet', default=default_alphabet_str,
+    help='Collapsed alphabet for basecalling. Defaults to ' +
+    default_alphabet_str)
+parser.add_argument(
+    '--mod_long_names', nargs='+',
+    help='Long names for each modified base included in references. ' +
+    'Order to match input alphabet.')
 parser.add_argument('input_per_read_params', action=FileExists,
                     help='Input per read parameter .tsv file')
 parser.add_argument('output', help='Output HDF5 file')
@@ -43,18 +51,25 @@ def main():
         recursive=args.recursive)
 
     # Set up arguments (kwargs) for the worker function for each read
-    kwargs = helpers.get_kwargs(args, ['alphabet', 'collapse_alphabet', 'device'])
-    kwargs['per_read_params_dict'] = prepare_mapping_funcs.get_per_read_params_dict_from_tsv(args.input_per_read_params)
-    kwargs['references'] = helpers.fasta_file_to_dict(args.references)
+    kwargs = helpers.get_kwargs(args, ['device'])
+    kwargs['per_read_params_dict'] = prepare_mapping_funcs.get_per_read_params_dict_from_tsv(
+        args.input_per_read_params)
+    kwargs['references'] = helpers.fasta_file_to_dict(
+        args.references, alphabet=args.alphabet)
     kwargs['model'] = helpers.load_model(args.model)
-    workerFunction = prepare_mapping_funcs.oneread_remap  # remaps a single read using flip-flip network
+    kwargs['alphabet_info'] = alphabet.AlphabetInfo(
+        args.alphabet, args.collapse_alphabet)
+    # remaps a single read using flip-flip network
+    workerFunction = prepare_mapping_funcs.oneread_remap
 
     results = imap_mp(workerFunction, fast5_reads, threads=args.jobs,
                       fix_kwargs=kwargs, unordered=True, chunksize=50)
 
     # results is an iterable of dicts
     # each dict is a set of return values from a single read
-    prepare_mapping_funcs.generate_output_from_results(results, args)
+    prepare_mapping_funcs.generate_output_from_results(
+        results, args.output, args.alphabet, args.collapse_alphabet,
+        args.mod_long_names)
 
 
 if __name__ == '__main__':

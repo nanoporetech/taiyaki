@@ -193,15 +193,18 @@ class Mapping:
 
         return ref_to_sig
 
-    def get_read_dictionary(self, shift, scale, read_id, check=True, alphabet="ACGT", collapse_alphabet=None):
+    def add_integer_reference(self, alphabet):
+        self.integer_reference = np.array([
+            alphabet.index(i) for i in self.reference], dtype=np.int16)
+        return
+
+    def get_read_dictionary(self, shift, scale, read_id, check=True):
         """Return a read dictionary of the sort specified in mapped_signal_files.Read.
         Note that we return the dictionary, not the object itself.
         That's because this method is used inside worker processes which
         need to pass their results out through the pickling mechanism in imap_mp.
         Apply error checking if check = True, and raise an Exception if it fails"""
         readDict = {
-            'alphabet': alphabet,
-            'collapse_alphabet': alphabet if collapse_alphabet is None else collapse_alphabet,
             'shift_frompA': float(shift),
             'scale_frompA': float(scale),
             'range': float(self.signal.range),
@@ -209,7 +212,7 @@ class Mapping:
             'digitisation': float(self.signal.digitisation),
             'Dacs': self.signal.untrimmed_dacs.astype(np.int16),
             'Ref_to_signal': self.get_reftosignal(),
-            'Reference': np.array([alphabet.index(i) for i in self.reference], dtype=np.int16),
+            'Reference': self.integer_reference,
             'read_id': read_id
         }
         if check:
