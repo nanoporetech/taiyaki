@@ -33,12 +33,13 @@ expect to get your hands dirty.
 1. [Install system prerequisites](#install-system-prerequisites)
 2. [Installation](#installation)
 3. [Tests](#tests)
-4. [Workflows](#workflows)
-5. [Guppy compatibility](#guppy-compatibility)
-6. [Environment variables](#environment-variables)
-7. [CUDA](#cuda)
-8. [Running on UGE](#running-on-a-uge-cluster)
-9. [Diagnostics](#diagnostics)
+4. [Walk through](#walk-through)
+5. [Workflows](#workflows)
+6. [Guppy compatibility](#guppy-compatibility)
+7. [Environment variables](#environment-variables)
+8. [CUDA](#cuda)
+9. [Running on UGE](#running-on-a-uge-cluster)
+10. [Diagnostics](#diagnostics)
 
 
 # Install system prerequisites
@@ -102,7 +103,12 @@ Tests can be run as follows:
 
 If Taiyaki has install in a virtual environment, it will have to activated before running tests: `source venv/bin/activate`.  To deactivate, run `deactivate`.
 
+# Walk through
+For a walk-through of Taiyaki model training, including how to obtain sample training data, see [docs/walkthrough.rst](docs/walkthrough.rst).
+
 # Workflows
+
+A standard workflow is 
 
 ## Using the workflow Makefile 
 
@@ -210,7 +216,7 @@ So, for example, if your samples are a bit weird and whacky, you may be able to 
 Internally, we use Taiyaki to train basecallers after incremental pore updates, and as a research tool into better basecalling methods.
 Taiyaki is not intended to enable training basecallers from scratch for novel nanopores.
 If it seems like remapping will not work for your data set, then you can use alternative methods
-so long as they produce data conformant with [this format](FILE_FORMATS.md).
+so long as they produce data conformant with [this format](docs/FILE_FORMATS.md).
 
 
 ## Basecalling
