@@ -75,16 +75,19 @@ def main():
     if not os.path.exists(args.output):
         os.mkdir(args.output)
     elif not args.overwrite:
-        sys.stderr.write('Error: Output directory {} exists but --overwrite is false\n'.format(args.output))
+        sys.stderr.write('Error: Output directory {} exists but --overwrite ' +
+                         'is false\n'.format(args.output))
         exit(1)
     if not os.path.isdir(args.output):
-        sys.stderr.write('Error: Output location {} is not directory\n'.format(args.output))
+        sys.stderr.write(
+            'Error: Output location {} is not directory\n'.format(args.output))
         exit(1)
 
     copyfile(args.model, os.path.join(args.output, 'model.py'))
 
     # Create a logging file to save details of chunks.
-    # If args.chunk_logging_threshold is set to 0 then we log all chunks including those rejected.
+    # If args.chunk_logging_threshold is set to 0 then we log all chunks
+    # including those rejected.
     chunk_log = chunk_selection.ChunkLog(args.output)
 
     log = helpers.Logger(os.path.join(args.output, 'model.log'), args.quiet)
@@ -96,7 +99,8 @@ def main():
 
     if args.input_strand_list is not None:
         read_ids = list(set(helpers.get_read_ids(args.input_strand_list)))
-        log.write('* Will train from a subset of {} strands, determined by read_ids in input strand list\n'.format(len(read_ids)))
+        log.write(('* Will train from a subset of {} strands, determined ' +
+                   'by read_ids in input strand list\n').format(len(read_ids)))
     else:
         log.write('* Reads not filtered by id\n')
         read_ids = 'all'
@@ -105,9 +109,12 @@ def main():
         log.write('* Limiting number of strands to {}\n'.format(args.limit))
 
     with mapped_signal_files.HDF5(args.input, "r") as per_read_file:
-        read_data = per_read_file.get_multiple_reads(read_ids, max_reads=args.limit)
+        alphabet, _, _ = per_read_file.get_alphabet_information()
+        read_data = per_read_file.get_multiple_reads(
+            read_ids, max_reads=args.limit)
         # read_data now contains a list of reads
-        # (each an instance of the Read class defined in mapped_signal_files.py, based on dict)
+        # (each an instance of the Read class defined in
+        # mapped_signal_files.py, based on dict)
 
 
     log.write('* Loaded {} reads.\n'.format(len(read_data)))
@@ -116,29 +123,28 @@ def main():
     # Result is a tuple median mean_dwell, mad mean_dwell
     # Choose a chunk length in the middle of the range for this
     sampling_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
-    filter_parameters = chunk_selection.sample_filter_parameters(read_data,
-                                                                 args.sample_nreads_before_filtering,
-                                                                 sampling_chunk_len,
-                                                                 args,
-                                                                 log,
-                                                                 chunk_log=chunk_log)
+    filter_parameters = chunk_selection.sample_filter_parameters(
+        read_data, args.sample_nreads_before_filtering, sampling_chunk_len,
+        args, log, chunk_log=chunk_log)
 
     medmd, madmd = filter_parameters
 
     log.write("* Sampled {} chunks: median(mean_dwell)={:.2f}, mad(mean_dwell)={:.2f}\n".format(
               args.sample_nreads_before_filtering, medmd, madmd))
     log.write('* Reading network from {}\n'.format(args.model))
-    nbase = len(read_data[0]['alphabet'])
+    nbase = len(alphabet)
     model_kwargs = {
         'stride': args.stride,
         'winlen': args.winlen,
-        'insize': 1,  # Number of input features to model e.g. was >1 for event-based models (level, std, dwell)
+        # Number of input features to model e.g. was >1 for event-based
+        # models (level, std, dwell)
+        'insize': 1,
         'size' : args.size,
         'outsize': flipflopfings.nstate_flipflop(nbase)
     }
     network = helpers.load_model(args.model, **model_kwargs).to(device)
-    log.write('* Network has {} parameters.\n'.format(sum([p.nelement()
-                                                           for p in network.parameters()])))
+    log.write('* Network has {} parameters.\n'.format(
+        sum([p.nelement() for p in network.parameters()])))
 
     optimizer = torch.optim.Adam(network.parameters(), lr=args.lr_max,
                                  betas=args.adam, weight_decay=args.weight_decay)
@@ -153,7 +159,8 @@ def main():
     total_bases = 0
     total_samples = 0
     total_chunks = 0
-    rejection_dict = defaultdict(lambda : 0)  # To count the numbers of different sorts of chunk rejection
+    # To count the numbers of different sorts of chunk rejection
+    rejection_dict = defaultdict(int)
 
     t0 = time.time()
     log.write('* Training\n')
@@ -162,39 +169,51 @@ def main():
 
     for i in range(args.niteration):
         lr_scheduler.step()
-        # Chunk length is chosen randomly in the range given but forced to be a multiple of the stride
-        batch_chunk_len = (np.random.randint(args.chunk_len_min, args.chunk_len_max + 1) // args.stride) * args.stride
-        # We choose the batch size so that the size of the data in the batch is about the same as
-        # args.min_batch_size chunks of length args.chunk_len_max
-        target_batch_size = int(args.min_batch_size * args.chunk_len_max / batch_chunk_len + 0.5)
+        # Chunk length is chosen randomly in the range given but forced to
+        # be a multiple of the stride
+        batch_chunk_len = (np.random.randint(
+            args.chunk_len_min, args.chunk_len_max + 1) //
+                           args.stride) * args.stride
+        # We choose the batch size so that the size of the data in the batch
+        # is about the same as args.min_batch_size chunks of length
+        # args.chunk_len_max
+        target_batch_size = int(args.min_batch_size * args.chunk_len_max /
+                                batch_chunk_len + 0.5)
         # ...but it can't be more than the number of reads.
         batch_size = min(target_batch_size, len(read_data))
 
 
-        # If the logging threshold is 0 then we log all chunks, including those rejected, so pass the log
+        # If the logging threshold is 0 then we log all chunks, including those
+        # rejected, so pass the log
         # object into assemble_batch
         if args.chunk_logging_threshold == 0:
             log_rejected_chunks = chunk_log
         else:
             log_rejected_chunks = None
         # Chunk_batch is a list of dicts.
-        chunk_batch, batch_rejections = chunk_selection.assemble_batch(read_data, batch_size, batch_chunk_len,
-                                                                       filter_parameters, args, log,
-                                                                       chunk_log=log_rejected_chunks)
+        chunk_batch, batch_rejections = chunk_selection.assemble_batch(
+            read_data, batch_size, batch_chunk_len, filter_parameters, args,
+            log, chunk_log=log_rejected_chunks)
         total_chunks += len(chunk_batch)
 
         # Update counts of reasons for rejection
         for k, v in batch_rejections.items():
             rejection_dict[k] += v
 
-        # Shape of input tensor must be  (timesteps) x (batch size) x (input channels)
-        # in this case                  batch_chunk_len x batch_size x 1
+        # Shape of input tensor must be:
+        #     (timesteps) x (batch size) x (input channels)
+        # in this case:
+        #     batch_chunk_len x batch_size x 1
         stacked_current = np.vstack([d['current'] for d in chunk_batch]).T
-        indata = torch.tensor(stacked_current, device=device, dtype=torch.float32).unsqueeze(2)
+        indata = torch.tensor(
+            stacked_current, device=device, dtype=torch.float32).unsqueeze(2)
         # Sequence input tensor is just a 1D vector, and so is seqlens
-        seqs = torch.tensor(np.concatenate([flipflopfings.flip_flop_code(d['sequence']) for d in chunk_batch]),
+        seqs = torch.tensor(np.concatenate([
+            flipflopfings.flip_flop_code(d['sequence']) for d in chunk_batch]),
                             device=device, dtype=torch.long)
-        seqlens = torch.tensor([len(d['sequence']) for d in chunk_batch], dtype=torch.long, device=device)
+        seqlens = torch.tensor([
+            len(d['sequence']) for d in chunk_batch], dtype=torch.long,
+                               device=device)
 
         optimizer.zero_grad()
         outputs = network(indata)
@@ -206,8 +225,9 @@ def main():
         fval = float(loss)
         score_smoothed.update(fval)
 
-        # Check for poison chunk and save losses and chunk locations if we're poisoned
-        # If args.chunk_logging_threshold set to zero then we log everything
+        # Check for poison chunk and save losses and chunk locations if we're
+        # poisoned If args.chunk_logging_threshold set to zero then we log
+        # everything
         if fval / score_smoothed.value >= args.chunk_logging_threshold:
             chunk_log.write_batch(i, chunk_batch, lossvector)
 
@@ -232,9 +252,11 @@ def main():
             learning_rate = lr_scheduler.get_lr()[0]
             tn = time.time()
             dt = tn - t0
-            t = ' {:5d} {:5.3f}  {:5.2f}s ({:.2f} ksample/s {:.2f} kbase/s) lr={:.2e}'
-            log.write(t.format((i + 1) // variables.DOTROWLENGTH, score_smoothed.value,
-                               dt, total_samples / 1000.0 / dt,
+            t = (' {:5d} {:5.3f}  {:5.2f}s ({:.2f} ksample/s {:.2f} kbase/s) ' +
+                 'lr={:.2e}')
+            log.write(t.format((i + 1) // variables.DOTROWLENGTH,
+                               score_smoothed.value, dt,
+                               total_samples / 1000.0 / dt,
                                total_bases / 1000.0 / dt, learning_rate))
             # Write summary of chunk rejection reasons
             for k, v in rejection_dict.items():

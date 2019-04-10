@@ -48,6 +48,28 @@ def path_to_str(path, alphabet='ACGT'):
     return seq.tobytes().decode()
 
 
+def cat_mod_code(labels, alphabet_info):
+    """ Given a numpy array of digits representing bases, convert to canonical
+    flip-flop labels (defined by flipflopfings.flip_flop_code) and
+    modified category values (defined by alphabet.AlphabetInfo).
+
+    :param labels: np array of digits representing bases
+    :param alphabet_info: `alphabet.AlphabetInfo` object containing relevant
+        modified base information.
+    returns: two np arrays representing 1) canonical flip-flop labels and
+        2) categorical modified base labels
+
+    E.g. (using alphabet='ACGTZYXW', collapse_alphabet='ACGTCAAT')
+    >> x = np.array([1, 5, 2, 4, 3, 3, 6, 7, 3])
+    >> cat_mod_code(x)
+          array(1, 0, 2, 1, 3, 7, 0, 3, 7), array(0, 1, 0, 1, 0, 0, 2, 1, 0)
+    """
+    mod_labels = alphabet_info.mod_labels[labels]
+    can_labels = np.ascontiguousarray(alphabet_info.collapse_labels[labels])
+    ff_can_labels = flip_flop_code(can_labels, alphabet_info.ncan_base)
+    return ff_can_labels, mod_labels
+
+
 def nstate_flipflop(nbase):
     """  Number of states in output of flipflop network
 

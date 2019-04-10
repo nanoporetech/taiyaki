@@ -96,12 +96,14 @@ def flipflop_fwd(scores):
     T, N, S = scores.shape
     nbase = flipflopfings.nbase_flipflop(S)
 
-    scores = scores.contiguous()
-    fwd = torch.zeros((T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
+    fwd = torch.zeros(
+        (T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
     fact = torch.zeros((T + 1, N, 1), dtype=scores.dtype, device=scores.device)
     with cp.cuda.Device(index):
-        _flipflop_fwd(grid=(N, 1, 1), block=(nbase, 1, 1), args=(
-            scores.data_ptr(), fwd.data_ptr(), fact.data_ptr(), T, N, nbase))
+        _flipflop_fwd(grid=(N, 1, 1), block=(nbase, 1, 1),
+                      args=(scores.contiguous().data_ptr(), fwd.data_ptr(),
+                            fact.data_ptr(), T, N, nbase))
+
     return fwd, fact
 
 
@@ -192,12 +194,13 @@ def flipflop_bwd(scores):
     T, N, S = scores.shape
     nbase = flipflopfings.nbase_flipflop(S)
 
-    scores = scores.contiguous()
-    bwd = torch.zeros((T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
+    bwd = torch.zeros(
+        (T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
     fact = torch.zeros((T + 1, N, 1), dtype=scores.dtype, device=scores.device)
     with cp.cuda.Device(index):
         _flipflop_bwd(grid=(N, 1, 1), block=(2 * nbase, 1, 1),
-                      args=(scores.data_ptr(), bwd.data_ptr(), fact.data_ptr(), T, N, nbase))
+                      args=(scores.contiguous().data_ptr(), bwd.data_ptr(),
+                            fact.data_ptr(), T, N, nbase))
     return bwd, fact
 
 
@@ -255,12 +258,13 @@ def flipflop_make_trans(scores):
     index = scores.device.index
     T, N, S = scores.shape
     nbase = flipflopfings.nbase_flipflop(S)
+
     fwd, fwd_fact = flipflop_fwd(scores)
     bwd, bwd_fact = flipflop_bwd(scores)
     scores = scores.contiguous()
     trans = torch.zeros_like(scores)
     kernel_args = (
-        scores.data_ptr(),
+        scores.contiguous().data_ptr(),
         fwd.data_ptr(),
         bwd.data_ptr(),
         trans.data_ptr(),

@@ -36,6 +36,7 @@ def construct_mapped_read():
     return {
         'alphabet': 'ACGT',
         'collapse_alphabet': 'ACGT',
+        'mod_long_names': [],
         'shift_frompA': 0.0,
         'scale_frompA': 0.001,
         'range': 1.0,

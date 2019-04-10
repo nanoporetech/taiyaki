@@ -8,6 +8,7 @@ from scipy.stats import truncnorm
 
 from taiyaki import activation, flipflopfings
 from taiyaki.config import taiyaki_dtype
+from taiyaki.variables import DEFAULT_ALPHABET
 
 
 """  Convention: inMat row major (C ordering) as (time, batch, state)
@@ -488,8 +489,9 @@ class Serial(nn.Module):
         return x
 
     def json(self, params=False):
-        return OrderedDict([('type', "serial"),
-                            ('sublayers', [layer.json(params) for layer in self.sublayers])])
+        return OrderedDict([
+            ('type', "serial"),
+            ('sublayers', [layer.json(params) for layer in self.sublayers])])
 
 
 class SoftChoice(nn.Module):
@@ -622,12 +624,12 @@ def global_norm_flipflop(scores):
     T, N, C = scores.shape
     nbase = flipflopfings.nbase_flipflop(C)
 
-    def step(in_vec, in_state):
-        in_vec_reshape = in_vec.reshape((-1, nbase + 1, 2 * nbase))
-        in_state_reshape = in_state.unsqueeze(1)
-        scores = in_state_reshape + in_vec_reshape
-        base1_state = scores[:, :nbase].logsumexp(2)
-        base2_state = logaddexp(scores[:, nbase, :nbase], scores[:, nbase, nbase:])
+    def step(scores_t, fwd_t):
+        curr_scores = fwd_t.unsqueeze(1) + scores_t.reshape(
+            (-1, nbase + 1, 2 * nbase))
+        base1_state = curr_scores[:, :nbase].logsumexp(2)
+        base2_state = logaddexp(
+            curr_scores[:, nbase, :nbase], curr_scores[:, nbase, nbase:])
         new_state = torch.cat([base1_state, base2_state], dim=1)
         factors = new_state.logsumexp(1, keepdim=True)
         new_state = new_state - factors
@@ -660,8 +662,10 @@ class GlobalNormFlipFlop(nn.Module):
             ('insize', self.insize),
             ('bias', self.has_bias)])
         if params:
-            res['params'] = OrderedDict([('W', self.linear.weight)] +
-                                        [('b', self.linear.bias)] if self.has_bias else [])
+            res['params'] = OrderedDict(
+                [('W', self.linear.weight)] +
+                [('b', self.linear.bias)] if self.has_bias else [])
+
         return res
 
     def reset_parameters(self):
@@ -693,6 +697,164 @@ class GlobalNormFlipFlop(nn.Module):
             return flipflop.global_norm(y)
         else:
             return global_norm_flipflop(y)
+
+
+class GlobalNormFlipFlopCatMod(nn.Module):
+    """ Flip-flop layer with additional modified base output stream
+
+    :param insize: Size of input to layer (should be 1)
+    :param collapse_labels: Array of indices within alphabet for the canonical
+        base associated with each base
+    :param alphabet: String of single letter values for each base modeled. Must
+        be the same length as collapse_labels.
+    :param mod_long_names: List of strings representing long names for each
+        modified base (must match number of modified bases determined from
+        collapse_labels)
+    :param has_bias: Whether layer has bias
+    :param _never_use_cupy: Force use of CPU implementation of flip-flop loss
+
+    Attributes (can_nmods, output_alphabet and modified_base_long_names) define
+    a modified base model and their names and structure is stable.
+    """
+    def __init__(self, insize, collapse_labels, alphabet, mod_long_names,
+                 has_bias=True, _never_use_cupy=False):
+        # IMPORTANT these attributes (can_nmods, output_alphabet and
+        # modified_base_long_names) are stable and depended upon by external
+        # applications. Their names or data structure should remain stable.
+        super().__init__()
+        self.insize = insize
+        self.collapse_labels = collapse_labels
+        self.alphabet = alphabet
+        self.mod_long_names = mod_long_names
+        self.has_bias = has_bias
+        self._never_use_cupy = _never_use_cupy
+
+        if not isinstance(self.collapse_labels, np.ndarray):
+            self.collapse_labels = np.array(self.collapse_labels)
+        assert len(self.alphabet) == len(self.collapse_labels), (
+            'Length of alphabet ({}) and collapse_labels ({}) must be ' +
+            'the same.').format(self.alphabet, self.collapse_labels)
+
+        # prepare categorical modified base outputs
+        self.nbase = len(self.collapse_labels)
+        self.ncan_base = len(set(self.collapse_labels))
+        self.nmod_base = self.nbase - self.ncan_base
+        assert len(self.mod_long_names) == self.nmod_base, (
+            'All modified bases must have a long name provided.')
+        self.mod_long_names_conv = dict(zip(
+            self.alphabet[self.ncan_base:], self.mod_long_names))
+
+        # indices from linear layer corresponding to each canonical base
+        self.can_indices = []
+        self.can_nmods = []
+        # alphabet corresponding to ordered layer output values
+        self.output_alphabet = ''
+        self.ordered_mod_long_names = []
+        curr_n_mods = 1
+        for can_lab in range(self.ncan_base):
+            can_mod_indices = np.where(can_lab == self.collapse_labels)[0]
+            for can_i, idx_i in enumerate(can_mod_indices):
+                self.output_alphabet += self.alphabet[idx_i]
+                if can_i > 0:
+                    self.ordered_mod_long_names.append(
+                        self.mod_long_names_conv[self.alphabet[idx_i]])
+            n_can_mods = can_mod_indices.shape[0] - 1
+            self.can_nmods.append(n_can_mods)
+            # global canonical category is index 0 then mod cat indices
+            can_plus_mod_indices = np.concatenate([
+                [0], np.arange(curr_n_mods, curr_n_mods + n_can_mods)])
+            curr_n_mods += n_can_mods
+            self.can_indices.append(can_plus_mod_indices)
+        self.can_nmods = np.array(self.can_nmods)
+
+        # standard flip-flop transition states plus (single cat for all bases)
+        # canonical and categorical mod states
+        self.ntrans_states = 2 * self.ncan_base * (self.ncan_base + 1)
+        self.size = self.ntrans_states + 1 + self.nmod_base
+        self.lsm = nn.LogSoftmax(2)
+        self.linear = nn.Linear(insize, self.size, bias=self.has_bias)
+        self.reset_parameters()
+
+        return
+
+    def json(self, params=False):
+        res = OrderedDict([
+            ('type', 'GlobalNormTwoStateCatMod'),
+            ('size', self.size),
+            ('insize', self.insize),
+            ('bias', self.has_bias),
+            ('can_nmods', self.can_nmods),
+            ('output_alphabet', self.output_alphabet),
+            ('modified_base_long_names', self.ordered_mod_long_names)])
+        if params:
+            res['params'] = OrderedDict(
+                [('W', self.linear.weight)] +
+                [('b', self.linear.bias)] if self.has_bias else [])
+        return res
+
+    def reset_parameters(self):
+        winit = orthonormal_matrix(*list(self.linear.weight.shape))
+        init_(self.linear.weight, winit)
+        if self.has_bias:
+            binit = truncated_normal(list(self.linear.bias.shape), sd=0.5)
+            init_(self.linear.bias, binit)
+
+    def _use_cupy(self, x):
+        # getattr in stead of simple look-up for backwards compatibility
+        if self._never_use_cupy or not x.is_cuda:
+            return False
+
+        if not x.is_cuda:
+            return False
+
+        try:
+            from .cupy_extensions import flipflop
+            return True
+        except ImportError:
+            return False
+
+    def get_softmax_cat_mods(self, cat_mod_scores):
+        """ Get categorical modified base tensors
+
+        Example:
+            Layer that includes mods 5mC, 5hmC and 6mA would take input:
+            [Can, A_6mA, C_5mC, C_5hmC]
+            and output:
+            [A_can, A_6mA, C_can, C_5mC, C_5hmC, G_can, T_can]
+
+        Outout length is (4 + nmod)
+
+        When a base has no associated mods the value is represented
+        by a constant Tensor
+        """
+        mod_layers = []
+        for lab_indices in self.can_indices:
+            mod_layers.append(self.lsm(cat_mod_scores[:,:,lab_indices]))
+        return torch.cat(mod_layers, dim=2)
+
+    def forward(self, x):
+        y = self.linear(x)
+
+        trans_scores = 5.0 * activation.tanh(y[:,:,:self.ntrans_states])
+        cat_mod_scores = y[:,:,self.ntrans_states:]
+        assert cat_mod_scores.shape[2] == self.nmod_base + 1, (
+            'Invalid scores provided to forward:  ' +
+            'Expected: {}  got: {}'.format(self.nmod_base + 1,
+                                           cat_mod_scores.shape[2]))
+
+        if self._use_cupy(x):
+            from .cupy_extensions import flipflop
+            norm_trans_scores = flipflop.global_norm(trans_scores)
+        else:
+            norm_trans_scores = global_norm_flipflop(trans_scores)
+
+        cat_mod_scores = self.get_softmax_cat_mods(cat_mod_scores)
+        assert cat_mod_scores.shape[2] == self.nmod_base + self.ncan_base, (
+            'Invalid softmax categorical mod scores:  ' +
+            'Expected: {}  got: {}'.format(self.nmod_base + self.ncan_base,
+                                           cat_mod_scores.shape[2]))
+
+        return torch.cat((norm_trans_scores, cat_mod_scores), dim=2)
 
 
 class TimeLinear(nn.Module):
@@ -735,4 +897,3 @@ class TimeLinear(nn.Module):
             res['params'] = OrderedDict([('W', self.linear.weight)] +
                                         [('b', self.linear.bias)] if self.has_bias else [])
         return res
-

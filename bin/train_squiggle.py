@@ -89,6 +89,10 @@ def main():
         log.write('* Limiting number of strands to {}\n'.format(args.limit))
 
     with mapped_signal_files.HDF5(args.input, "r") as per_read_file:
+        alphabet, _, _ = per_read_file.get_alphabet_information()
+        assert len(alphabet) <= 4, (
+            'Squiggle prediction with modified base training data is ' +
+            'not currenly supported.')
         read_data = per_read_file.get_multiple_reads(read_ids, max_reads=args.limit)
         # read_data now contains a list of reads
         # (each an instance of the Read class defined in mapped_signal_files.py, based on dict)
