@@ -217,7 +217,7 @@ ${PERREADFILE}: | ${INGREDIENT_DIR}
 	@echo ""
 	@echo "------------Creating per-read parameter file for ${MAXREADS} reads"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/generate_per_read_params.py --limit ${MAXREADS} ${STRANDLISTOPT} --overwrite ${READDIR} > $@
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/generate_per_read_params.py --limit ${MAXREADS} ${STRANDLISTOPT} ${READDIR} > $@
 
 
 #Make file containing reference segment for each read, using alignment in sam or bam
