@@ -176,9 +176,9 @@ The scripts in the Taiyaki package are shown, as are the files they work with.
 Each script in bin/ has lots of options, which you can find out about by reading the scripts.
 Basic usage is as follows:
 
-    bin/generate_per_read_params.py <directory containing fast5 files> <name of output per_read_tsv file>
+    bin/generate_per_read_params.py <directory containing fast5 files> --output <name of output per_read_tsv file>
 
-    bin/get_refs_from_sam.py <genomic references fasta> <one or more SAM/BAM files>  >  <name of output reference_fasta>
+    bin/get_refs_from_sam.py <genomic references fasta> <one or more SAM/BAM files> --output <name of output reference_fasta>
 
     bin/prepare_mapped_reads.py <directory containing fast5 files> <per_read_tsv> <output mapped_signal_file>  <file containing model for remapping>  <reference_fasta>
 
@@ -222,7 +222,7 @@ so long as they produce data conformant with [this format](docs/FILE_FORMATS.md)
 ## Basecalling
 
 Taiyaki comes with a script to perform flip-flop basecalling using a GPU.
-This script requries CUDA and cupy to be isntalled.
+This script requries CUDA and cupy to be installed.
 
 Example usage:
 
