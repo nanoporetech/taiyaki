@@ -21,12 +21,9 @@ parser = argparse.ArgumentParser(description='Train a flip-flop neural network',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 add_common_command_args(parser, """adam chunk_logging_threshold device filter_max_dwell filter_mean_dwell
-                                   limit lr_max lr_min lr_cosine_iters niteration overwrite quiet save_every
+                                   limit lr_cosine_iters niteration overwrite quiet save_every
                                    sample_nreads_before_filtering version weight_decay""".split())
 
-parser.add_argument('--min_batch_size', default=50, metavar='chunks', type=Positive(int),
-                    help='Number of chunks to run in parallel for chunk_len = chunk_len_max.' +
-                         'Actual batch size used is (min_batch_size / chunk_len) * chunk_len_max')
 parser.add_argument('--chunk_len_min', default=2000, metavar='samples', type=Positive(int),
                     help='Min length of each chunk in samples (chunk lengths are random between min and max)')
 parser.add_argument('--chunk_len_max', default=4000, metavar='samples', type=Positive(int),
@@ -35,11 +32,14 @@ parser.add_argument('--input_strand_list', default=None, action=FileExists,
                     help='Strand summary file containing column read_id. Filenames in file are ignored.')
 parser.add_argument('--lr_cosine_iters', default=40000, metavar='n', type=Positive(float),
                     help='Learning rate decreases from max to min like cosine function over n batches')
-parser.add_argument('--lr_max', default=8.0e-3, metavar='rate',
+parser.add_argument('--lr_max', default=2.0e-3, metavar='rate',
                     type=Positive(float),
                     help='Max (and starting) learning rate')
-parser.add_argument('--lr_min', default=4.0e-4, metavar='rate',
+parser.add_argument('--lr_min', default=1.0e-4, metavar='rate',
                     type=Positive(float), help='Min (and final) learning rate')
+parser.add_argument('--min_batch_size', default=64, metavar='chunks', type=Positive(int),
+                    help='Number of chunks to run in parallel for chunk_len = chunk_len_max.' +
+                         'Actual batch size used is (min_batch_size / chunk_len) * chunk_len_max')
 parser.add_argument('--seed', default=None, metavar='integer', type=Positive(int),
                     help='Set random number seed')
 parser.add_argument('--sharpen', default=1.0, metavar='factor',
