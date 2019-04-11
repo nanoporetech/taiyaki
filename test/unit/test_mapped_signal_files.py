@@ -34,9 +34,6 @@ def construct_mapped_read():
     reftosig = np.full(Nref + 1, Nsig, dtype=np.int32)  # Note length of reftosig is 1+reflen
     reftosig[:len(reftosigstart)] = reftosigstart
     return {
-        'alphabet': 'ACGT',
-        'collapse_alphabet': 'ACGT',
-        'mod_long_names': [],
         'shift_frompA': 0.0,
         'scale_frompA': 0.001,
         'range': 1.0,
