@@ -4,6 +4,8 @@ import csv
 from collections import OrderedDict
 import numpy as np
 import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import os
 import pysam
 from scipy.stats import gaussian_kde
@@ -26,12 +28,11 @@ parser.add_argument('--coverage', metavar='proportion', default=0.6, type=propor
 parser.add_argument('--data_set_name', default=None,
                     help="Data set name. If not set file name is used.")
 parser.add_argument('--figure_format', default="png",
-                    help="Figure file format. Must be compatible with matplotlib backend.")
+                    help="Figure file format.")
 parser.add_argument('--fill', default=True, action=AutoBool,
                     help='Fill basecall quality histogram with color')
 parser.add_argument('--show_median', default=False, action=AutoBool,
                     help='Show median in a histogram plot')
-parser.add_argument('--mpl_backend', default="Agg", help="Matplotlib backend to use")
 parser.add_argument('--reference', default=None,
                     help="Reference sequence to align against")
 
@@ -224,11 +225,6 @@ CIscore (Mbits): {:.5f}
 
 def main():
     args = parser.parse_args()
-
-    # Set the mpl backend. The default, Agg, does not require an X server to be running
-    # Note: this must happen before matplotlib.pyplot is imported
-    matplotlib.use(args.mpl_backend)
-    import matplotlib.pyplot as plt
 
     exit_code = 0
     for fn in args.files:
