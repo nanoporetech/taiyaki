@@ -44,8 +44,8 @@ def get_refs(sam, ref_seq_dict, min_coverage=0.6, pad=0):
             if read_ref is None:
                 continue
 
-            start = max(0, read.reference_start - read.query_alignment_start - pad)
-            end = min(len(read_ref), read.reference_end + read.query_length - read.query_alignment_end + pad)
+            start = max(0, read.reference_start - pad)
+            end = min(len(read_ref), read.reference_end + pad)
 
             strand = STRAND[read.flag]
             read_ref = read_ref.decode() if isinstance(read_ref, bytes) else read_ref
