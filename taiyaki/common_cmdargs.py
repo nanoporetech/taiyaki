@@ -81,9 +81,9 @@ def add_common_command_args(parser, arglist):
                             help="Don't print progress information to stdout")
 
     if 'recursive' in arglist:
-        parser.add_argument('--recursive', default=False, action=AutoBool,
+        parser.add_argument('--recursive', default=True, action=AutoBool,
                             help='Search for fast5s recursively within ' +
-                            'input_folder. Default only search first level.')
+                            'input_folder. Otherwise only search first level.')
 
     if 'sample_nreads_before_filtering' in arglist:
         parser.add_argument('--sample_nreads_before_filtering', metavar='n', type=NonNegative(int), default=1000,
