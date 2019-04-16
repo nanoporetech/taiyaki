@@ -26,7 +26,7 @@ parser.add_argument('--xmax', default = None, type = float,
                     help='Maximum x for plot')
 
 
-if __name__=="__main__":
+def main():
     args = parser.parse_args()
     plt.figure(figsize=(12, 10))
     for nfile, mapped_read_file in enumerate(args.mapped_read_files):
@@ -65,3 +65,8 @@ if __name__=="__main__":
     plt.tight_layout()
     sys.stderr.write("Saving plot to {}\n".format(args.output))
     plt.savefig(args.output)
+
+
+
+if __name__=="__main__":
+    main()
