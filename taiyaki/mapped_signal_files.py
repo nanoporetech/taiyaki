@@ -519,8 +519,12 @@ class HDF5(AbstractMappedSignalFile):
     def get_alphabet_information(self):
         try:
             # handle empty mod_long_names slot
-            mln_slot = self.hdf5['mod_long_names']
-            mod_long_names = mln_slot[:] if len(mln_slot.shape) > 0 else []
+            try:
+                mod_long_names = self.hdf5.attrs['mod_long_names'].split(
+                    self.hdf5.attrs['mod_long_names_sep'])
+            except KeyError:
+                # mod_names slot is optional for canonical only models
+                mod_long_names = []
             return (self.hdf5.attrs['alphabet'],
                     self.hdf5.attrs['collapse_alphabet'],
                     mod_long_names)
@@ -549,6 +553,6 @@ class HDF5(AbstractMappedSignalFile):
             self, alphabet, collapse_alphabet, mod_long_names=None):
         self.hdf5.attrs['alphabet'] = alphabet
         self.hdf5.attrs['collapse_alphabet'] = collapse_alphabet
-        self.hdf5.create_dataset(
-            'mod_long_names', data=np.array(mod_long_names, dtype='S'),
-            dtype=h5py.special_dtype(vlen=str))
+        if mod_long_names is not None:
+            self.hdf5.attrs['mod_long_names'] = '\x1e'.join(mod_long_names)
+            self.hdf5.attrs['mod_long_names_sep'] = '\x1e'

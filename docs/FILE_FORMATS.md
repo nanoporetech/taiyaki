@@ -48,6 +48,10 @@ methods for checking that a file conforms to the specification.
 The files are HDF5 files with the following structure.
 
     HDF5_file/
+      ├── attribute: alphabet (str)
+      ├── attribute: collapse_alphabet (str)
+      ├── attribute: mod_long_names (str, optional)
+      ├── attribute: mod_long_names_sep (str, optional)
       ├── attribute: version (integer)
       └── group: Reads/
           ├── group: <read_id_1>
@@ -61,8 +65,6 @@ Each read_id is a UUID, and the data in each read group is:
 
 |   **name**        |**attribute/dataset** | **type**  | **description**                                                    |
 |-------------------|----------------------|-----------|--------------------------------------------------------------------|
-|   alphabet        |  attr                | str       | e.g. 'ACGT' for DNA. May include modified bases in future releases |
-| collapse_alphabet |  attr                | str       | canonical base for each base in 'alphabet'.                        |
 | shift_frompA      |  attr                | float     | shift parameter - see 'per-read-parameter files' above             |
 | scale_frompA      |  attr                | float     | scale parameter - see 'per-read-parameter files' above             |
 | range             |  attr                | float     | see equation below                                                 |
