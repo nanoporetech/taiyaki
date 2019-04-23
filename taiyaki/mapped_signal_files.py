@@ -552,5 +552,5 @@ class HDF5(AbstractMappedSignalFile):
             self, alphabet, collapse_alphabet, mod_long_names=None):
         self.hdf5.attrs['alphabet'] = alphabet
         self.hdf5.attrs['collapse_alphabet'] = collapse_alphabet
-        if mod_long_names is not None:
+        if mod_long_names is not None and len(mod_long_names) > 0:
             self.hdf5.attrs['mod_long_names'] = '\x1e'.join(mod_long_names)
