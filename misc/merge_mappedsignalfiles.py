@@ -4,26 +4,14 @@
 import argparse
 from taiyaki import mapped_signal_files
 from taiyaki.cmdargs import Positive
+from taiyaki.common_cmdargs import add_common_command_args
 
 parser = argparse.ArgumentParser(
     description='Combine HDF5 mapped-read files into a single file')
-parser.add_argument(
-    'output',help='Output filename')
-parser.add_argument(
-    'inputs', nargs='*', help='One or more input files')
-parser.add_argument(
-    '--alphabet',
-    help='Alphabet. Default: Extract from first input')
-parser.add_argument(
-    '--collapse_alphabet',
-    help='Collapsed alphabet. Default: Extract from first input')
-parser.add_argument(
-    '--mod_long_names', nargs='+',
-    help='Long names for each modified base included in references. ' +
-    'Order to match input alphabet. Default: Extract from first input.')
-parser.add_argument(
-    '--version', default=mapped_signal_files._version, type=Positive(int),
-    help='Version number for mapped read format')
+
+add_common_command_args(['version'])
+parser.add_argument('output', help='Output filename')
+parser.add_argument('input', nargs='+', help='One or more input files')
 
 #To convert to any new mapped read format (e.g. mapped_signal_files.SQL)
 #we should be able to just change MAPPED_READ_CLASS to equal the new class.
@@ -32,17 +20,14 @@ MAPPED_READ_CLASS = mapped_signal_files.HDF5
 
 def main():
     args = parser.parse_args()
-    if any(arg is None for arg in (
-            args.alphabet, args.collapse_alphabet, args.mod_long_names)):
-        with MAPPED_READ_CLASS(args.inputs[0], "r") as hin:
-            in_alphabet, in_collapse_alphabet, in_mod_long_names \
-                = hin.get_alphabet_information()
-            if args.alphabet is None:
-                args.alphabet = in_alphabet
-            if args.collapse_alphabet is None:
-                args.collapse_alphabet = in_collapse_alphabet
-            if args.mod_long_names is None:
-                args.mod_long_names = in_mod_long_names
+
+    with MAPPED_READ_CLASS(args.inputs[0], "r") as hin:
+        #  Copy alphabet and modification information from first file
+        in_alphabet, in_collapse_alphabet, in_mod_long_names \
+            = hin.get_alphabet_information()
+        args.alphabet = in_alphabet
+        args.collapse_alphabet = in_collapse_alphabet
+        args.mod_long_names = in_mod_long_names
 
     reads_written = set()
     print("Writing reads to ", args.output)

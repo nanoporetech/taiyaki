@@ -80,12 +80,8 @@ DEVICE := 0
 #####################################
 # MODIFIED BASE TRAINING PARAMETERS
 #####################################
-#Alphabet of canonical and modified bases
-ALPHABET := 'ACGTZY'
-#Canonical bases corresponding to each single letter base in ALPHABET
-COLLAPSE_ALPHABET := 'ACGTCA'
-#Long names for modeled modified bases
-MOD_LONG_NAMES := 5mC 6mA
+#Modified base specifications
+MODIFIED_BASES := --mod Z C 5mC --mod Y A 6mA
 
 ##########################################################
 # RUNNING ON A UGE CLUSTER
@@ -186,9 +182,7 @@ listparams:
 	@echo "TESTPARAM="${TESTPARAM}
 	@echo "UGE="${UGE}
 	@echo "DEVICE="${DEVICE}
-	@echo "ALPHABET="${ALPHABET}
-	@echo "COLLAPSE_ALPHABET="${COLLAPSE_ALPHABET}
-	@echo "MOD_LONG_NAMES="${MOD_LONG_NAMES}
+	@echo "MODIFIED_BASES="${MODIFIED_BASES}
 	@echo "NCPU="${NCPU}
 	@echo "SGE_HGR_gpu="${SGE_HGR_gpu}
 	@echo "REMAPMODELFILE="${REMAPMODELFILE}
@@ -275,7 +269,7 @@ ${INGREDIENT_DIR}/mod_mapped_remapuser_ref.hdf5:  ${PERREADFILE} | ${INGREDIENT_
 	@echo ""
 	@echo "------------Creating modified base mapped read file by flip-flop remapping for ${MAXREADS} reads from $<. Using ${NCPU} threads."
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/prepare_mapped_reads.py --device cpu --limit ${MAXREADS} ${STRANDLISTOPT} --overwrite --jobs ${NCPU} --mod_long_names ${MOD_LONG_NAMES} --alphabet ${ALPHABET} --collapse_alphabet ${COLLAPSE_ALPHABET} ${READDIR} $< $@ ${REMAPMODELFILE} ${USER_PER_READ_MOD_REFERENCE_FILE}
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/prepare_mapped_reads.py --device cpu --limit ${MAXREADS} ${STRANDLISTOPT} --overwrite --jobs ${NCPU} ${MODIFIED_BASES} ${READDIR} $< $@ ${REMAPMODELFILE} ${USER_PER_READ_MOD_REFERENCE_FILE}
 
 
 ##############################
