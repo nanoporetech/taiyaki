@@ -61,8 +61,8 @@ parser.add_argument(
     '--num_inv_freq_reads', default=1000, type=Positive(int),
     help='Sample N reads for modified base inverse scaling')
 parser.add_argument(
-    '--output', default='taiyaki_flipflop_training',
-    help='Prefix for output files. Default: %(default)s')
+    '--outdir', default='training',
+    help='Output directory, created when run. Default: %(default)s')
 parser.add_argument(
     '--scale_mod_loss', default=False, action=AutoBool,
     help='Scale mod parameter loss/gradients by inverse of category frequency')
@@ -138,22 +138,22 @@ def _setup_and_logs(args):
 
     np.random.seed(args.seed)
 
-    if not os.path.exists(args.output):
-        os.mkdir(args.output)
+    if not os.path.exists(args.outdir):
+        os.mkdir(args.outdir)
     elif not args.overwrite:
         sys.stderr.write(('Error: Output directory {} exists but ' +
-                          '--overwrite is false\n').format(args.output))
+                          '--overwrite is false\n').format(args.outdir))
         exit(1)
-    if not os.path.isdir(args.output):
+    if not os.path.isdir(args.outdir):
         sys.stderr.write(('Error: Output location {} is not ' +
-                          'directory\n').format(args.output))
+                          'directory\n').format(args.outdir))
         exit(1)
 
-    copyfile(args.model, os.path.join(args.output, 'model.py'))
+    copyfile(args.model, os.path.join(args.outdir, 'model.py'))
 
-    log = helpers.Logger(os.path.join(args.output, 'model.log'), args.quiet)
+    log = helpers.Logger(os.path.join(args.outdir, 'model.log'), args.quiet)
     loss_log = helpers.Logger(
-        os.path.join(args.output, 'model.all_loss.txt'), True)
+        os.path.join(args.outdir, 'model.all_loss.txt'), True)
     log.write('* Taiyaki version {}\n'.format(__version__))
     log.write('* Command line\n')
     log.write(' '.join(sys.argv) + '\n')
@@ -163,7 +163,7 @@ def _setup_and_logs(args):
     # Create a logging file to save details of chunks.
     # If args.chunk_logging_threshold is set to 0 then we log all chunks
     # including those rejected.
-    chunk_log = chunk_selection.ChunkLog(args.output)
+    chunk_log = chunk_selection.ChunkLog(args.outdir)
 
     return log, loss_log, chunk_log, device
 
@@ -233,7 +233,7 @@ def main():
         mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
 
     log.write('* Dumping initial model\n')
-    save_model(network, args.output, 0)
+    save_model(network, args.outdir, 0)
 
     total_bases = 0
     total_chunks = 0
@@ -324,7 +324,7 @@ def main():
         loss_log.write('{}\t{:.10f}\t{:.10f}\n'.format(
             i, fval, score_smoothed.value))
         if (i + 1) % args.save_every == 0:
-            save_model(network, args.output, (i + 1) // args.save_every)
+            save_model(network, args.outdir, (i + 1) // args.save_every)
             log.write('C')
         else:
             log.write('.')
@@ -348,7 +348,7 @@ def main():
             total_samples = 0
             t0 = tn
 
-    save_model(network, args.output)
+    save_model(network, args.outdir)
 
     return
 
