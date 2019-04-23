@@ -74,9 +74,8 @@ class AcceptanceTest(unittest.TestCase):
                self.remapping_model,
                self.mod_per_read_refs,
                "--device", "cpu",
-               "--alphabet", "ACGTZY",
-               "--collapse_alphabet", "ACGTCA",
-               "--mod_long_names", "5mC 6mA",
+               "--mod", "Z", "C", "5mC",
+               "--mod", "Y", "A", "6mA",
                "--overwrite"]
         r=subprocess.run(cmd, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)

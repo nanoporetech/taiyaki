@@ -16,17 +16,11 @@ parser = argparse.ArgumentParser(description=program_description,
 add_common_command_args(parser, 'device input_folder input_strand_list jobs limit overwrite recursive version'.split())
 
 default_alphabet_str = variables.DEFAULT_ALPHABET.decode("utf-8")
-parser.add_argument(
-    '--alphabet', default=default_alphabet_str,
-    help='Alphabet for basecalling. Defaults to ' + default_alphabet_str)
-parser.add_argument(
-    '--collapse_alphabet', default=default_alphabet_str,
-    help='Collapsed alphabet for basecalling. Defaults to ' +
-    default_alphabet_str)
-parser.add_argument(
-    '--mod_long_names', nargs='+',
-    help='Long names for each modified base included in references. ' +
-    'Order to match input alphabet.')
+parser.add_argument('--alphabet', default=default_alphabet_str,
+                    help='Canonical base alphabet')
+parser.add_argument('--mod', nargs=3, metavar=('base', 'canonical', 'name'),
+                    default=[], action='append',
+                    help='Modified base description')
 parser.add_argument('input_per_read_params', action=FileExists,
                     help='Input per read parameter .tsv file')
 parser.add_argument('output', help='Output HDF5 file')
@@ -50,15 +44,28 @@ def main():
         args.input_folder, limit=args.limit, strand_list=args.input_strand_list,
         recursive=args.recursive)
 
+    # Create alphabet and check for consistency
+    modified_bases = [elt[0] for elt in args.mod]
+    canonical_bases = [elt[1] for elt in args.mod]
+    for b in modified_bases:
+        assert len(b) == 1, "Modified bases must be a single character, got {}".format(b)
+        assert b not in args.alphabet, "Modified base must not be a canonical base, got {}".format(b)
+    for b in canonical_bases:
+        assert len(b) == 1, "Canonical coding for modified bases must be a single character, got {}".format(b)
+        assert b in args.alphabet, "Canonical coding for modified base must be a canonical base, got {}".format(b)
+    full_alphabet = args.alphabet + ''.join(modified_bases)
+    flat_alphabet = args.alphabet + ''.join(canonical_bases)
+    modification_names = [elt[2] for elt in args.mod]
+
     # Set up arguments (kwargs) for the worker function for each read
     kwargs = helpers.get_kwargs(args, ['device'])
     kwargs['per_read_params_dict'] = prepare_mapping_funcs.get_per_read_params_dict_from_tsv(
         args.input_per_read_params)
-    kwargs['references'] = helpers.fasta_file_to_dict(
-        args.references, alphabet=args.alphabet)
+    kwargs['references'] = helpers.fasta_file_to_dict(args.references,
+                                                      alphabet=full_alphabet)
     kwargs['model'] = helpers.load_model(args.model)
-    kwargs['alphabet_info'] = alphabet.AlphabetInfo(
-        args.alphabet, args.collapse_alphabet)
+    kwargs['alphabet_info'] = alphabet.AlphabetInfo(full_alphabet,
+                                                    flat_alphabet)
     # remaps a single read using flip-flip network
     workerFunction = prepare_mapping_funcs.oneread_remap
 
@@ -68,8 +75,8 @@ def main():
     # results is an iterable of dicts
     # each dict is a set of return values from a single read
     prepare_mapping_funcs.generate_output_from_results(
-        results, args.output, args.alphabet, args.collapse_alphabet,
-        args.mod_long_names)
+        results, args.output, full_alphabet, flat_alphabet,
+        modification_names)
 
 
 if __name__ == '__main__':
