@@ -51,7 +51,6 @@ The files are HDF5 files with the following structure.
       ├── attribute: alphabet (str)
       ├── attribute: collapse_alphabet (str)
       ├── attribute: mod_long_names (str, optional)
-      ├── attribute: mod_long_names_sep (str, optional)
       ├── attribute: version (integer)
       └── group: Reads/
           ├── group: <read_id_1>

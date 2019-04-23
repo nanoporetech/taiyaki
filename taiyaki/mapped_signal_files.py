@@ -520,8 +520,7 @@ class HDF5(AbstractMappedSignalFile):
         try:
             # handle empty mod_long_names slot
             try:
-                mod_long_names = self.hdf5.attrs['mod_long_names'].split(
-                    self.hdf5.attrs['mod_long_names_sep'])
+                mod_long_names = self.hdf5.attrs['mod_long_names'].split('\x1e')
             except KeyError:
                 # mod_names slot is optional for canonical only models
                 mod_long_names = []
@@ -555,4 +554,3 @@ class HDF5(AbstractMappedSignalFile):
         self.hdf5.attrs['collapse_alphabet'] = collapse_alphabet
         if mod_long_names is not None:
             self.hdf5.attrs['mod_long_names'] = '\x1e'.join(mod_long_names)
-            self.hdf5.attrs['mod_long_names_sep'] = '\x1e'
