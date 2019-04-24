@@ -30,7 +30,7 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
                       sharpfact):
     """
     :param logprob: Tensor containing log probabilities
-    :param seqs: Vector containing flip-flop coded sequences (see flipflopfings.flip_flop_code()), concatenated
+    :param seqs: Vector containing flip-flop coded sequences (see flipflopfings.flipflop_code()), concatenated
     :param seqlen: Length of each sequence
     """
     cdef size_t nblk, nbatch, nstate
@@ -55,7 +55,7 @@ def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
                       sharpfact):
     """
     :param logprob: Tensor containing log probabilities
-    :param seqs: Vector containing flip-flop coded sequences (see flipflopfings.flip_flop_code()), concatenated
+    :param seqs: Vector containing flip-flop coded sequences (see flipflopfings.flipflop_code()), concatenated
     :param seqlen: Length of each sequence
     """
     cdef size_t nblk, nbatch, nstate

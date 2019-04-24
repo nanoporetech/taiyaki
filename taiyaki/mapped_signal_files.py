@@ -404,8 +404,7 @@ class AbstractMappedSignalFile(ABC):
         pass
 
     @abstractmethod
-    def write_alphabet_information(
-            self, alphabet, collapse_alphabet, mod_long_names=None):
+    def write_alphabet_information(self, alphabet_info):
         """Write alphabet information to file"""
         pass
 
@@ -537,8 +536,7 @@ class HDF5(AbstractMappedSignalFile):
     def write_version_number(self, version_number=_version):
         self.hdf5.attrs['version'] = version_number
 
-    def write_alphabet_information(
-            self, alphabet, collapse_alphabet, mod_long_names=[]):
-        self.hdf5.attrs['alphabet'] = alphabet
-        self.hdf5.attrs['collapse_alphabet'] = collapse_alphabet
-        self.hdf5.attrs['mod_long_names'] = '\n'.join(mod_long_names)
+    def write_alphabet_information(self, alphabet_info):
+        self.hdf5.attrs['alphabet'] = alphabet_info.alphabet
+        self.hdf5.attrs['collapse_alphabet'] = alphabet_info.collapse_alphabet
+        self.hdf5.attrs['mod_long_names'] = '\n'.join(alphabet_info.mod_long_names)

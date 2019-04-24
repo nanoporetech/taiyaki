@@ -21,7 +21,7 @@ def flopmask(labels):
     return (cumulative_flipflops - offsets) % 2 == 1
 
 
-def flip_flop_code(labels, alphabet_length=4):
+def flipflop_code(labels, alphabet_length=4):
     """Given a list of digits representing bases, add offset to those in even
     positions within runs of indentical bases.
     param labels : np array of digits representing bases (usually 0-3 for ACGT)
@@ -32,7 +32,7 @@ def flip_flop_code(labels, alphabet_length=4):
 
     E.g.
     >> x=np.array([1, 3, 2, 3, 3, 3, 3, 1, 1])
-    >> flip_flop_code(x)
+    >> flipflop_code(x)
             array([1, 3, 2, 3, 7, 3, 7, 1, 5])
     """
     x = labels.copy()
@@ -48,14 +48,14 @@ def path_to_str(path, alphabet='ACGT'):
     return seq.tobytes().decode()
 
 
-def cat_mod_code(labels, alphabet_info):
+def cat_mod_code(labels, network):
     """ Given a numpy array of digits representing bases, convert to canonical
-    flip-flop labels (defined by flipflopfings.flip_flop_code) and
+    flip-flop labels (defined by flipflopfings.flipflop_code) and
     modified category values (defined by alphabet.AlphabetInfo).
 
     :param labels: np array of digits representing bases
-    :param alphabet_info: `alphabet.AlphabetInfo` object containing relevant
-        modified base information.
+    :param network: `taiyaki.layers.Serial` object with
+        `GlobalNormFlipFlopCatMod` last layer
     returns: two np arrays representing 1) canonical flip-flop labels and
         2) categorical modified base labels
 
@@ -64,9 +64,11 @@ def cat_mod_code(labels, alphabet_info):
     >> cat_mod_code(x)
           array(1, 0, 2, 1, 3, 7, 0, 3, 7), array(0, 1, 0, 1, 0, 0, 2, 1, 0)
     """
-    mod_labels = alphabet_info.mod_labels[labels]
-    can_labels = np.ascontiguousarray(alphabet_info.collapse_labels[labels])
-    ff_can_labels = flip_flop_code(can_labels, alphabet_info.ncan_base)
+    assert is_cat_mod_model(network)
+    ff_layer = network.sublayers[-1]
+    mod_labels = np.ascontiguousarray(ff_layer.mod_labels[labels])
+    can_labels = np.ascontiguousarray(ff_layer.can_labels[labels])
+    ff_can_labels = flipflop_code(can_labels, ff_layer.ncan_base)
     return ff_can_labels, mod_labels
 
 

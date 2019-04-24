@@ -1,40 +1,35 @@
-from collections import defaultdict
 import numpy as np
 
 
 class AlphabetInfo(object):
-    """ Class to represent the information about a modeled alphabet and
-    collapsed alphabet including attributes for the relation to a categorical
-    modified (cat_mod) base model.
+    """ Class containing data structures summairzing an alphabet, collapsed
+    alphabet and modified base long names related to a mapped signal data set.
 
     `alphabet` is the single letter codes to reprsent the corresponding labels
         in training data. Thus ''.join(alphabet[li] for li in labels) would give
-        the sequence corresponding to labels. All canonical bases should be
-        present before any modified bases.
+        the sequence corresponding to labels.
     `collapse_alphabet`  are the canonical bases corresponding to the each value
         in alphabet. collapse_alphabet must be the same length as alphabet and
         the values must be a subset of the values in alphabet.
+    `mod_long_names` is a long names for each non-canonical (modified) base in
+        alphabet. This value is not required if there are no modified bases in
+        the alphabet.
 
-    The cat_mod model outputs bases in an different order than provided by
-    the `alphabet` and `collapse_alphabet` values. This ordering groups modified
-    base labels with thier corresponding canonical bases.
+    The cat_mod model outputs bases in a specific order. This ordering groups
+    modified base labels with thier corresponding canonical bases. The `reorder`
+    argument to this function will perform this re-ordering, but should not be
+    set for alphabets related to a mapped signal dataset.
 
     For example alphabet='ACGTZYXW', collapse_alphabet='ACGTCAAT' would produce
     cat_mod ordering of `AYXCZGTW`.
 
-    - `nbase` contains the number of bases to be modeled (length of alphabet)
-    - `collapse_labels` contains a mapping from alphabet labels to canonical
+    - `nbase` - total number of bases (length of alphabet)
+    - `ncan_base` - number of canonical bases
+    - `nmod_base` - number of modified bases
+    - `mod_name_conv` - dictionary to map single letter codes with long names
+    - `collapse_labels` - mapping from alphabet labels to canonical
         labels. So `[collapse_alphabet[li] for li in labels]` will give
         canonical labels for a sequence of labels.
-    - `ncan_base` is the number of canonical bases
-    - `nmod_base` is the number of modified bases
-    - `can_mods_offsets` is the offset for each canonical base in the
-        cat_mod model output
-    - `mod_labels` is the modified base label for each value in alphabet. This
-        value is `0` for each canonical base and is incremented by one for each
-        modified label conditioned on the canonical base. This is in alphabet
-        order and NOT cat_mod order. Using the example alphabet above,
-        mod_labels would be `[0, 0, 0, 0, 1, 1, 2, 1]`
     - `translation_table` contains a string.transtable to convert string
         sequence to canonical base values.
     """
@@ -75,56 +70,117 @@ class AlphabetInfo(object):
         """
         return sequence_with_mods.translate(self.translation_table)
 
-    def _parse_coll_alph(self):
-        """ Parse alphabet and collapse alphabet and save attributes required
-        to initialize a categorical modified base model.
-        """
-        self.nbase = len(self.alphabet)
+    def __str__(self):
+        self_str = 'canonical alphabet {}'.format(''.join(self.can_bases))
+        if self.nmod_base == 0:
+            self_str += ' and no modified bases'
+        else:
+            mod_bases_str = ', '.join(
+                '{}={} (alt to {})'.format(
+                    mod_b, self.mod_name_conv[mod_b], can_b)
+                for mod_b, can_b in zip(self.alphabet, self.collapse_alphabet)
+                if mod_b in self.mod_bases_set)
+            self_str += ' with modified base(s) {}'.format(mod_bases_str)
+        return self_str
 
+    def add_ordered_info(self):
+        """ Save attributes that are dependent on alphabet order.
+        """
         self.collapse_labels = np.array(
             [self.alphabet.find(cb) for cb in self.collapse_alphabet],
             dtype=np.int32)
-        # should be 4
-        self.ncan_base = len(set(self.collapse_labels))
-        self.nmod_base = len(set(self.alphabet)) - self.ncan_base
-        assert (set(self.alphabet[:self.ncan_base]) ==
-                set(self.collapse_alphabet)), (
-                    'All canonical bases in alphabet must appear before ' +
-                    'any modified bases.')
-        # record the canonical base group indices for modified base
-        # categorical outputs from GlobalNormFlipFlopCatMod layer
-        self.can_mods_offsets = np.cumsum([0] + [
-            self.collapse_alphabet.count(can_b)
-            for can_b in self.alphabet[:self.ncan_base]]).astype(np.int32)
-        # create table of mod label offsets within each canonical label group
-        mod_labels = [0, ] * self.ncan_base
-        can_grouped_mods = defaultdict(int)
-        for can_lab in self.collapse_labels[self.ncan_base:]:
-            can_grouped_mods[can_lab] += 1
-            mod_labels.append(can_grouped_mods[can_lab])
-        self.mod_labels = np.array(mod_labels)
-        self.max_can_grp_nmod = self.mod_labels.max()
+        self.can_bases = ''.join(
+            [b for b in self.alphabet if b in self.can_bases_set])
+        self.mod_bases = ''.join(
+            [b for b in self.alphabet if b in self.mod_bases_set])
 
         return
 
-    def __init__(self, alphabet, collapse_alphabet):
+    def sort_alphabet(self):
+        """ Re-order alphabet to canonical grouping. Each canonical base
+        followed by all modified bases associated with that canonical base.
+        """
+        self.collapse_alphabet, self.alphabet = map(
+            lambda x:''.join(x), zip(*sorted(zip(
+                self.collapse_alphabet, self.alphabet))))
+        if self.mod_long_names is not None:
+            self.mod_long_names = [self.mod_name_conv[b] for b in self.alphabet
+                                   if b in self.mod_bases_set]
+        self.is_sorted = True
+
+        self.add_ordered_info()
+
+        return
+
+    def validate_alphabet(self):
+        assert len(self.alphabet) == len(self.collapse_labels), (
+            'Alphabet ({}) and collapse_labels ({}) must be ' +
+            'the same length.').format(self.alphabet, self.collapse_labels)
+        assert len(set(self.collapse_alphabet).difference(
+            self.alphabet)) == 0, (
+                'All bases in collapse alphabet must occur within alphabet.')
+        if self.nmod_base > 0:
+            assert self.mod_long_names is not None, (
+                'Must speify mod_long_names if modified bases are presnt in ' +
+                'alphabet.')
+            assert self.nmod_base == len(self.mod_long_names), (
+                'Must provide a long name for each modified base ' +
+                'included in alphabet. Found {} modified bases and ' +
+                'modified base long names: "{}"').format(
+                    self.nmod_base, '", "'.join(self.mod_long_names))
+
+        return
+
+    def parse_alphabet_info(self):
+        """ Parse alphabet information that is independent of alphabet order.
+        """
+        self.translation_table = self.alphabet.maketrans(
+            self.alphabet, self.collapse_alphabet)
+
+        self.nbase = len(self.alphabet)
+        self.can_bases_set = set(self.collapse_alphabet)
+        self.mod_bases_set = set(self.alphabet).difference(self.can_bases_set)
+        mod_bases = [b for b in self.alphabet if b in self.mod_bases_set]
+        self.mod_name_conv = (
+            None if self.mod_long_names is None else
+            dict(zip(mod_bases, self.mod_long_names)))
+        # should be 4
+        self.ncan_base = len(self.can_bases_set)
+        self.nmod_base = self.nbase - self.ncan_base
+
+        self.add_ordered_info()
+
+        return
+
+    def __init__(self, alphabet, collapse_alphabet, mod_long_names=None,
+                 do_reorder=False):
         """ Parse alphabet and collapse_alphabet to extract information
         required for flip-flop modeling
         :param alphabet: Alphabet corresponding to read labels including
             modified bases
         :param collapse_alphabet: Alphabet with modified bases replaced with
             thier canonical counterpart
+        :param mod_long_names: Long names for each modified base found in
+            alphabet
+        :param do_reorder: Re-order alphabet to canonical base grouping (
+            canonical base followed by associated mods). Should not be used
+            when reading in signal mapped data.
         """
         self.alphabet = alphabet
         self.collapse_alphabet = collapse_alphabet
+        self.mod_long_names = mod_long_names
         try:
             self.alphabet = self.alphabet.decode()
             self.collapse_alphabet = self.collapse_alphabet.decode()
         except:
             pass
-        self.translation_table = alphabet.maketrans(alphabet, collapse_alphabet)
 
-        self._parse_coll_alph()
+        self.parse_alphabet_info()
+        self.validate_alphabet()
+
+        self.is_sorted = False
+        if do_reorder:
+            self.sort_alphabet()
 
         return
 

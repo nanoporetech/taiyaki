@@ -39,11 +39,6 @@ def main():
             print("Cowardly refusing to overwrite {}".format(args.output))
             sys.exit(1)
 
-    # Make an iterator that yields all the reads we're interested in.
-    fast5_reads = fast5utils.iterate_fast5_reads(
-        args.input_folder, limit=args.limit, strand_list=args.input_strand_list,
-        recursive=args.recursive)
-
     # Create alphabet and check for consistency
     modified_bases = [elt[0] for elt in args.mod]
     canonical_bases = [elt[1] for elt in args.mod]
@@ -57,6 +52,16 @@ def main():
     flat_alphabet = args.alphabet + ''.join(canonical_bases)
     modification_names = [elt[2] for elt in args.mod]
 
+    alphabet_info = alphabet.AlphabetInfo(full_alphabet, flat_alphabet,
+                                          modification_names, do_reorder=True)
+
+    print("Converting references to labels using {}".format(str(alphabet_info)))
+
+    # Make an iterator that yields all the reads we're interested in.
+    fast5_reads = fast5utils.iterate_fast5_reads(
+        args.input_folder, limit=args.limit, strand_list=args.input_strand_list,
+        recursive=args.recursive)
+
     # Set up arguments (kwargs) for the worker function for each read
     kwargs = helpers.get_kwargs(args, ['device'])
     kwargs['per_read_params_dict'] = prepare_mapping_funcs.get_per_read_params_dict_from_tsv(
@@ -64,8 +69,8 @@ def main():
     kwargs['references'] = helpers.fasta_file_to_dict(args.references,
                                                       alphabet=full_alphabet)
     kwargs['model'] = helpers.load_model(args.model)
-    kwargs['alphabet_info'] = alphabet.AlphabetInfo(full_alphabet,
-                                                    flat_alphabet)
+    kwargs['alphabet_info'] = alphabet_info
+
     # remaps a single read using flip-flip network
     workerFunction = prepare_mapping_funcs.oneread_remap
 
@@ -75,8 +80,7 @@ def main():
     # results is an iterable of dicts
     # each dict is a set of return values from a single read
     prepare_mapping_funcs.generate_output_from_results(
-        results, args.output, full_alphabet, flat_alphabet,
-        modification_names)
+        results, args.output, alphabet_info)
 
 
 if __name__ == '__main__':
