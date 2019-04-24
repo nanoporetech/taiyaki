@@ -88,7 +88,7 @@ def generate_output_from_results(
     """
     Given an iterable of dictionaries, each representing the results of mapping
     a single read, output a mapped-read file.
-    This version outputs to the V7 'chunk' file format (actually containing mapped reads, not chunks)
+    This version outputs to the V8 'chunk' file format (actually containing mapped reads, not chunks)
 
     param: results     : an iterable of read dictionaries
                          (with mappings)
