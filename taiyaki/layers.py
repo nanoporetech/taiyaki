@@ -703,69 +703,100 @@ class GlobalNormFlipFlopCatMod(nn.Module):
     """ Flip-flop layer with additional modified base output stream
 
     :param insize: Size of input to layer (should be 1)
-    :param collapse_labels: Array of indices within alphabet for the canonical
-        base associated with each base
-    :param alphabet: String of single letter values for each base modeled. Must
-        be the same length as collapse_labels.
-    :param mod_long_names: List of strings representing long names for each
-        modified base (must match number of modified bases determined from
-        collapse_labels)
+    :param alphabet_info: `taiyaki.alphabet.AlphabetInfo` instance
     :param has_bias: Whether layer has bias
     :param _never_use_cupy: Force use of CPU implementation of flip-flop loss
 
     Attributes (can_nmods, output_alphabet and modified_base_long_names) define
     a modified base model and their names and structure is stable.
+
+    The cat_mod model outputs bases in a specific order. This ordering groups
+    modified base labels with thier corresponding canonical bases.
+
+    For example alphabet='ACGTZYXW', collapse_alphabet='ACGTCAAT' would produce
+    cat_mod ordering of `AYXCZGTW`.
+
+    - `can_mods_offsets` is the offset for each canonical base in the
+        cat_mod model output
+    - `mod_labels` is the modified base label for each value in alphabet. This
+        value is `0` for each canonical base and is incremented by one for each
+        modified label conditioned on the canonical base. This is in alphabet
+        order and NOT cat_mod order. Using the example alphabet above,
+        mod_labels would be `[0, 0, 0, 0, 1, 1, 2, 1]`
     """
-    def __init__(self, insize, collapse_labels, alphabet, mod_long_names,
-                 has_bias=True, _never_use_cupy=False):
+    def compute_label_conversions(self):
+        """ Compute conversion arrays from input label to canonical base and
+        modified training label values
+        """
+        # create table of mod label offsets within each canonical label group
+        can_labels, mod_labels = [], []
+        can_grouped_mods = dict((can_b, 0) for can_b in self.can_bases)
+        for b, can_b in zip(self.alphabet, self.collapse_alphabet):
+            can_labels.append(self.can_bases.find(can_b))
+            if b in self.can_bases:
+                # canonical bases are always 0
+                mod_labels.append(0)
+            else:
+                can_grouped_mods[can_b] += 1
+                mod_labels.append(can_grouped_mods[can_b])
+        self.can_labels = np.array(can_labels)
+        self.mod_labels = np.array(mod_labels)
+
+        return
+
+    def compute_layer_mods_info(self):
+        # sort alphabet into canonical grouping and reagange mod_long_names
+        # accordingly
+        self.output_alphabet = ''.join(b[1] for b in sorted(zip(
+            self.collapse_alphabet, self.alphabet)))
+        self.ordered_mod_long_names = (
+            None if self.mod_long_names is None else
+            [self.mod_name_conv[b] for b in self.alphabet
+             if b in self.mod_bases])
+        # number of modified bases per canonical base for saving in model file
+        # (ordered by self.can_bases)
+        self.can_nmods = np.array([
+            sum(b == can_b for b in self.collapse_alphabet) - 1
+            for can_b in self.can_bases])
+
+        # canonical base offset into flip-flop output layer
+        self.can_mods_offsets = np.cumsum(np.concatenate(
+            [[0], self.can_nmods + 1])).astype(np.int32)
+        # modified base indices from linear layer corresponding to
+        # each canonical base
+        self.can_indices = []
+        curr_n_mods = 0
+        for bi_nmods in self.can_nmods:
+            # global canonical category is index 0 then mod cat indices
+            self.can_indices.append(np.concatenate([
+                [0], np.arange(curr_n_mods + 1, curr_n_mods + 1 + bi_nmods)]))
+            curr_n_mods += bi_nmods
+
+        return
+
+    def __init__(self, insize, alphabet_info, has_bias=True,
+                 _never_use_cupy=False):
         # IMPORTANT these attributes (can_nmods, output_alphabet and
         # modified_base_long_names) are stable and depended upon by external
         # applications. Their names or data structure should remain stable.
         super().__init__()
         self.insize = insize
-        self.collapse_labels = collapse_labels
-        self.alphabet = alphabet
-        self.mod_long_names = mod_long_names
         self.has_bias = has_bias
         self._never_use_cupy = _never_use_cupy
 
-        if not isinstance(self.collapse_labels, np.ndarray):
-            self.collapse_labels = np.array(self.collapse_labels)
-        assert len(self.alphabet) == len(self.collapse_labels), (
-            'Length of alphabet ({}) and collapse_labels ({}) must be ' +
-            'the same.').format(self.alphabet, self.collapse_labels)
+        # Extract necessary values from alphabet_info
+        self.alphabet = alphabet_info.alphabet
+        self.collapse_alphabet = alphabet_info.collapse_alphabet
+        self.mod_long_names = alphabet_info.mod_long_names
+        self.mod_name_conv = alphabet_info.mod_name_conv
+        # can_bases determines the order of the canonical bases in the model
+        self.can_bases = alphabet_info.can_bases
+        self.mod_bases = alphabet_info.mod_bases
+        self.ncan_base = alphabet_info.ncan_base
+        self.nmod_base = alphabet_info.nmod_base
 
-        # prepare categorical modified base outputs
-        self.nbase = len(self.collapse_labels)
-        self.ncan_base = len(set(self.collapse_labels))
-        self.nmod_base = self.nbase - self.ncan_base
-        assert len(self.mod_long_names) == self.nmod_base, (
-            'All modified bases must have a long name provided.')
-        self.mod_long_names_conv = dict(zip(
-            self.alphabet[self.ncan_base:], self.mod_long_names))
-
-        # indices from linear layer corresponding to each canonical base
-        self.can_indices = []
-        self.can_nmods = []
-        # alphabet corresponding to ordered layer output values
-        self.output_alphabet = ''
-        self.ordered_mod_long_names = []
-        curr_n_mods = 1
-        for can_lab in range(self.ncan_base):
-            can_mod_indices = np.where(can_lab == self.collapse_labels)[0]
-            for can_i, idx_i in enumerate(can_mod_indices):
-                self.output_alphabet += self.alphabet[idx_i]
-                if can_i > 0:
-                    self.ordered_mod_long_names.append(
-                        self.mod_long_names_conv[self.alphabet[idx_i]])
-            n_can_mods = can_mod_indices.shape[0] - 1
-            self.can_nmods.append(n_can_mods)
-            # global canonical category is index 0 then mod cat indices
-            can_plus_mod_indices = np.concatenate([
-                [0], np.arange(curr_n_mods, curr_n_mods + n_can_mods)])
-            curr_n_mods += n_can_mods
-            self.can_indices.append(can_plus_mod_indices)
-        self.can_nmods = np.array(self.can_nmods)
+        self.compute_label_conversions()
+        self.compute_layer_mods_info()
 
         # standard flip-flop transition states plus (single cat for all bases)
         # canonical and categorical mod states

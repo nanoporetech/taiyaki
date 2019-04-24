@@ -10,10 +10,10 @@ import time
 import torch
 import taiyaki.common_cmdargs as common_cmdargs
 from taiyaki.cmdargs import FileExists, Positive, proportion, Maybe, AutoBool
+from taiyaki.flipflopfings import flipflop_code
 
-from taiyaki import (
-    alphabet, chunk_selection, ctc, flipflopfings, helpers,
-    mapped_signal_files, layers, optim)
+from taiyaki import (alphabet, chunk_selection, ctc, helpers,
+                     mapped_signal_files, layers, optim)
 from taiyaki import __version__
 
 
@@ -124,7 +124,11 @@ def _load_data(args, log):
 
     log.write('* Loaded {} reads.\n'.format(len(read_data)))
 
-    return read_data, bases_alphabet, collapse_alphabet, mod_long_names
+    alphabet_info  = alphabet.AlphabetInfo(
+        bases_alphabet, collapse_alphabet, mod_long_names, do_reorder=False)
+    log.write('* Using alphabet definition: {}\n'.format(str(alphabet_info)))
+
+    return read_data, alphabet_info
 
 def _setup_and_logs(args):
     device = torch.device(args.device)
@@ -172,8 +176,7 @@ def main():
     args = parser.parse_args()
     log, loss_log, chunk_log, device = _setup_and_logs(args)
 
-    (read_data, bases_alphabet, collapse_alphabet,
-     mod_long_names) =  _load_data(args, log)
+    read_data, alphabet_info =  _load_data(args, log)
     # Get parameters for filtering by sampling a subset of the reads
     # Result is a tuple median mean_dwell, mad mean_dwell
     # Choose a chunk length in the middle of the range for this
@@ -185,29 +188,24 @@ def main():
                "mad(mean_dwell)={:.2f}\n").format(
                    args.sample_nreads_before_filtering, *filter_parameters))
 
-    alphabet_info = alphabet.AlphabetInfo(bases_alphabet, collapse_alphabet)
-
     log.write('* Reading network from {}\n'.format(args.model))
     model_kwargs = {
         'insize': 1,
         'winlen': args.winlen,
         'stride': args.stride,
         'size' : args.size,
-        'alphabet': alphabet_info.alphabet,
-        'collapse_labels': alphabet_info.collapse_labels,
-        'mod_long_names': mod_long_names
+        'alphabet_info': alphabet_info
     }
     network = helpers.load_model(args.model, **model_kwargs).to(device)
-    log.write('* Using alphabet {} collapsed to {} ({})\n'.format(
-        alphabet_info.alphabet, alphabet_info.collapse_alphabet,
-        ', '.join('{}={}'.format(*mod_b)
-                  for mod_b in
-                  network.sublayers[-1].mod_long_names_conv.items())))
     if not isinstance(network.sublayers[-1], layers.GlobalNormFlipFlopCatMod):
         log.write(
             'ERROR: Model must end with GlobalNormCatModFlipFlop layer, ' +
             'not {}.\n'.format(str(network.sublayers[-1])))
         sys.exit(1)
+    can_mods_offsets = network.sublayers[-1].can_mods_offsets
+    flipflop_can_labels = network.sublayers[-1].can_labels
+    flipflop_mod_labels = network.sublayers[-1].mod_labels
+    flipflop_ncan_base = network.sublayers[-1].ncan_base
     log.write('* Loaded categorical modifications flip-flop model.\n')
     log.write('* Network has {} parameters.\n'.format(
         sum([p.nelement() for p in network.parameters()])))
@@ -287,8 +285,9 @@ def main():
         for chunk in chunk_batch:
             chunk_labels = chunk['sequence']
             seqlens.append(len(chunk_labels))
-            chunk_seq, chunk_mod_cats = flipflopfings.cat_mod_code(
-                chunk_labels, alphabet_info)
+            chunk_seq = flipflop_code(np.ascontiguousarray(flipflop_can_labels[chunk_labels]),
+                                       flipflop_ncan_base)
+            chunk_mod_cats = np.ascontiguousarray(flipflop_mod_labels[chunk_labels])
             seqs.append(chunk_seq)
             mod_cats.append(chunk_mod_cats)
         seqs, mod_cats = np.concatenate(seqs), np.concatenate(mod_cats)
@@ -299,7 +298,7 @@ def main():
         optimizer.zero_grad()
         outputs = network(indata)
         lossvector = ctc.cat_mod_flipflop_loss(
-            outputs, seqs, seqlens, mod_cats, alphabet_info.can_mods_offsets,
+            outputs, seqs, seqlens, mod_cats, can_mods_offsets,
             mod_cat_weights, mod_factor_t, args.sharpen)
         loss = lossvector.sum() / (seqlens > 0.0).float().sum()
         loss.backward()

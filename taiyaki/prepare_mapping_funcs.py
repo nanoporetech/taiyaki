@@ -67,7 +67,7 @@ def oneread_remap(read_tuple, references, model, device, per_read_params_dict,
     can_read_ref = alphabet_info.collapse_sequence(read_ref)
     remappingscore, path = flipflop_remap.flipflop_remap(
         np.squeeze(transweights), can_read_ref,
-        alphabet=alphabet_info.alphabet[:alphabet_info.ncan_base], localpen=0.0)
+        alphabet=alphabet_info.can_bases, localpen=0.0)
     # read_ref comes out as a bytes object, so we need to convert to str
     # localpen=0.0 does local alignment
 
@@ -83,8 +83,7 @@ def oneread_remap(read_tuple, references, model, device, per_read_params_dict,
         read_params_dict['shift'], read_params_dict['scale'], read_id)
 
 
-def generate_output_from_results(
-        results, output, alphabet, collapse_alphabet, mod_long_names):
+def generate_output_from_results(results, output, alphabet_info):
     """
     Given an iterable of dictionaries, each representing the results of mapping
     a single read, output a mapped-read file.
@@ -93,18 +92,13 @@ def generate_output_from_results(
     param: results     : an iterable of read dictionaries
                          (with mappings)
     param: output      : output filename
-    param: alphabet    : alphabet of bases included in data set
-    param: collapse_alphabet : canonical bases corresponding to each base in
-        alphabet
-    param: mod_long_names : long names for each modified base (in the same
-        order as in alphabet)
+    param: alphabet_info : taiyaki.alphabet.AlphabetInfo instance
     """
     progress = helpers.Progress()
     err_types = defaultdict(int)
     with mapped_signal_files.HDF5(output, "w") as f:
         f.write_version_number()
-        f.write_alphabet_information(
-            alphabet, collapse_alphabet, mod_long_names)
+        f.write_alphabet_information(alphabet_info)
         for resultdict in results:
             # filter out error messages for reporting later
             if isinstance(resultdict, str):
