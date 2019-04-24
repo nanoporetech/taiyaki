@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 import h5py
 import numpy as np
 
-_version = 7
+_version = 8
 
 class Read(dict):
     """Class to represent the information about a read that is stored in
@@ -228,7 +228,7 @@ class Read(dict):
         Note there is no checking in this function that the dacs_region and ref_region
         are associated with one another. That must be done before calling this function.
 
-        If the optional data item read_id is not present in the read dictionary 
+        If the optional data item read_id is not present in the read dictionary
         then the 'read_id' item will be missing in the dictionary returned.
 
         The mean dwell is len(reference_sequence) / len(standardised_current),
@@ -324,7 +324,7 @@ class Read(dict):
         dacsend_exc = self['Ref_to_signal'][refend_exc]
         #print("get_chunk_with_sequence_length(): ref region",refstart,refend_exc)
         #print("                                  sig region",dacstart,dacsend_exc)
-        
+
         return self._get_chunk((dacstart, dacsend_exc), (refstart, refend_exc))
 
 
@@ -498,6 +498,7 @@ class HDF5(AbstractMappedSignalFile):
 
     def get_read(self, read_id):
         """Return a read object (see class definition above)."""
+        assert self.get_version_number() == _version, 'Incorrect file version, got {} expected {}'.format(self.get_version_number(), _version)
         h = self.hdf5[self._get_read_path(read_id)]
         d = {}
         for k, v in h.items():  # Iterate over datasets (the read group should have no subgroups)
@@ -507,6 +508,7 @@ class HDF5(AbstractMappedSignalFile):
         return Read(d)
 
     def get_read_ids(self):
+        assert self.get_version_number() == _version, 'Incorrect file version, got {} expected {}'.format(self.get_version_number(), _version)
         """Return list of read ids, or empty list if none present"""
         try:
             return list(self.hdf5['Reads'].keys())
@@ -517,24 +519,11 @@ class HDF5(AbstractMappedSignalFile):
         return self.hdf5.attrs['version']
 
     def get_alphabet_information(self):
-        try:
-            # handle empty mod_long_names slot
-            try:
-                mod_long_names = self.hdf5.attrs['mod_long_names'].split('\x1e')
-            except KeyError:
-                # mod_names slot is optional for canonical only models
-                mod_long_names = []
-            return (self.hdf5.attrs['alphabet'],
-                    self.hdf5.attrs['collapse_alphabet'],
-                    mod_long_names)
-        except KeyError:
-            # backwards compatibility from initial release when alphabet
-            # information was not global
-            first_read = next(v for v in self.hdf5['Reads'].values())
-            # return empty list for mod_long_names as incompatible
-            # file format did not support modified bases
-            return (first_read.attrs['alphabet'],
-                    first_read.attrs['collapse_alphabet'], [])
+        assert self.get_version_number() == _version, 'Incorrect file version, got {} expected {}'.format(self.get_version_number(), _version)
+        mod_long_names = self.hdf5.attrs['mod_long_names'].splitlines()
+        return (self.hdf5.attrs['alphabet'],
+                self.hdf5.attrs['collapse_alphabet'],
+                mod_long_names)
 
     def write_read(self, read_id, read):
         """Write a read to the appropriate place in the file, starting from a read object"""
@@ -549,8 +538,7 @@ class HDF5(AbstractMappedSignalFile):
         self.hdf5.attrs['version'] = version_number
 
     def write_alphabet_information(
-            self, alphabet, collapse_alphabet, mod_long_names=None):
+            self, alphabet, collapse_alphabet, mod_long_names=[]):
         self.hdf5.attrs['alphabet'] = alphabet
         self.hdf5.attrs['collapse_alphabet'] = collapse_alphabet
-        if mod_long_names is not None and len(mod_long_names) > 0:
-            self.hdf5.attrs['mod_long_names'] = '\x1e'.join(mod_long_names)
+        self.hdf5.attrs['mod_long_names'] = '\n'.join(mod_long_names)

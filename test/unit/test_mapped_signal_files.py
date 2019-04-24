@@ -79,7 +79,7 @@ class TestMappedReadFiles(unittest.TestCase):
         print("Writing to file")
         with mapped_signal_files.HDF5(self.testfilepath, "w") as f:
             f.write_read(read_object['read_id'], read_object)
-            f.write_version_number(7)
+            f.write_version_number()
 
         print("Current dir = ", os.getcwd())
         print("File written to ", self.testfilepath)
@@ -108,7 +108,7 @@ class TestMappedReadFiles(unittest.TestCase):
 
         # Check that the extracted chunk is the right length
         self.assertEqual(len(chunkdict['current']), chunklen)
-        
+
         # Check that the mapping data agrees with what we put in
         self.assertTrue(np.all(recovered_read['Ref_to_signal']==read_dict['Ref_to_signal']))
 
@@ -151,7 +151,7 @@ class TestMappedReadFiles(unittest.TestCase):
         print("Writing to file")
         with mapped_signal_files.HDF5(self.testfilepath, "w") as f:
             f.write_read(read_object['read_id'], read_object)
-            f.write_version_number(7)
+            f.write_version_number()
 
         print("Current dir = ", os.getcwd())
         print("File written to ", self.testfilepath)
