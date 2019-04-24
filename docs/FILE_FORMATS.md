@@ -39,7 +39,7 @@ These are fasta files where the comment line for each sequence is the UUID:
     >906f26ce-367a-4d3c-b279-ca86f6db7255
     AATCCTGCCTCTAAAGAAAGAAAAAAAAAAATCAGCTAGGTGTAGCCATAGGCAGCTGTAGTCCCA.....
 
-## Mapped signal files
+## Mapped signal files (v. 8)
 
 Data for training is stored in mapped signal files.
 The class **HDF5** in **taiyaiki/mapped_signal_files.py** provides an API for reading and writing these files, and also
@@ -48,6 +48,9 @@ methods for checking that a file conforms to the specification.
 The files are HDF5 files with the following structure.
 
     HDF5_file/
+      ├── attribute: alphabet (str)
+      ├── attribute: collapse_alphabet (str)
+      ├── attribute: mod_long_names (str)
       ├── attribute: version (integer)
       └── group: Reads/
           ├── group: <read_id_1>
@@ -61,8 +64,6 @@ Each read_id is a UUID, and the data in each read group is:
 
 |   **name**        |**attribute/dataset** | **type**  | **description**                                                    |
 |-------------------|----------------------|-----------|--------------------------------------------------------------------|
-|   alphabet        |  attr                | str       | e.g. 'ACGT' for DNA. May include modified bases in future releases |
-| collapse_alphabet |  attr                | str       | canonical base for each base in 'alphabet'.                        |
 | shift_frompA      |  attr                | float     | shift parameter - see 'per-read-parameter files' above             |
 | scale_frompA      |  attr                | float     | scale parameter - see 'per-read-parameter files' above             |
 | range             |  attr                | float     | see equation below                                                 |
