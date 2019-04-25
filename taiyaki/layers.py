@@ -927,3 +927,60 @@ class TimeLinear(nn.Module):
             res['params'] = OrderedDict([('W', self.linear.weight)] +
                                         [('b', self.linear.bias)] if self.has_bias else [])
         return res
+
+
+def rle_log_partition(weights):
+    ntime, nbatch, nstate = weights.shape
+    nbase = nstate // 2
+    hole = 1 - torch.eye(nbase, device=weights.device, dtype=weights.dtype)
+
+    def step(w, ft):
+        move = w[:, :4]
+        stay = w[:, 4:]
+        state_sum = torch.logsumexp(ft.unsqueeze(1) * hole, 2)
+        stay_score = ft + stay
+        move_score = state_sum + move
+        return logaddexp(stay_score, move_score)
+
+    fwd = weights.new_zeros((nbatch, nbase))
+    for w_t in weights:
+        fwd = step(w_t, fwd)
+    return fwd.logsumexp(1, keepdim=True)
+
+
+class GlobalNormRLE(nn.Module):
+    def __init__(self, insize, nbase, has_bias=True):
+        super().__init__()
+        self.insize = insize
+        self.nbase = nbase
+        self.size = 4 * nbase
+        self.has_bias = has_bias
+        self.linear = nn.Linear(insize, self.size, bias=has_bias)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        winit = orthonormal_matrix(self.size, self.insize)
+        init_(self.linear.weight, winit)
+        if self.has_bias:
+            binit = truncated_normal(list(self.linear.bias.shape), sd=0.5)
+            init_(self.linear.bias, binit)
+
+    def forward(self, x):
+        y = self.linear(x)
+        ntime , _ , _ = y.shape
+        shape = 1.0 + activation.softplus(y[... , :self.nbase])
+        scale = 0.1 + activation.softplus(y[... , self.nbase : 2 * self.nbase])
+        trans = 5.0 * activation.tanh(y[... , 2 * self.nbase:])
+        logZ = rle_log_partition(trans).unsqueeze(0) / ntime
+        return torch.cat([shape, scale, trans - logZ], dim=2)
+
+    def json(self, params=False):
+        res = OrderedDict([('type', "GlobalNormRLE"),
+                           ('size', self.size),
+                           ('insize', self.insize),
+                           ('bias', self.has_bias)])
+        if params:
+            res['params'] = OrderedDict([('W', self.linear.weight)] +
+                                        [('b', self.linear.bias)] if self.has_bias else [])
+        return res
+

@@ -198,3 +198,72 @@ class CatModFlipFlop(torch.autograd.Function):
                 None, None, None, None, None, None, None)
 
 cat_mod_flipflop_loss = CatModFlipFlop.apply
+
+
+##########################################################
+###### Runlength encoding functions                 ######
+##########################################################
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def runlength_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
+                   np.ndarray[np.int32_t, ndim=1, mode="c"] seqs,
+                   np.ndarray[np.int32_t, ndim=1, mode="c"] rles,
+                   np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen):
+    """
+    :param logprob: Tensor containing log probabilities
+    :param seqs: A vector containing sequences, concatenated
+    :param seqlen: Length of each sequence
+    """
+    cdef size_t nblk, nbatch, nstate
+    nblk, nbatch, nstate = logprob.shape[0], logprob.shape[1], logprob.shape[2]
+    assert nstate == 16, "Number of states is {} not 16 as expected".format(nstate)
+
+    cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs = np.zeros((nbatch,), dtype=np.float32)
+    libctc.runlength_cost(&logprob[0, 0, 0], nstate, nblk, nbatch, &seqs[0],
+                              &seqlen[0], &rles[0], &costs[0])
+    assert np.all(costs <= 0.), "Error -- costs must be negative, got {}".format(costs)
+    return -costs / nblk
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def runlength_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
+                   np.ndarray[np.int32_t, ndim=1, mode="c"] seqs,
+                   np.ndarray[np.int32_t, ndim=1, mode="c"] rles,
+                   np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen):
+    """
+    :param logprob: Tensor containing log probabilities
+    :param seqs: A vector containing sequences, concatenated
+    :param seqlen: Length of each sequence
+    """
+    cdef size_t nblk, nbatch, nstate
+    nblk, nbatch, nstate = logprob.shape[0], logprob.shape[1], logprob.shape[2]
+    assert nstate == 16, "Number of states is {} not 16 expected".format(nstate)
+
+    cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs = np.zeros((nbatch,), dtype=np.float32)
+    cdef np.ndarray[np.float32_t, ndim=3, mode="c"] grads = np.zeros_like(logprob, dtype=np.float32)
+    libctc.runlength_grad(&logprob[0, 0, 0], nstate, nblk, nbatch, &seqs[0],
+                              &rles[0], &seqlen[0], &costs[0], &grads[0, 0, 0])
+    np.clip(grads, -5.0, 5.0, out=grads)
+    return -costs / nblk, -grads / nblk
+
+
+class RunLengthCRF(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, logprob, seqs, rles, seqlen):
+        lp = logprob.detach().cpu().numpy().astype(np.float32)
+        seqs = seqs.cpu().numpy().astype(np.int32)
+        rles = rles.cpu().numpy().astype(np.int32)
+        seqlen = seqlen.cpu().numpy().astype(np.int32)
+        cost, grads = runlength_grad(lp, seqs, rles, seqlen)
+        ctx.save_for_backward(torch.tensor(grads, device=logprob.device))
+        return torch.tensor(cost, device=logprob.device)
+
+    @staticmethod
+    def backward(ctx, output_grads):
+        grads, = ctx.saved_tensors
+        output_grads = output_grads.unsqueeze(1)
+        return grads * output_grads, None, None, None
+
+runlength_loss = RunLengthCRF.apply
