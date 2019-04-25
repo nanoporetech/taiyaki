@@ -22,7 +22,7 @@ parser.add_argument('--pad', type=int, default=0,
 parser.add_argument('reference', action=FileExists,
                     help="Genomic references that reads were aligned against")
 parser.add_argument('input', metavar='input.sam', nargs='+',
-                    help="SAM or BAM file containing read alignments to reference")
+                    help="SAM or BAM file(s) containing read alignments to reference")
 
 STRAND = {0: '+',
           16: '-'}
