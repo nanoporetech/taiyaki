@@ -25,7 +25,7 @@ def main():
 
     with helpers.open_file_or_stdout(args.output) as fh:
         for seq in SeqIO.parse(args.input, 'fasta'):
-            seqstr = str(seq.seq).encode('ascii')
+            seqstr = str(seq.seq)
             embedded_seq_numpy = np.expand_dims(squiggle_match.embed_sequence(seqstr), axis=1)
             embedded_seq_torch = torch.tensor(embedded_seq_numpy, dtype=torch.float32)
 

@@ -13,6 +13,7 @@ READ_ID_INFO_NOT_FOUND_ERR_TEXT = 'No information for read id found in file.'
 NO_REF_FOUND_ERR_TEXT = 'No fasta reference found.'
 NO_PARAMS_ERR_TEXT = 'No per-read params provided.'
 REMAP_ERR_TEXT = 'Failure applying basecall network to remap read.'
+REMAP_SUCCESS_TEXT = ''
 
 
 def oneread_remap(read_tuple, references, model, device, per_read_params_dict,
@@ -26,8 +27,8 @@ def oneread_remap(read_tuple, references, model, device, per_read_params_dict,
                                          trim_start trim_end shift scale
     :param alphabet_info              : AlphabetInfo object for basecalling
 
-    :returns: dictionary as specified in mapped_signal_files.Read class or
-        string if error occured
+    :returns: tuple of dictionary as specified in mapped_signal_files.Read class
+              and a message string indicating an error if one occured
     """
     filename, read_id = read_tuple
     try:
@@ -35,17 +36,17 @@ def oneread_remap(read_tuple, references, model, device, per_read_params_dict,
             read = f5file.get_read(read_id)
             sig = signal.Signal(read)
     except Exception as e:
-        return READ_ID_INFO_NOT_FOUND_ERR_TEXT
+        return None, READ_ID_INFO_NOT_FOUND_ERR_TEXT
 
     if read_id in references:
-        read_ref = references[read_id].decode("utf-8")
+        read_ref = references[read_id]
     else:
-        return NO_REF_FOUND_ERR_TEXT
+        return None, NO_REF_FOUND_ERR_TEXT
 
     try:
         read_params_dict = per_read_params_dict[read_id]
     except KeyError:
-        return NO_PARAMS_ERR_TEXT
+        return None, NO_PARAMS_ERR_TEXT
 
     sig.set_trim_absolute(read_params_dict['trim_start'], read_params_dict['trim_end'])
 
@@ -61,7 +62,7 @@ def oneread_remap(read_tuple, references, model, device, per_read_params_dict,
         with torch.no_grad():
             transweights = modelOnDevice(signalTensor).cpu().numpy()
     except Exception as e:
-        return REMAP_ERR_TEXT
+        return None, REMAP_ERR_TEXT
 
     # Extra dimensions introduced by np.newaxis above removed by np.squeeze
     can_read_ref = alphabet_info.collapse_sequence(read_ref)
@@ -79,8 +80,9 @@ def oneread_remap(read_tuple, references, model, device, per_read_params_dict,
         sig, path, read_ref, model_stride)
     remapping.add_integer_reference(alphabet_info.alphabet)
 
-    return remapping.get_read_dictionary(
-        read_params_dict['shift'], read_params_dict['scale'], read_id)
+    return remapping.get_read_dictionary(read_params_dict['shift'],
+                                         read_params_dict['scale'],
+                                         read_id), REMAP_SUCCESS_TEXT
 
 
 def generate_output_from_results(results, output, alphabet_info):
@@ -96,17 +98,14 @@ def generate_output_from_results(results, output, alphabet_info):
     """
     progress = helpers.Progress()
     err_types = defaultdict(int)
-    with mapped_signal_files.HDF5(output, "w") as f:
-        f.write_version_number()
-        f.write_alphabet_information(alphabet_info)
-        for resultdict in results:
+    with mapped_signal_files.HDF5Writer(output, alphabet_info) as f:
+        for resultdict, mesg in results:
             # filter out error messages for reporting later
-            if isinstance(resultdict, str):
-                err_types[resultdict] += 1
+            if resultdict is None:
+                err_types[mesg] += 1
             else:
                 progress.step()
-                read_id = resultdict['read_id']
-                f.write_read(read_id, mapped_signal_files.Read(resultdict))
+                f.write_read(resultdict)
     sys.stderr.write('\n')
 
     # report errors at the end to avoid spamming stderr
@@ -115,8 +114,6 @@ def generate_output_from_results(results, output, alphabet_info):
             sys.stderr.write((
                 '* {} reads failed to produce remapping results ' +
                 'due to: {}\n').format(n_errs, err_str))
-
-    return
 
 
 def get_per_read_params_dict_from_tsv(input_file):
@@ -132,5 +129,8 @@ def get_per_read_params_dict_from_tsv(input_file):
 
     per_read_params_dict = {}
     for row in per_read_params_array:
-        per_read_params_dict[row[0]] = {'trim_start': row[1], 'trim_end': row[2], 'shift': row[3], 'scale': row[4]}
+        per_read_params_dict[row[0]] = {'trim_start': row[1],
+                                        'trim_end': row[2],
+                                        'shift': row[3],
+                                        'scale': row[4]}
     return per_read_params_dict

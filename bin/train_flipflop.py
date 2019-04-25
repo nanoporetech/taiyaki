@@ -8,12 +8,14 @@ import sys
 import time
 
 import torch
-from taiyaki.cmdargs import FileExists, Positive
-from taiyaki.common_cmdargs import add_common_command_args
+
 
 from taiyaki import (chunk_selection, ctc, flipflopfings, helpers,
-                     mapped_signal_files, optim, variables)
+                     mapped_signal_files, optim)
 from taiyaki import __version__
+from taiyaki.cmdargs import FileExists, Positive
+from taiyaki.common_cmdargs import add_common_command_args
+from taiyaki.constants import DOTROWLENGTH
 
 
 # This is here, not in main to allow documentation to be built
@@ -108,7 +110,7 @@ def main():
     if args.limit is not None:
         log.write('* Limiting number of strands to {}\n'.format(args.limit))
 
-    with mapped_signal_files.HDF5(args.input, "r") as per_read_file:
+    with mapped_signal_files.HDF5Reader(args.input) as per_read_file:
         alphabet, _, _ = per_read_file.get_alphabet_information()
         read_data = per_read_file.get_multiple_reads(
             read_ids, max_reads=args.limit)
@@ -246,7 +248,7 @@ def main():
             log.write('.')
 
 
-        if (i + 1) % variables.DOTROWLENGTH == 0:
+        if (i + 1) % DOTROWLENGTH == 0:
             # In case of super batching, additional functionality must be
             # added here
             learning_rate = lr_scheduler.get_lr()[0]
@@ -254,7 +256,7 @@ def main():
             dt = tn - t0
             t = (' {:5d} {:5.3f}  {:5.2f}s ({:.2f} ksample/s {:.2f} kbase/s) ' +
                  'lr={:.2e}')
-            log.write(t.format((i + 1) // variables.DOTROWLENGTH,
+            log.write(t.format((i + 1) // DOTROWLENGTH,
                                score_smoothed.value, dt,
                                total_samples / 1000.0 / dt,
                                total_bases / 1000.0 / dt, learning_rate))

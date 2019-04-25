@@ -9,7 +9,7 @@ import sys
 from ont_fast5_api import fast5_interface
 from taiyaki import config, helpers
 from taiyaki.maths import mad
-from taiyaki.variables import DEFAULT_ALPHABET, LARGE_LOG_VAL
+from taiyaki.constants import DEFAULT_ALPHABET, LARGE_LOG_VAL
 
 import torch
 
@@ -104,8 +104,7 @@ def squiggle_match_path(np.ndarray[np.float32_t, ndim=3, mode="c"] params,
 def load_references(filename):
     references = dict()
     for seq in SeqIO.parse(filename, 'fasta'):
-        seqstr = str(seq.seq).encode('ascii')
-        references[seq.id] = seqstr
+        references[seq.id] = str(seq.seq)
 
     return references
 
@@ -142,7 +141,7 @@ def worker(fast5_read_tuple, trim, back_prob, localpen, minscore):
     try:
         with fast5_interface.get_fast5_file(fast5_name, 'r') as f5file:
             read = f5file.get_read(read_id)
-            signal = read.get_raw_data()        
+            signal = read.get_raw_data()
     except:
         sys.stderr.write('Error reading {}\n'.format(read_id))
         return None

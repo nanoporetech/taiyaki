@@ -9,7 +9,7 @@ import sys
 import torch
 
 from taiyaki.fileio import readtsv
-from taiyaki.variables import DEFAULT_ALPHABET
+from taiyaki.constants import DEFAULT_ALPHABET
 
 
 
@@ -135,7 +135,7 @@ def fasta_file_to_dict(fasta_file_name, allow_N=False, alphabet=DEFAULT_ALPHABET
                 continue
             if not allow_N and re.search(has_nonalphabet, refseq) is not None:
                 continue
-            references[ref.id] = refseq.encode('utf-8')
+            references[ref.id] = refseq
 
     return references
 

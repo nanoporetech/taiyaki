@@ -21,7 +21,7 @@ def chunk_filter(chunkdict, args, filter_parameters):
     """Given a chunk dict as returned by mapped_signal_files.Read._get_chunk(),
     apply filtering conditions, returning "pass" if everything OK
     or a string describing reason for failure if not.
-    
+
     param : chunkdict        : a dictionary as returned by mapped_signal_files.get_chunk()
     param : args             : command-line args object used to determine filter limits
     param : filter_parameters: tuple median(mean_dwell), mad(mean_dwell) from sampled
@@ -36,7 +36,7 @@ def chunk_filter(chunkdict, args, filter_parameters):
     if 'rejected' in chunkdict:
         # The chunkdict contains a reason why it should be rejected. Return this.
         return chunkdict['rejected']
-    
+
     if filter_parameters is not None:
         mean_dwell = get_mean_dwell(chunkdict)
         if mean_dwell is None:
@@ -138,7 +138,7 @@ def sample_filter_parameters(read_data, number_to_sample, chunk_len, args,
     """Sample number_to_sample reads from read_data, calculate median and MAD
     of mean dwell. Note the MAD has an adjustment factor so that it would give the
     same result as the std for a normal distribution.
-    
+
     See docstring for sample_chunks() for the parameters.
     """
     meandwells, _ = sample_chunks(read_data, number_to_sample, chunk_len, args, get_mean_dwell,
@@ -164,7 +164,7 @@ def assemble_batch(read_data, batch_size, chunk_len, filter_parameters, args, lo
 
     If we can't find enough chunks after the allowed number of attempts ,then
     return the short batch, but output a message to the log.
-    
+
     See docstring for sample_chunks for parameters.
     """
     return sample_chunks(read_data, batch_size, chunk_len, chunkfunc=lambda x: x,

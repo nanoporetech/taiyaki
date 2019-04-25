@@ -8,7 +8,6 @@ from scipy.stats import truncnorm
 
 from taiyaki import activation, flipflopfings
 from taiyaki.config import taiyaki_dtype
-from taiyaki.variables import DEFAULT_ALPHABET
 
 
 """  Convention: inMat row major (C ordering) as (time, batch, state)

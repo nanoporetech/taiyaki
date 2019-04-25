@@ -7,12 +7,14 @@ import time
 import torch
 
 from collections import defaultdict
-from taiyaki import chunk_selection, helpers, mapped_signal_files, optim, variables
-from taiyaki.common_cmdargs import add_common_command_args
-from taiyaki.cmdargs import FileExists, Maybe, Positive, proportion
-from taiyaki import activation, layers
-from taiyaki.squiggle_match import squiggle_match_loss, embed_sequence
+
+from taiyaki import (activation, chunk_selection, helpers, layers,
+                     mapped_signal_files, optim)
 from taiyaki import __version__
+from taiyaki.cmdargs import FileExists, Maybe, Positive, proportion
+from taiyaki.common_cmdargs import add_common_command_args
+from taiyaki.constants import DOTROWLENGTH
+from taiyaki.squiggle_match import squiggle_match_loss, embed_sequence
 
 
 parser = argparse.ArgumentParser(description='Train a model to predict ionic current levels from sequence',
@@ -88,9 +90,9 @@ def main():
     if args.limit is not None:
         log.write('* Limiting number of strands to {}\n'.format(args.limit))
 
-    with mapped_signal_files.HDF5(args.input, "r") as per_read_file:
+    with mapped_signal_files.HDF5Reader(args.input) as per_read_file:
         alphabet, _, _ = per_read_file.get_alphabet_information()
-        assert len(alphabet) <= 4, (
+        assert len(alphabet) == 4, (
             'Squiggle prediction with modified base training data is ' +
             'not currenly supported.')
         read_data = per_read_file.get_multiple_reads(read_ids, max_reads=args.limit)
@@ -148,9 +150,9 @@ def main():
             log_rejected_chunks = None
         # chunk_batch is a list of dicts.
         chunk_batch, batch_rejections = chunk_selection.assemble_batch(read_data, args.batch_size, args.target_len,
-                                                                      filter_parameters, args, log,
-                                                                      chunk_log=log_rejected_chunks,
-                                                                      chunk_len_means_sequence_len=True)
+                                                                       filter_parameters, args, log,
+                                                                       chunk_log=log_rejected_chunks,
+                                                                       chunk_len_means_sequence_len=True)
 
         total_chunks += len(chunk_batch)
         # Update counts of reasons for rejection
@@ -192,11 +194,11 @@ def main():
             log.write('.')
 
 
-        if (i + 1) % variables.DOTROWLENGTH == 0:
+        if (i + 1) % DOTROWLENGTH == 0:
             tn = time.time()
             dt = tn - t0
             t = ' {:5d} {:5.3f}  {:5.2f}s'
-            log.write(t.format((i + 1) // variables.DOTROWLENGTH, score_smoothed.value, dt))
+            log.write(t.format((i + 1) // DOTROWLENGTH, score_smoothed.value, dt))
             t0 = tn
             # Write summary of chunk rejection reasons
             for k, v in rejection_dict.items():

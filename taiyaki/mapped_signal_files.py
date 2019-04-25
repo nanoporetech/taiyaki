@@ -8,6 +8,7 @@
 from abc import ABC, abstractmethod
 import h5py
 import numpy as np
+import posixpath
 
 _version = 8
 
@@ -50,8 +51,6 @@ class Read(dict):
         'Reference': 'np_int16'}
 
     optional_read_data = {
-        'alphabet': 'str',
-        'collapse_alphabet': 'str',
         'mapping_score': 'float',
         'mapping_method': 'str',
         'read_id': 'str'}
@@ -328,7 +327,7 @@ class Read(dict):
         return self._get_chunk((dacstart, dacsend_exc), (refstart, refend_exc))
 
 
-class AbstractMappedSignalFile(ABC):
+class AbstractMappedSignalReader(ABC):
     """Abstract base class for files containing mapped reads.
     Methods specified as abstractnethod must be overridden
     in derived classes.
@@ -383,29 +382,15 @@ class AbstractMappedSignalFile(ABC):
         """Return list of read ids, or empty list if none present"""
         pass
 
+    @property
     @abstractmethod
-    def get_version_number(self):
+    def version(self):
         """Return integer version number"""
         pass
 
     @abstractmethod
     def get_alphabet_information(self):
         """Return alphabet, collapse_alphabet and mod_long_names"""
-        pass
-
-    @abstractmethod
-    def write_read(self, read_id, read):
-        """Write a read to the appropriate place in the file, starting from a read object"""
-        pass
-
-    @abstractmethod
-    def write_version_number(self, version_number=_version):
-        """Write version number of file format"""
-        pass
-
-    @abstractmethod
-    def write_alphabet_information(self, alphabet_info):
-        """Write alphabet information to file"""
         pass
 
     # This function is not abstract because it can be left as-is.
@@ -445,7 +430,7 @@ class AbstractMappedSignalFile(ABC):
         """Check the whole file, returning report in the form of a string"""
         return_string = ""
         try:
-            version_number = self.get_version_number()
+            version_number = self.version
             return_string += Read._typecheck('version', version_number, 'int')
         except:
             return_string += "Can't get version number\n"
@@ -467,7 +452,52 @@ class AbstractMappedSignalFile(ABC):
             return return_string
 
 
-class HDF5(AbstractMappedSignalFile):
+class AbstractMappedSignalWriter(ABC):
+    """Abstract base class for writing files containing mapped reads.
+    Methods specified as abstractmethod must be overridden
+    in derived classes.
+    Note that the methods to check reads and to check the metadata
+    are not abstract and should not be overridden.
+
+    The class has __enter__ and __exit__ so can be used as a context
+    manager (i.e. with the 'with' statement).
+
+    In all derived classes, the input and output from the file is done with
+    the read_dict defined above.
+
+    Derived classes should use the read class variables read_data and
+    optional_read_data
+    as much as possible so that changes made there will be propagated to the
+    derived classes.
+    """
+
+    def __enter__(self):
+        """Called when 'with' is used to create an object.
+        Since we always return the instance, no need to override this."""
+        return self
+
+    def __exit__(self, *args):
+        """No need to override this - just override the close() function.
+        Called when 'with' finishes."""
+        self.close()
+
+    @abstractmethod
+    def write_read(self, readdict):
+        """Write a read to the appropriate place in the file, starting from a read dictionary"""
+        pass
+
+    @abstractmethod
+    def _write_version(self):
+        """Write version number of file format"""
+        pass
+
+    @abstractmethod
+    def _write_alphabet_info(self, alphabet_info):
+        """Write alphabet information to file"""
+        pass
+
+
+class HDF5Reader(AbstractMappedSignalReader):
     """A file storing mapped data in an HDF5 in the simplest
     possible way.
     NOT using a derivative of the fast5 format.
@@ -485,8 +515,9 @@ class HDF5(AbstractMappedSignalFile):
 
     """
 
-    def __init__(self, filename, mode):
-        self.hdf5 = h5py.File(filename, mode)
+    def __init__(self, filename):
+        self.hdf5 = h5py.File(filename, 'r')
+        assert self.version == _version, 'Incorrect file version, got {} expected {}'.format(self.version, _version)
 
     def close(self):
         self.hdf5.close()
@@ -497,7 +528,6 @@ class HDF5(AbstractMappedSignalFile):
 
     def get_read(self, read_id):
         """Return a read object (see class definition above)."""
-        assert self.get_version_number() == _version, 'Incorrect file version, got {} expected {}'.format(self.get_version_number(), _version)
         h = self.hdf5[self._get_read_path(read_id)]
         d = {}
         for k, v in h.items():  # Iterate over datasets (the read group should have no subgroups)
@@ -507,36 +537,64 @@ class HDF5(AbstractMappedSignalFile):
         return Read(d)
 
     def get_read_ids(self):
-        assert self.get_version_number() == _version, 'Incorrect file version, got {} expected {}'.format(self.get_version_number(), _version)
         """Return list of read ids, or empty list if none present"""
         try:
             return list(self.hdf5['Reads'].keys())
         except:
             return []
 
-    def get_version_number(self):
+    @property
+    def version(self):
         return self.hdf5.attrs['version']
 
     def get_alphabet_information(self):
-        assert self.get_version_number() == _version, 'Incorrect file version, got {} expected {}'.format(self.get_version_number(), _version)
         mod_long_names = self.hdf5.attrs['mod_long_names'].splitlines()
         return (self.hdf5.attrs['alphabet'],
                 self.hdf5.attrs['collapse_alphabet'],
                 mod_long_names)
 
-    def write_read(self, read_id, read):
+
+class HDF5Writer(AbstractMappedSignalWriter):
+    """A file storing mapped data in an HDF5 in the simplest
+    possible way.
+    NOT using a derivative of the fast5 format.
+    This is an HDF5 file with structure below
+    There can be as many read_ids as you like.
+    version is an attr, and the read data are stored
+    as Datasets or attributes as appropriate.
+
+      file--|---Reads ----------|--<read_id_0>-- {
+            \                   |                {(All the read data for read 0)
+             version            |
+             alphabet           |--<read_id_>--  {
+             collapse_alphabet  |                {(All the read data for read 1)
+             mod_long_names     |
+
+    """
+    def __init__(self, filename, alphabet_info):
+        # mode 'w' to preserve behaviour, 'x' would be more appropraite
+        self.hdf5 = h5py.File(filename, 'w')
+        self._write_version()
+        self._write_alphabet_info(alphabet_info)
+
+    def close(self):
+        self.hdf5.close()
+
+    def write_read(self, readdict):
         """Write a read to the appropriate place in the file, starting from a read object"""
-        g = self.hdf5.create_group(self._get_read_path(read_id))
+        read = Read(readdict)
+        read_id = readdict['read_id']
+        g = self.hdf5.create_group(posixpath.join('Reads', read_id))
         for k, v in read.items():
             if isinstance(v, np.ndarray):
                 g.create_dataset(k, data=v)
             else:
                 g.attrs[k] = v
 
-    def write_version_number(self, version_number=_version):
-        self.hdf5.attrs['version'] = version_number
+    def _write_version(self):
+        self.hdf5.attrs['version'] = _version
 
-    def write_alphabet_information(self, alphabet_info):
+    def _write_alphabet_info(self, alphabet_info):
         self.hdf5.attrs['alphabet'] = alphabet_info.alphabet
         self.hdf5.attrs['collapse_alphabet'] = alphabet_info.collapse_alphabet
         self.hdf5.attrs['mod_long_names'] = '\n'.join(alphabet_info.mod_long_names)

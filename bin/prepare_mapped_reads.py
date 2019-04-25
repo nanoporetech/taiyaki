@@ -5,8 +5,8 @@ import os
 import sys
 from taiyaki.cmdargs import FileExists
 from taiyaki.common_cmdargs import add_common_command_args
-from taiyaki import (alphabet, fast5utils, helpers, prepare_mapping_funcs,
-                     variables)
+from taiyaki.constants import DEFAULT_ALPHABET
+from taiyaki import alphabet, fast5utils, helpers, prepare_mapping_funcs
 
 
 program_description = "Prepare data for model training and save to hdf5 file by remapping with flip-flop model"
@@ -15,8 +15,7 @@ parser = argparse.ArgumentParser(description=program_description,
 
 add_common_command_args(parser, 'device input_folder input_strand_list jobs limit overwrite recursive version'.split())
 
-default_alphabet_str = variables.DEFAULT_ALPHABET.decode("utf-8")
-parser.add_argument('--alphabet', default=default_alphabet_str,
+parser.add_argument('--alphabet', default=DEFAULT_ALPHABET,
                     help='Canonical base alphabet')
 parser.add_argument('--mod', nargs=3, metavar=('base', 'canonical', 'name'),
                     default=[], action='append',
