@@ -5,16 +5,15 @@ import torch
 
 from ont_fast5_api import fast5_interface
 
-from taiyaki import basecall_helpers
+from taiyaki import basecall_helpers, fast5utils
 from taiyaki.cmdargs import FileExists, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.cupy_extensions.flipflop import flipflop_make_trans, flipflop_viterbi
-import taiyaki.fast5utils as fast5utils
 from taiyaki.flipflopfings import path_to_str
 from taiyaki.helpers import guess_model_stride, load_model, open_file_or_stdout
 from taiyaki.maths import med_mad
 from taiyaki.signal import Signal
-from taiyaki.variables import DEFAULT_ALPHABET
+from taiyaki.constants import DEFAULT_ALPHABET
 
 
 parser = argparse.ArgumentParser(
@@ -23,7 +22,7 @@ parser = argparse.ArgumentParser(
 
 add_common_command_args(parser, 'device input_folder input_strand_list limit output recursive version'.split())
 
-parser.add_argument("--alphabet", default=DEFAULT_ALPHABET.decode(), help="Alphabet used by basecaller")
+parser.add_argument("--alphabet", default=DEFAULT_ALPHABET, help="Alphabet used by basecaller")
 parser.add_argument("--chunk_size", type=Positive(int), default=basecall_helpers._DEFAULT_CHUNK_SIZE, help="Size of signal chunks sent to GPU")
 parser.add_argument("--overlap", type=NonNegative(int), default=basecall_helpers._DEFAULT_OVERLAP, help="Overlap between signal chunks sent to GPU")
 parser.add_argument("model", action=FileExists, help="Model checkpoint file to use for basecalling")

@@ -113,7 +113,7 @@ def _load_data(args, log):
     if args.limit is not None:
         log.write('* Limiting number of strands to {}\n'.format(args.limit))
 
-    with mapped_signal_files.HDF5(args.input, "r") as per_read_file:
+    with mapped_signal_files.HDF5Reader(args.input) as per_read_file:
         (bases_alphabet, collapse_alphabet,
          mod_long_names) = per_read_file.get_alphabet_information()
         read_data = per_read_file.get_multiple_reads(

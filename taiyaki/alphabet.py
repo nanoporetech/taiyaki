@@ -152,7 +152,7 @@ class AlphabetInfo(object):
 
         return
 
-    def __init__(self, alphabet, collapse_alphabet, mod_long_names=None,
+    def __init__(self, alphabet, collapse_alphabet, mod_long_names=[],
                  do_reorder=False):
         """ Parse alphabet and collapse_alphabet to extract information
         required for flip-flop modeling

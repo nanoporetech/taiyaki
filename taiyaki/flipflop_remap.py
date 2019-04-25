@@ -1,11 +1,9 @@
 import numpy as np
 from taiyaki import flipflopfings
+from taiyaki.constants import DEFAULT_ALPHABET, LARGE_VAL
 
 
-_LARGE_VAL = 1e30
-
-
-def map_to_crf_viterbi(scores, step_index, stay_index, localpen=_LARGE_VAL):
+def map_to_crf_viterbi(scores, step_index, stay_index, localpen=LARGE_VAL):
     """Find highest scoring path corresponding to a given label sequence
 
     :param scores: a 2D array of CRF transition scores (log-space)
@@ -23,12 +21,12 @@ def map_to_crf_viterbi(scores, step_index, stay_index, localpen=_LARGE_VAL):
     N, M = len(scores), len(stay_index)
     assert len(step_index) == len(stay_index) - 1
 
-    pscore = np.full(M, -_LARGE_VAL)
-    cscore = np.full(M, -_LARGE_VAL)
+    pscore = np.full(M, -LARGE_VAL)
+    cscore = np.full(M, -LARGE_VAL)
     cscore[0] = 0
 
     start_score = 0.0
-    end_score = -_LARGE_VAL
+    end_score = -LARGE_VAL
     alignment_end = 0
 
     traceback = np.zeros((N + 1, M), dtype='i1')
@@ -80,7 +78,8 @@ def map_to_crf_viterbi(scores, step_index, stay_index, localpen=_LARGE_VAL):
     return max(cscore[-1], end_score), path
 
 
-def flipflop_remap(transition_scores, sequence, alphabet="ACGT", localpen=_LARGE_VAL):
+def flipflop_remap(transition_scores, sequence, alphabet=DEFAULT_ALPHABET,
+                   localpen=LARGE_VAL):
     """Finds the best alignment between a matrix of flipflip transition scores and a sequence
 
     Returns the score calculated for the best path, and an array of sequence positions

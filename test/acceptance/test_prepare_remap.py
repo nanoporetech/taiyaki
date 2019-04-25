@@ -48,7 +48,7 @@ class AcceptanceTest(unittest.TestCase):
 
         # Open mapped read file and run checks to see if it complies with file format
         # Also get a chunk and check that speed is within reasonable bounds
-        with mapped_signal_files.HDF5(self.output_mapped_signal_file,"r") as f:
+        with mapped_signal_files.HDF5Reader(self.output_mapped_signal_file) as f:
             testreport = f.check()
             print("Test report from checking mapped read file:")
             print(testreport)
@@ -85,7 +85,7 @@ class AcceptanceTest(unittest.TestCase):
 
         # Open mapped read file and run checks to see if it complies with file format
         # Also get a chunk and check that speed is within reasonable bounds
-        with mapped_signal_files.HDF5(self.output_mapped_signal_file,"r") as f:
+        with mapped_signal_files.HDF5Reader(self.output_mapped_signal_file) as f:
             testreport = f.check()
             print("Test report from checking mapped read file:")
             print(testreport)

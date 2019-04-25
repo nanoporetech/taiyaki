@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import unittest
+
 import matplotlib as mpl
 mpl.use("Agg")
 import matplotlib.pyplot as plt
@@ -13,7 +14,8 @@ import matplotlib.pyplot as plt
 # and with chunk limits are commented out with an 'if False'
 # may be useful in debugging
 
-from taiyaki import mapped_signal_files
+from taiyaki import alphabet, mapped_signal_files
+from taiyaki.constants import DEFAULT_ALPHABET
 
 
 def vectorprint(x):
@@ -77,18 +79,18 @@ class TestMappedReadFiles(unittest.TestCase):
         self.assertEqual(check_text, "pass")
 
         print("Writing to file")
-        with mapped_signal_files.HDF5(self.testfilepath, "w") as f:
-            f.write_read(read_object['read_id'], read_object)
-            f.write_version_number()
+        alphabet_info = alphabet.AlphabetInfo(DEFAULT_ALPHABET, DEFAULT_ALPHABET)
+        with mapped_signal_files.HDF5Writer(self.testfilepath, alphabet_info) as f:
+            f.write_read(read_object)
 
         print("Current dir = ", os.getcwd())
         print("File written to ", self.testfilepath)
 
         print("\nOpening file for reading")
-        with mapped_signal_files.HDF5(self.testfilepath, "r") as f:
+        with mapped_signal_files.HDF5Reader(self.testfilepath) as f:
             ids = f.get_read_ids()
             print("Read ids=", ids[0])
-            print("Version number = ", f.get_version_number())
+            print("Version number = ", f.version)
             self.assertEqual(ids[0], read_dict['read_id'])
 
             file_test_report = f.check()
@@ -131,8 +133,6 @@ class TestMappedReadFiles(unittest.TestCase):
             plt.savefig(self.plotfilepath)
             print("Saved plot to", self.plotfilepath)
 
-        #raise Exception("Fail so we can read output")
-        return
 
     def test_check_HDF5_mapped_read_file(self):
         """Check that constructing a read object which doesn't conform
@@ -149,23 +149,20 @@ class TestMappedReadFiles(unittest.TestCase):
         self.assertNotEqual(check_text, "pass")
 
         print("Writing to file")
-        with mapped_signal_files.HDF5(self.testfilepath, "w") as f:
-            f.write_read(read_object['read_id'], read_object)
-            f.write_version_number()
+        alphabet_info = alphabet.AlphabetInfo(DEFAULT_ALPHABET, DEFAULT_ALPHABET)
+        with mapped_signal_files.HDF5Writer(self.testfilepath, alphabet_info) as f:
+            f.write_read(read_object)
 
         print("Current dir = ", os.getcwd())
         print("File written to ", self.testfilepath)
 
         print("\nOpening file for reading")
-        with mapped_signal_files.HDF5(self.testfilepath, "r") as f:
+        with mapped_signal_files.HDF5Reader(self.testfilepath) as f:
             ids = f.get_read_ids()
             print("Read ids=", ids[0])
-            print("Version number = ", f.get_version_number())
+            print("Version number = ", f.version)
             self.assertEqual(ids[0], read_dict['read_id'])
 
             file_test_report = f.check()
             print("Test report (should fail):", file_test_report)
             self.assertNotEqual(file_test_report, "pass")
-
-        #raise Exception("Fail so we can read output")
-        return
