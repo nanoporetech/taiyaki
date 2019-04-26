@@ -8,6 +8,13 @@ _DEFAULT_CHUNK_SIZE = 1000
 _DEFAULT_OVERLAP = 100
 
 
+def round_chunk_values(chunk_size, chunk_overlap, stride):
+    # round chunk size down to nearest stride
+    chunk_size = (chunk_size // stride) * stride
+    # round chunk_overlap down to nearest stride
+    chunk_overlap = (chunk_overlap // stride) * stride
+    return chunk_size, chunk_overlap
+
 def chunk_read(signal, chunk_size, overlap):
     """ Divide signal into overlapping chunks """
     if len(signal) < chunk_size:
@@ -26,7 +33,7 @@ def chunk_read(signal, chunk_size, overlap):
     return chunks, chunk_starts, chunk_ends
 
 
-def stitch_chunks(out, chunk_starts, chunk_ends, stride):
+def stitch_chunks(out, chunk_starts, chunk_ends, stride, path_stitching=False):
     """ Stitch together neural network output or viterbi path
     from overlapping chunks
     """
@@ -38,6 +45,8 @@ def stitch_chunks(out, chunk_starts, chunk_ends, stride):
         # first chunk
         start = chunk_starts[0] // stride
         end = (chunk_ends[0] + chunk_starts[1]) // (2 * stride)
+        if path_stitching:
+            end += 1
         stitched_out = [out[start:end, 0]]
 
         # middle chunks
@@ -45,11 +54,17 @@ def stitch_chunks(out, chunk_starts, chunk_ends, stride):
             start = (chunk_ends[i - 1] - chunk_starts[i]) // (2 * stride)
             end = (chunk_ends[i] + chunk_starts[i + 1]
                    - 2 * chunk_starts[i]) // (2 * stride)
+            if path_stitching:
+                start +=1
+                end += 1
             stitched_out.append(out[start:end, i])
 
         # last chunk
-        start = (chunk_starts[-2] - chunk_ends[-1]) // (2 * stride)
+        start = (chunk_ends[-2] - chunk_starts[-1]) // (2 * stride)
         end = (chunk_ends[-1] - chunk_starts[-1]) // stride
+        if path_stitching:
+            start += 1
+            end += 1
         stitched_out.append(out[start:end, -1])
 
         return torch.cat(stitched_out, 0)
@@ -62,6 +77,8 @@ def run_model(
     """
     device = next(model.parameters()).device
     stride = guess_model_stride(model, device=device)
+    chunk_size, overlap = round_chunk_values(chunk_size, overlap, stride)
+
     chunks, chunk_starts, chunk_ends = chunk_read(
         normed_signal, chunk_size, overlap)
     with torch.no_grad():

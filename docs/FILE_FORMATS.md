@@ -109,3 +109,26 @@ The script **misc/plot_chunk_log.py** can be used to plot the data in this file.
     * The script **bin/dump_json.py** transforms a **.checkpoint** file into a **json**-based format which can be used by Guppy.
     * **bin/prepare_mapped_reads.py** needs a trained flip-flop network to use for remapping. This is in the **.checkpoint** format, and an example can be found in the **models** directory.
 
+
+## Modified base output file
+
+Modified base output scores are output from the **bin/basecall.py** into an HDF5 file with the following format.
+More negative modified base scores indicate modified bases and more positive scores indicate canonical bases.
+These scores are not calibrated and thus no statistical meaning should be assumed for the scores.
+
+The files are HDF5 files with the following structure.
+
+    HDF5_file/
+      ├── dataset: mod_long_names (string)
+      └── group: Reads/
+          ├── dataset: <read_id_1>
+          ├── dataset: <read_id_2>
+          ├── dataset: <read_id_3>
+          .
+          .
+
+Each read_id is a UUID, and each read dataset is of size [basecalls length] x [number of modified bases].
+Rows represents the modified base scores for that index within that read's basecalls.
+Columns represent scores for the modified base in the order specified in mod_long_names.
+Modified base scores are only produced where applicable according to the canonical base associated with each modification (e.g. `5mC` calls are only produced at `C` basecalls).
+All other values within the read datasets are NULL.

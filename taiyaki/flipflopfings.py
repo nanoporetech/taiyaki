@@ -48,6 +48,32 @@ def path_to_str(path, alphabet='ACGT'):
     return seq.tobytes().decode()
 
 
+def extract_mod_weights(mod_weights, path, can_nmods):
+    """ Convert flipflop path into a basecall string """
+    # skip initial base from base calling that was never "moved into"
+    move = np.ediff1d(path, to_begin=0) != 0
+    path_vals = path[move]
+    # extract weights at basecall positions
+    bc_mod_weights = mod_weights[move[1:]]
+    curr_can_pos = 0
+    mods_scores = []
+    for base_i, can_nmod in enumerate(can_nmods):
+        if can_nmod > 0:
+            base_poss = np.where(np.equal(np.mod(
+                path_vals, len(can_nmods)), base_i))[0]
+        for mod_i in range(can_nmod):
+            mod_i_scores = np.full(
+                bc_mod_weights.shape[0] + 1, np.NAN)
+            # first base is always unmodified since it is never "moved into"
+            mod_i_scores[base_poss + 1] = bc_mod_weights[
+                base_poss, curr_can_pos + 1 + mod_i]
+            mods_scores.append(mod_i_scores)
+        curr_can_pos += 1 + can_nmod
+    mods_scores = np.stack(mods_scores, axis=1)
+
+    return mods_scores
+
+
 def cat_mod_code(labels, network):
     """ Given a numpy array of digits representing bases, convert to canonical
     flip-flop labels (defined by flipflopfings.flipflop_code) and
