@@ -807,6 +807,12 @@ class GlobalNormFlipFlopCatMod(nn.Module):
 
         return
 
+    @property
+    def nbase(self):
+        """ For consistency with GlobalNormFlipFlop
+        """
+        return self.ncan_base
+
     def json(self, params=False):
         res = OrderedDict([
             ('type', 'GlobalNormTwoStateCatMod'),

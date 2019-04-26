@@ -261,21 +261,23 @@ COLOURS = [91, 93, 95, 92, 35, 33, 94]
 class Progress(object):
     """A dotty way of showing progress"""
 
-    def __init__(self, fh=sys.stderr, every=1, maxlen=50):
+    def __init__(self, fh=sys.stderr, every=1, maxlen=50, quiet=False):
         assert maxlen > 0
         self._count = 0
         self.every = every
         self._line_len = maxlen
         self.fh = fh
+        self.quiet = quiet
 
     def step(self):
         self._count += 1
-        if self.count % self.every == 0:
-            dotcount = self.count // self.every
-            self.fh.write('\033[1;{}m.\033[m'.format(COLOURS[dotcount % len(COLOURS)]))
-            if dotcount % self.line_len == 0:
-                self.fh.write('{:8d}\n'.format(self.count))
-            self.fh.flush()
+        if not self.quiet:
+            if self.count % self.every == 0:
+                dotcount = self.count // self.every
+                self.fh.write('\033[1;{}m.\033[m'.format(COLOURS[dotcount % len(COLOURS)]))
+                if dotcount % self.line_len == 0:
+                    self.fh.write('{:8d}\n'.format(self.count))
+                self.fh.flush()
 
     @property
     def line_len(self):
