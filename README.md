@@ -106,6 +106,8 @@ If Taiyaki has install in a virtual environment, it will have to activated befor
 # Walk through
 For a walk-through of Taiyaki model training, including how to obtain sample training data, see [docs/walkthrough.rst](docs/walkthrough.rst).
 
+For an example of training a modifed base model, see [docs/modbase.rst](docs/modbase.rst).
+
 # Workflows
 
 ## Using the workflow Makefile 
