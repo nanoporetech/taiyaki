@@ -211,7 +211,7 @@ def main():
             stacked_current, device=device, dtype=torch.float32).unsqueeze(2)
         # Sequence input tensor is just a 1D vector, and so is seqlens
         seqs = torch.tensor(np.concatenate([
-            flipflopfings.flipflop_code(d['sequence']) for d in chunk_batch]),
+            flipflopfings.flipflop_code(d['sequence'], nbase) for d in chunk_batch]),
                             device=device, dtype=torch.long)
         seqlens = torch.tensor([
             len(d['sequence']) for d in chunk_batch], dtype=torch.long,
