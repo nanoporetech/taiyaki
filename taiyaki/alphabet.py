@@ -185,6 +185,17 @@ class AlphabetInfo(object):
         return
 
 
+    def equals(self, alphabet_info2):
+        """Does alphabet_info2 describe the same alphabet as self?"""
+        if self.alphabet != alphabet_info2.alphabet:
+            return False
+        if self.collapse_alphabet != alphabet_info2.collapse_alphabet:
+            return False
+        if self.mod_long_names != alphabet_info2.mod_long_names:
+            return False
+        return True
+
+
 if __name__ == '__main__':
     NotImplementedError(
         'This is a taiyaki module and is not intended for direct use.')
