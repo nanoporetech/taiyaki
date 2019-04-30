@@ -12,8 +12,6 @@ from taiyaki.fileio import readtsv
 from taiyaki.constants import DEFAULT_ALPHABET
 
 
-
-
 def _load_python_model(model_file, **model_kwargs):
     netmodule = imp.load_source('netmodule', model_file)
     network = netmodule.network(**model_kwargs)
@@ -54,52 +52,6 @@ def guess_model_stride(net, input_shape=(720, 1, 1), device='cpu'):
     return int(round(input_shape[0] / out.size()[0]))
 
 
-def objwalk(obj, types=(object,), path=(), memo=None):
-    """Recursively walk a python object yielding instances of specified types
-
-    Ripped off from: https://goo.gl/brwMce
-    """
-    if memo is None:
-        memo = set()
-
-    if isinstance(obj, Mapping):
-        children = obj.items()
-    elif isinstance(obj, Sequence) and not isinstance(obj, (bytes, str)):
-        children = enumerate(obj)
-    elif hasattr(obj, "__dict__"):
-        children = vars(obj).items()
-    else:
-        children = []
-
-    if id(obj) not in memo:
-        memo.add(id(obj))
-
-        if isinstance(obj, types):
-            yield path, obj
-
-        for (path_component, value) in children:
-            for res in objwalk(value, types, path + (path_component,), memo):
-                yield res
-
-
-def set_at_path(obj, path, val):
-    """Set value on object following a path as built by objwalk"""
-    if len(path) == 1:
-        if isinstance(obj, Mapping):
-            obj[path[0]] = val
-        elif isinstance(obj, Sequence) and not isinstance(obj, (bytes, str)):
-            obj[path[0]] = val
-        else:
-            setattr(obj, path[0], val)
-    elif len(path) > 1:
-        if isinstance(obj, Mapping):
-            set_at_path(obj[path[0]], path[1:], val)
-        elif isinstance(obj, Sequence) and not isinstance(obj, (bytes, str)):
-            set_at_path(obj[path[0]], path[1:], val)
-        else:
-            set_at_path(obj.__dict__[path[0]], path[1:], val)
-
-
 def get_kwargs(args, names):
     kwargs = {}
     for name in names:
@@ -138,25 +90,6 @@ def fasta_file_to_dict(fasta_file_name, allow_N=False, alphabet=DEFAULT_ALPHABET
             references[ref.id] = refseq
 
     return references
-
-
-class ReadIndex(dict):
-    """dict subclass mapping from read names (str or bytes) to index (int)"""
-    @staticmethod
-    def _force_str(s):
-        return s.decode('utf-8') if isinstance(s, bytes) else s
-
-    def __init__(self, *args, **kwargs):
-        data = dict(*args, **kwargs)
-        items = ((ReadIndex._force_str(basename), read_id) for basename, read_id in data.items())
-        super().__init__(items)
-
-    def to_numpy(self):
-        """Convert ReadIndex instance into a numpy structured array"""
-        max_key_len = max(map(len, self.keys()))
-        key_dtype = 'S{}'.format(max_key_len)
-        dtype = [('read_name', key_dtype), ('read_id', '<u4')]
-        return np.fromiter(self.items(), dtype=dtype)
 
 
 def get_column_from_tsv(tsv_file_name, column):
