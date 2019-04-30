@@ -278,7 +278,7 @@ class Read(dict):
         """
         mapped_dacs_region = self.get_mapped_dacs_region()
         spare_length = mapped_dacs_region[1] - mapped_dacs_region[0] - chunk_len
-        if spare_length < 0:
+        if spare_length <= 0:
             if verbose:
                 print("Rejecting read because spare_length=", spare_length,
                       ". mapped_dacs_region = ", mapped_dacs_region)
