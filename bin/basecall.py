@@ -134,7 +134,7 @@ def main():
             "Cannot output modified bases from canonical base only model.")
         sys.exit()
     n_can_states = nstate_flipflop(model.sublayers[-1].nbase)
-    stride = guess_model_stride(model, device=device)
+    stride = guess_model_stride(model)
     chunk_size, chunk_overlap = basecall_helpers.round_chunk_values(
         args.chunk_size, args.overlap, stride)
 
