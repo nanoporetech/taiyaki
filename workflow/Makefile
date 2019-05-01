@@ -77,6 +77,9 @@ CHUNK_LOGGING_THRESHOLD := 0
 # Run nvidia-smi to get a summary of which GPUs are in use. Specify DEVICE=cpu if no GPU available.
 DEVICE := 0
 
+#Network size for training
+NETWORK_SIZE := 256
+
 #####################################
 # MODIFIED BASE TRAINING PARAMETERS
 #####################################
@@ -200,6 +203,7 @@ listparams:
 	@echo "TAIYAKI_ROOT="${TAIYAKI_ROOT}
 	@echo "TAIYAKIACTIVATE="${TAIYAKIACTIVATE}
 	@echo "MAX_TRAINING_ITERS="${MAX_TRAINING_ITERS}
+	@echo "NETWORK_SIZE="${NETWORK_SIZE}
 	@echo ""
 
 
@@ -294,7 +298,7 @@ ${RESULT_DIR}/train_%/trained: ${INGREDIENT_DIR}/mapped_%.hdf5
 	@echo ""
 	@echo "------------Training with $* chunks"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --size 96 --overwrite --chunk_logging_threshold ${CHUNK_LOGGING_THRESHOLD} --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} ${TRAININGMODEL} $(dir $@) $<
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --size ${NETWORK_SIZE} --overwrite --chunk_logging_threshold ${CHUNK_LOGGING_THRESHOLD} --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} ${TRAININGMODEL} $(dir $@) $<
 	touch $@
 
 
@@ -313,7 +317,7 @@ ${RESULT_DIR}/mod_train_%/trained: ${INGREDIENT_DIR}/mod_mapped_%.hdf5
 	@echo ""
 	@echo "------------Training with $* chunks"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_mod_flipflop.py --size 96 --overwrite --chunk_logging_threshold ${CHUNK_LOGGING_THRESHOLD} --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} --outdir $(dir $@) ${MODTRAININGMODEL} $<
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_mod_flipflop.py --size ${NETWORK_SIZE} --overwrite --chunk_logging_threshold ${CHUNK_LOGGING_THRESHOLD} --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} --outdir $(dir $@) ${MODTRAININGMODEL} $<
 	touch $@
 
 
