@@ -12,9 +12,10 @@ parser = argparse.ArgumentParser(
     description='Plot graphs of reference-to-signal maps from mapped signal files. Also dump one-line summary of each read to stdout',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-parser.add_argument('output', help='Output: a png file, or none to skip plotting')
 parser.add_argument('mapped_read_files',  nargs='+',
                     help='Inputs: one or more mapped read files')
+
+parser.add_argument('--output', help='Output PNG filename. Default: only output per-read summaries.')
 parser.add_argument('--maxlegendsize', type=Positive(int), default=10,
                     help='Maximum number of reads to list in the legend.')
 
@@ -32,7 +33,7 @@ parser.add_argument('--xmax', default = None, type = float,
 
 def main():
     args = parser.parse_args()
-    if args.output != 'none':
+    if args.output is not None:
         plt.figure(figsize=(12, 10))
     reads_sofar = 0
     for nfile, mapped_read_file in enumerate(args.mapped_read_files):
@@ -42,29 +43,34 @@ def main():
                 read_ids = args.read_ids
             else:
                 read_ids = all_read_ids[:args.nreads]
-                sys.stderr.write("Reading first {} read ids in file {}\n".format(args.nreads, mapped_read_file))
+                sys.stderr.write(
+                    "Reading first {} read ids in file {}\n".format(
+                        args.nreads, mapped_read_file))
             for nread, read_id in enumerate(read_ids):
                 r = h5.get_read(read_id)
                 mapping = r['Ref_to_signal']
                 f = mapping >= 0
                 maplen = len(mapping)
-                read_info_text = 'file '+str(nfile)+' read '+str(nread) + ":" + read_id + " reflen:" + str(maplen - 1) + ", daclen:" + str(len(r['Dacs']))
-                print(read_info_text)
-                if reads_sofar <= args.maxlegendsize:
-                    label = read_info_text
-                else:
-                    label = None
-                x,y = np.arange(maplen)[f], mapping[f]
-                if args.xmin is not None:
-                    xf = (x >= args.xmin)
-                    x,y = x[xf],y[xf]
-                if args.xmax is not None:
-                    xf = (x <= args.xmax)
-                    x,y = x[xf],y[xf]
-                if args.output != 'none':                    
-                    plt.plot(x, y, label=label, linestyle = 'dashed' if nfile==1 else 'solid')
+                read_info_text = (
+                    'file {} read {}:{} reflen:{}, daclen:{}').format(
+                        nfile, nread, read_id, maplen - 1, len(r['Dacs']))
+                sys.stdout.write(read_info_text + '\n')
 
-    if args.output != 'none':
+                if args.output is not None:
+                    label = (read_info_text
+                             if reads_sofar <= args.maxlegendsize
+                             else None)
+                    x, y = np.arange(maplen)[f], mapping[f]
+                    if args.xmin is not None:
+                        xf = x >= args.xmin
+                        x, y = x[xf], y[xf]
+                    if args.xmax is not None:
+                        xf = x <= args.xmax
+                        x, y = x[xf], y[xf]
+                    plt.plot(x, y, label=label,
+                             linestyle = 'dashed' if nfile == 1 else 'solid')
+
+    if args.output is not None:
         plt.grid()
         plt.xlabel('Reference location')
         plt.ylabel('Signal location')
