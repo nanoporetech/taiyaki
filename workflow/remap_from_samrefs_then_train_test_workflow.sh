@@ -27,7 +27,7 @@ rm -rf $RESULT_DIR
 rm -rf ${TAIYAKI_DIR}/RESULTS/training_ingredients
 
 #TAIYAKIACTIVATE=(nothing) makes the test run without activating the venv at each step. Necessary for running on the git server.
-make -f workflow/Makefile MAXREADS=10 READDIR=${READ_DIR} TAIYAKI_ROOT=${TAIYAKI_DIR} DEVICE=cpu MAX_TRAINING_ITERS=2 BAMFILE="${SAMFILES}" REFERENCEFILE=${REFERENCEFILE} SEED=1 TAIYAKIACTIVATE= train_remap_samref
+make -f workflow/Makefile NETWORK_SIZE=96 MAXREADS=10 READDIR=${READ_DIR} TAIYAKI_ROOT=${TAIYAKI_DIR} DEVICE=cpu MAX_TRAINING_ITERS=2 BAMFILE="${SAMFILES}" REFERENCEFILE=${REFERENCEFILE} SEED=1 TAIYAKIACTIVATE= train_remap_samref
 
 # Check that training chunk log and training log exist and have enough rows for us to be sure something useful has happened
 
