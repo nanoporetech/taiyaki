@@ -75,12 +75,12 @@ def run_model(
         overlap=_DEFAULT_OVERLAP, max_concur_chunks=None, return_numpy=True):
     """ Hook for megalodon to run network via taiyaki
     """
-    device = next(model.parameters()).device
-    stride = guess_model_stride(model, device=device)
+    stride = guess_model_stride(model)
     chunk_size, overlap = round_chunk_values(chunk_size, overlap, stride)
 
     chunks, chunk_starts, chunk_ends = chunk_read(
         normed_signal, chunk_size, overlap)
+    device = next(model.parameters()).device
     with torch.no_grad():
         if max_concur_chunks is None:
             out = model(torch.tensor(chunks, device=device))

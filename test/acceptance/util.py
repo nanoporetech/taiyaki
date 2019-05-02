@@ -4,7 +4,8 @@ from subprocess import Popen, PIPE
 
 # Data and script paths relative to working directory build/acctest
 BIN_DIR = "../../bin"
-DATA_DIR = "../../data"
+DATA_DIR = "../../test/data"
+MISC_DIR = "../../misc"
 MODELS_DIR = "../../models"
 
 class Result(object):

@@ -144,7 +144,10 @@ class Read(dict):
         daclen = len(self['Dacs'])
         r = self['Ref_to_signal']
         mappedlocations = np.where((r >= 0) & (r < daclen))[0]  # Locations in the ref that are mapped
-        return np.min(mappedlocations), np.max(mappedlocations) + 1  # +1 to make it exclusive
+        if len(mappedlocations) > 0:
+            return np.min(mappedlocations), np.max(mappedlocations) + 1  # +1 to make it exclusive
+        else:
+            return 0,0
 
     def get_mapped_dacs_region(self):
         """Return tuple (start,end_exc) so that
@@ -153,7 +156,10 @@ class Read(dict):
         r = self['Ref_to_signal']
         daclen = len(self['Dacs'])
         r = r[(r >= 0) & (r < daclen)]  # Locations in the signal (not the end points -1, daclen ) that are mapped to
-        return np.min(r), np.max(r) + 1  # +1 to make it exclusive
+        if len(r) > 0:
+            return np.min(r), np.max(r) + 1  # +1 to make it exclusive
+        else:
+            return 0,0
 
     def get_reference_locations(self, signal_location_vector):
         """Return reference locations that go with given signal locations.
@@ -278,7 +284,7 @@ class Read(dict):
         """
         mapped_dacs_region = self.get_mapped_dacs_region()
         spare_length = mapped_dacs_region[1] - mapped_dacs_region[0] - chunk_len
-        if spare_length < 0:
+        if spare_length <= 0:
             if verbose:
                 print("Rejecting read because spare_length=", spare_length,
                       ". mapped_dacs_region = ", mapped_dacs_region)

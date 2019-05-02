@@ -186,7 +186,12 @@ class Mapping:
         copy_rights = np.diff(sig_to_ref_non_zeros)
 
         putative_ref_to_sig = np.repeat(sig_to_ref_non_zero_idxs[:-1], copy_rights)
-        putative_ref_to_sig = np.append(-1 * np.ones(sig_to_ref_non_zeros[0], dtype=np.int32), putative_ref_to_sig)
+        #Insert the right number of -1s to get to the beginning of the mapped region
+        if len(sig_to_ref_non_zeros) > 0:
+            first_nonzero_refpos = sig_to_ref_non_zeros[0]
+        else:
+            first_nonzero_refpos = reflen
+        putative_ref_to_sig = np.append(-1 * np.ones(first_nonzero_refpos, dtype=np.int32), putative_ref_to_sig)
 
         ref_to_sig = np.append(putative_ref_to_sig, siglen * np.ones(reflen +
                                                                      1 - len(putative_ref_to_sig), dtype=np.int32))

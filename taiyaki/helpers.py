@@ -45,10 +45,11 @@ def load_model(model_file, params_file=None, **model_kwargs):
     return network
 
 
-def guess_model_stride(net, input_shape=(720, 1, 1), device='cpu'):
+def guess_model_stride(net, input_shape=(720, 1, 1)):
     """ Infer the stride of a pytorch network by running it on some test input.
-    Assume that net is already able to accept input on device specified"""
-    out = net(torch.zeros(input_shape).to(device))
+    """
+    net_device = next(net.parameters()).device
+    out = net(torch.zeros(input_shape).to(net_device))
     return int(round(input_shape[0] / out.size()[0]))
 
 

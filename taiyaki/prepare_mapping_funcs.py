@@ -75,7 +75,7 @@ def oneread_remap(read_tuple, references, model, device, per_read_params_dict,
     # flipflop_remap() establishes a mapping between the network outputs and the reference.
     # What we need is a mapping between the signal and the reference.
     # To resolve this we need to know the stride of the model (how many samples for each network output)
-    model_stride = helpers.guess_model_stride(model, device=device)
+    model_stride = helpers.guess_model_stride(model)
     remapping = mapping.Mapping.from_remapping_path(
         sig, path, read_ref, model_stride)
     remapping.add_integer_reference(alphabet_info.alphabet)
