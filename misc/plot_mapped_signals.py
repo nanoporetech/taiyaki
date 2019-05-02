@@ -31,7 +31,7 @@ def main():
     plt.figure(figsize=(12, 10))
     for nfile, mapped_read_file in enumerate(args.mapped_read_files):
         sys.stderr.write("Opening {}\n".format(mapped_read_file))
-        with mapped_signal_files.HDF5(mapped_read_file, "r") as h5:
+        with mapped_signal_files.HDF5Reader(mapped_read_file) as h5:
             all_read_ids = h5.get_read_ids()
             sys.stderr.write("First ten read_ids in file:\n")
             for read_id in all_read_ids[:10]:
