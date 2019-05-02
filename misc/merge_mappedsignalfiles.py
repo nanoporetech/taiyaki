@@ -9,19 +9,20 @@ from taiyaki.common_cmdargs import add_common_command_args
 parser = argparse.ArgumentParser(
     description='Combine HDF5 mapped-read files into a single file')
 
-add_common_command_args(['version'])
+add_common_command_args(parser, ['version'])
 parser.add_argument('output', help='Output filename')
 parser.add_argument('input', nargs='+', help='One or more input files')
 
 #To convert to any new mapped read format (e.g. mapped_signal_files.SQL)
 #we should be able to just change MAPPED_READ_CLASS to equal the new class.
-MAPPED_READ_CLASS = mapped_signal_files.HDF5
+MAPPED_READ_CLASS = mapped_signal_files.HDF5Reader
+MAPPED_WRITE_CLASS = mapped_signal_files.HDF5Writer
 
 
 def main():
     args = parser.parse_args()
 
-    with MAPPED_READ_CLASS(args.inputs[0], "r") as hin:
+    with MAPPED_READ_CLASS(args.input[0]) as hin:
         #  Copy alphabet and modification information from first file
         in_alphabet, in_collapse_alphabet, in_mod_long_names \
             = hin.get_alphabet_information()
@@ -31,17 +32,22 @@ def main():
 
     reads_written = set()
     print("Writing reads to ", args.output)
-    with  MAPPED_READ_CLASS(args.output, "w") as hout:
-        hout.write_version_number(args.version)
-        hout.write_alphabet_information(
-            args.alphabet, args.collapse_alphabet, args.mod_long_names)
+    with  MAPPED_WRITE_CLASS(args.output, args) as hout:
+
+        print('----------------------------------------')
+
+        print(args.version)
+        print('----------------------------------------')
+        hout._write_version()
+        hout._write_alphabet_info(
+            args)
         # TODO include logic to merge data sets with different alphabets
         # requires specifying exactly how this merge would occur
-        for infile in args.inputs:
+        for infile in args.input:
             copied_from_this_file = 0
-            with MAPPED_READ_CLASS(infile, "r") as hin:
-                in_version = hin.get_version_number()
-                if in_version != args.version:
+            with MAPPED_READ_CLASS(infile) as hin:
+                in_version = hin.version
+                if in_version != mapped_signal_files._version:
                     raise Exception("Version number of files should be {} but version number of {} is {}".format(args.version, infile, in_version))
                 in_alphabet, in_collapse_alphabet, in_mod_long_names \
                     = hin.get_alphabet_information()
@@ -57,7 +63,7 @@ def main():
                              in_collapse_alphabet))
                 if (len(in_mod_long_names) != len(args.mod_long_names) or
                     any(in_mod_long_names[mod_i] != args.mod_long_names[mod_i]
-                        for mod_i range(len(in_mod_long_names)))):
+                        for mod_i in range(len(in_mod_long_names)))):
                     raise Exception(
                         ("Modified base long names should be {} but modified " +
                          "base long names in {} is {}").format(
@@ -66,7 +72,7 @@ def main():
                     if read_id in reads_written:
                         print("* Read",read_id,"already present: not copying from",infile)
                     else:
-                        hout.write_read(read_id, hin.get_read(read_id))
+                        hout.write_read(hin.get_read(read_id))
                         reads_written.add(read_id)
                         copied_from_this_file += 1
             print("Copied",copied_from_this_file,"reads from",infile)
