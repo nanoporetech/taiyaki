@@ -33,11 +33,6 @@ def main():
     reads_written = set()
     print("Writing reads to ", args.output)
     with  MAPPED_WRITE_CLASS(args.output, args) as hout:
-
-        print('----------------------------------------')
-
-        print(args.version)
-        print('----------------------------------------')
         hout._write_version()
         hout._write_alphabet_info(
             args)
