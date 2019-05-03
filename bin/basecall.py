@@ -28,10 +28,8 @@ parser = argparse.ArgumentParser(
     description="Basecall reads using a taiyaki model",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, 'device input_folder input_strand_list limit output quiet recursive version'.split())
+add_common_command_args(parser, 'alphabet device input_folder input_strand_list limit output quiet recursive version'.split())
 
-parser.add_argument("--alphabet", default=DEFAULT_ALPHABET,
-                    help="Alphabet used by basecaller")
 parser.add_argument("--chunk_size", type=Positive(int),
                     default=basecall_helpers._DEFAULT_CHUNK_SIZE,
                     help="Size of signal chunks sent to GPU")

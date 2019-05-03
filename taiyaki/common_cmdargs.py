@@ -3,6 +3,7 @@
 from taiyaki.cmdargs import (AutoBool, DeviceAction, FileAbsent, FileExists,
                              Maybe, NonNegative, ParseToNamedTuple, Positive,
                              display_version_and_exit)
+from taiyaki.constants import DEFAULT_ALPHABET
 from taiyaki import __version__
 
 
@@ -29,6 +30,10 @@ def add_common_command_args(parser, arglist):
                             default=(0.9, 0.999), type=(NonNegative(float),
                                                         NonNegative(float)), action=ParseToNamedTuple,
                             help='Parameters beta1, beta2 for Exponential Decay Adaptive Momentum')
+
+    if 'alphabet' in arglist:
+        parser.add_argument('--alphabet', default=DEFAULT_ALPHABET,
+                            help='Canonical base alphabet')
 
     if 'chunk_logging_threshold' in arglist:
         parser.add_argument('--chunk_logging_threshold', default=10.0, metavar='multiple',
