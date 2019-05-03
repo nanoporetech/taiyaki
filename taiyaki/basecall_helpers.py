@@ -75,6 +75,7 @@ def run_model(
         overlap=_DEFAULT_OVERLAP, max_concur_chunks=None, return_numpy=True):
     """ Hook for megalodon to run network via taiyaki
     """
+    device = next(model.parameters()).device
     stride = guess_model_stride(model)
     chunk_size, overlap = round_chunk_values(chunk_size, overlap, stride)
 
