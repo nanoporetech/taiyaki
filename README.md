@@ -268,7 +268,7 @@ The input for ab initio training is a set of signal-sequence pairs:
 The models produced are not as accurate as normal training process but can be used to bootstrap it.
 
 
-The process is described in the [abinitio](docs/abinito.rst) walk-through.
+The process is described in the [abinitio](docs/abinitio.rst) walk-through.
 
 # Guppy compatibility
 
