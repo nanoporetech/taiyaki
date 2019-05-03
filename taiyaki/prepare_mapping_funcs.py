@@ -3,8 +3,7 @@ import numpy as np
 import sys
 from ont_fast5_api import fast5_interface
 import torch
-from taiyaki import (
-    alphabet, flipflop_remap, helpers, mapping, mapped_signal_files, signal)
+from taiyaki import flipflop_remap, helpers, mapping, mapped_signal_files, signal
 from taiyaki.config import taiyaki_dtype
 from taiyaki.fileio import readtsv
 
@@ -35,7 +34,7 @@ def oneread_remap(read_tuple, references, model, device, per_read_params_dict,
         with fast5_interface.get_fast5_file(filename, 'r') as f5file:
             read = f5file.get_read(read_id)
             sig = signal.Signal(read)
-    except Exception as e:
+    except Exception:
         return None, READ_ID_INFO_NOT_FOUND_ERR_TEXT
 
     if read_id in references:
@@ -61,7 +60,7 @@ def oneread_remap(read_tuple, references, model, device, per_read_params_dict,
         # Apply the network to the signal, generating transition weight matrix, and put it back into a numpy array
         with torch.no_grad():
             transweights = modelOnDevice(signalTensor).cpu().numpy()
-    except Exception as e:
+    except Exception:
         return None, REMAP_ERR_TEXT
 
     # Extra dimensions introduced by np.newaxis above removed by np.squeeze
