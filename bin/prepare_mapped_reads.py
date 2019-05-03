@@ -5,7 +5,6 @@ import os
 import sys
 from taiyaki.cmdargs import FileExists
 from taiyaki.common_cmdargs import add_common_command_args
-from taiyaki.constants import DEFAULT_ALPHABET
 from taiyaki import alphabet, fast5utils, helpers, prepare_mapping_funcs
 
 
@@ -13,10 +12,8 @@ program_description = "Prepare data for model training and save to hdf5 file by 
 parser = argparse.ArgumentParser(description=program_description,
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, 'device input_folder input_strand_list jobs limit overwrite recursive version'.split())
+add_common_command_args(parser, 'alphabet device input_folder input_strand_list jobs limit overwrite recursive version'.split())
 
-parser.add_argument('--alphabet', default=DEFAULT_ALPHABET,
-                    help='Canonical base alphabet')
 parser.add_argument('--mod', nargs=3, metavar=('base', 'canonical', 'name'),
                     default=[], action='append',
                     help='Modified base description')

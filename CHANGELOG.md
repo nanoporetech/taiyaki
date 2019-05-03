@@ -4,6 +4,9 @@ Version numbers: major.minor.patch
 * Minor version bump indicates a change in functionality that may affect users.
 * Patch version bump indicates bug-fixes or minor improvements not expected to affect users.
 
+## v4.1.0
+* Ab initio ("bootstrap") training of models
+
 ## v4.0.0
 * Modified base training and basecalling
 * Minor changes to input format to trainer, use `misc/upgrade_mapped_signal.py` to upgrade old data

@@ -103,7 +103,7 @@ Tests can be run as follows:
 
 If Taiyaki has install in a virtual environment, it will have to activated before running tests: `source venv/bin/activate`.  To deactivate, run `deactivate`.
 
-# Walk through
+# Walk throughs and further documentation
 For a walk-through of Taiyaki model training, including how to obtain sample training data, see [docs/walkthrough.rst](docs/walkthrough.rst).
 
 For an example of training a modifed base model, see [docs/modbase.rst](docs/modbase.rst).
@@ -255,6 +255,20 @@ When training a model from scratch it is generally recommended to set this facto
 
 Modified base models can be used in megalodon (release imminent) to call modified bases anchored to a reference.
 
+## Abinitio training
+
+'Ab initio' is an alternative entry point for Taiyaki that obtains acceptable models with fewer input requirements,
+particularly it does not require a previously trained model.
+
+The input for ab initio training is a set of signal-sequence pairs:
+
+- Fixed length chunks from reads
+- A reference sequence trimmed for each chunk.
+
+The models produced are not as accurate as normal training process but can be used to bootstrap it.
+
+
+The process is described in the [abinitio](docs/abinito.rst) walk-through.
 
 # Guppy compatibility
 
