@@ -99,6 +99,9 @@ def main():
         # read_data now contains a list of reads
         # (each an instance of the Read class defined in mapped_signal_files.py, based on dict)
 
+    if len(read_data) == 0:
+        log.write('* No reads remaining for training, exiting.\n')
+        exit(1)
     log.write('* Loaded {} reads.\n'.format(len(read_data)))
 
     # Create a logging file to save details of chunks.
