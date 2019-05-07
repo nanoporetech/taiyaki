@@ -327,7 +327,7 @@ ${RESULT_DIR}/mod_train_%/trained: ${INGREDIENT_DIR}/mod_mapped_%.hdf5
 
 .PHONY: squiggletrain_remap_samref
 
-squiggletrain_remap_samref: ${RESULT_DIR}/squiggletrain_remap_samref/trained/model_final.checkpoint
+squiggletrain_remap_samref: ${RESULT_DIR}/squiggletrain_remap_samref/model_final.checkpoint
 
 ${RESULT_DIR}/squiggletrain_%/model_final.checkpoint: ${INGREDIENT_DIR}/mapped_%.hdf5
 	@echo ""
