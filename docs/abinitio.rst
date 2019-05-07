@@ -26,6 +26,10 @@ Three sets of input data are provided by way of example:
   + r10_dna/chunks.hdf5
   + r10_dna/chunks.fa
   
+.. warning::
+    R10 data is from a prelease version.
+    The exact pore and chemistry may change before commercial release
+  
 Obtaining data
 --------------
 Sample chunk files are stored on Amazon S3 and can be easily downloaded like, for example:
