@@ -25,6 +25,35 @@ Three sets of input data are provided by way of example:
 
   + r10_dna/chunks.hdf5
   + r10_dna/chunks.fa
+  
+Obtaining data
+--------------
+Sample chunk files are stored on Amazon S3 and can be easily downloaded like, for example:
+
+.. code-block:: bash
+
+    wget  https://s3-eu-west-1.amazonaws.com/ont-research/taiyaki_abinitio.tar.gz
+    # On some platforms, curl may be installed instead of wget
+    # curl -O https://s3-eu-west-1.amazonaws.com/ont-research/taiyaki_abinitio.tar.gz
+    tar zxvf taiyaki_abinitio.tar.gz
+    cd taiyaki_abinitio
+    
+Unpacking the ``taiyaki_abinitio.tar.gz`` archive creates a directory ``taiyaki_abinitio`` containing the files needed for this walk through. An additional directory ``taiyaki_abinitio/intermediate_files`` contains examples of the outputs that will be created.
+
+
+Obtain and install Taiyaki
+--------------------------
+Download the *Taiyaki* software and install into a Python virtual environment.
+For further information, see https://github.com/nanoporetech/taiyaki
+
+.. code-block:: bash
+
+    git clone https://github.com/nanoporetech/taiyaki
+    (cd taiyaki && make install)
+    source taiyaki/venv/activate
+
+The remainder of this walk-through assumes that the working directory is ``taiyaki_abinitio``, containing the data to train from, and that the *taiyaki* virtual environment is activated.
+
 
 Training
 --------
@@ -59,9 +88,7 @@ Chunk format
 ------------
 .. _HDF5: https://www.hdfgroup.org
 
-Chunks are stored in a HDF5_ file as a 2D array, *chunks x samples*.  The  TODO
-
-Creating this file and the corresponding reads TODO
+Chunks are stored in a HDF5_ file as a single 2D array, *chunks x samples*.
 
 For example, the training file for the R941 DNA consists of 1497098 chunks of 2000 samples.
 
@@ -70,6 +97,8 @@ For example, the training file for the R941 DNA consists of 1497098 chunks of 20
      h5ls -r r941_dna/chunks.hdf5 
      /                        Group
      /chunks                  Dataset {1497098, 2000}
+
+Creating this file, and the corresponding read reference file, is left up to the user and is the primary difficulty with the *ab initio* route.
 
 
 Scaling issues
