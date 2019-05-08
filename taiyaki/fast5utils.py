@@ -117,7 +117,7 @@ def iterate_fast5_reads(path,
         elif 'filename_fast5' in strand_table.dtype.names:
             filepaths = strand_table['filename_fast5']
         if 'read_id' in strand_table.dtype.names:
-            read_ids = strand_table['read_id']
+            read_ids = [str(i) for i in strand_table['read_id']]
         # The strand list supplies filenames, not paths, so we supply the rest
         if filepaths is not None:
             filepaths = [os.path.join(path, x) for x in filepaths]
