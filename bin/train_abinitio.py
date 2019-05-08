@@ -16,7 +16,6 @@ from taiyaki import ctc, flipflopfings, helpers
 from taiyaki import __version__
 from taiyaki.cmdargs import FileExists, Positive
 from taiyaki.common_cmdargs import add_common_command_args
-from taiyaki.constants import DEFAULT_ALPHABET
 
 
 # This is here, not in main to allow documentation to be built
@@ -52,7 +51,7 @@ parser.add_argument('reference', action=FileExists,
 
 def convert_seq(s, alphabet):
     buf = np.array(list(s))
-    assert np.all(buf >= len(alphabet), "Alphabet violates assumption in convert_seq"
+    assert np.all(buf >= len(alphabet)), "Alphabet violates assumption in convert_seq"
     for i, b in enumerate(alphabet):
         buf[buf == b] = i
     return flipflopfings.flipflop_code(buf.astype('i4'), len(alphabet))
@@ -80,7 +79,7 @@ if __name__ == '__main__':
         torch.cuda.set_device(device)
 
     if not os.path.exists(args.outdir):
-        os.mkdir(args.outdir)
+        os.makedirs(args.outdir)
     elif not args.overwrite:
         sys.stderr.write('Error: Output directory {} exists but --overwrite is false\n'.format(args.outdir))
         exit(1)

@@ -75,7 +75,7 @@ def main():
             sys.exit(1)
 
     if not os.path.exists(args.output):
-        os.mkdir(args.output)
+        os.makedirs(args.output)
     elif not args.overwrite:
         sys.stderr.write('Error: Output directory {} exists but --overwrite ' +
                          'is false\n'.format(args.output))
