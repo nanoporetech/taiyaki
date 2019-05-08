@@ -146,7 +146,7 @@ def _setup_and_logs(args):
     np.random.seed(args.seed)
 
     if not os.path.exists(args.outdir):
-        os.mkdir(args.outdir)
+        os.makedirs(args.outdir)
     elif not args.overwrite:
         sys.stderr.write(('Error: Output directory {} exists but ' +
                           '--overwrite is false\n').format(args.outdir))
