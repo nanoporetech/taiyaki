@@ -57,7 +57,7 @@ MAKEFLAGS += --warn-undefined-variables
 #
 
 TAIYAKI_ROOT := $(shell pwd)
-NCPU := $(shell nproc || sysctl -n hw.ncpu)
+NCPU := $(shell python3 -c "from multiprocessing import cpu_count; print(min(cpu_count(), 8))")
 OPENBLAS_NUM_THREADS := 1
 export OPENBLAS_NUM_THREADS
 OMP_NUM_THREADS := 4
