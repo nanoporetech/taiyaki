@@ -52,7 +52,7 @@ parser.add_argument('reference', action=FileExists,
 
 def convert_seq(s, alphabet):
     buf = np.array(list(s))
-    assert np.all(buf >= len(alphabet), "Alphabet violates assumption in convert_seq"
+    assert np.all(buf < len(alphabet), "Alphabet violates assumption in convert_seq"
     for i, b in enumerate(alphabet):
         buf[buf == b] = i
     return flipflopfings.flipflop_code(buf.astype('i4'), len(alphabet))
