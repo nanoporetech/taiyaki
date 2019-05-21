@@ -118,7 +118,14 @@ def iterate_fast5_reads(path,
             filepaths = strand_table['filename_fast5']
         if 'read_id' in strand_table.dtype.names:
             read_ids = [str(i) for i in strand_table['read_id']]
-        # The strand list supplies filenames, not paths, so we supply the rest
+        # If we get to this point and we haven't got read ids or filenames, then
+        # there is nothing in the strand list that we can use (this happens, for
+        # example, when the strand list has no header line).
+        if filepaths is None and read_ids is None:
+            raise Exception("Strand list at {} has no column that can be used:".format(strand_list) +
+                            "(it should contain ('filename' or 'filename_fast5') or 'read_id'," +
+                            "or both a filename column and a read_id column)")
+        # The strand list supplies filenames, not paths, so we supply the rest of the path
         if filepaths is not None:
             filepaths = [os.path.join(path, x) for x in filepaths]
 
