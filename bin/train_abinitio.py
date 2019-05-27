@@ -55,7 +55,7 @@ def convert_seq(s, alphabet):
     for i, b in enumerate(alphabet):
         buf[buf == b] = i
     buf = buf.astype('i4')
-    assert np.all(buf < len(alphabet), "Alphabet violates assumption in convert_seq"
+    assert np.all(buf < len(alphabet)), "Alphabet violates assumption in convert_seq"
     return flipflopfings.flipflop_code(buf, len(alphabet))
 
 
