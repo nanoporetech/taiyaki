@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 common_cmdargs.add_common_command_args(parser, """
-adam chunk_logging_threshold device filter_max_dwell filter_mean_dwell
+adam chunk_logging_threshold device eps filter_max_dwell filter_mean_dwell
 limit lr_max niteration overwrite quiet save_every
 sample_nreads_before_filtering version weight_decay""".split())
 
@@ -215,7 +215,7 @@ def main():
 
     optimizer = torch.optim.Adam(
         network.parameters(), lr=args.lr_max, betas=args.adam,
-        weight_decay=args.weight_decay)
+        weight_decay=args.weight_decay, eps=args.eps)
     lr_scheduler = optim.CosineFollowedByFlatLR(
         optimizer, args.lr_min, args.lr_cosine_iters)
 
