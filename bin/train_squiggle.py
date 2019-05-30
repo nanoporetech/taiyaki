@@ -20,7 +20,7 @@ from taiyaki.squiggle_match import squiggle_match_loss, embed_sequence
 parser = argparse.ArgumentParser(description='Train a model to predict ionic current levels from sequence',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, """adam chunk_logging_threshold device filter_max_dwell filter_mean_dwell
+add_common_command_args(parser, """adam chunk_logging_threshold device eps filter_max_dwell filter_mean_dwell
                                    limit niteration overwrite quiet save_every
                                    sample_nreads_before_filtering version weight_decay""".split())
 
@@ -134,7 +134,8 @@ def main():
 
 
     optimizer = torch.optim.Adam(conv_net.parameters(), lr=args.lr_max,
-                                 betas=args.adam, weight_decay=args.weight_decay)
+                                 betas=args.adam, weight_decay=args.weight_decay,
+                                 eps=args.eps)
 
     lr_scheduler = optim.ReciprocalLR(optimizer, args.lr_decay)
 

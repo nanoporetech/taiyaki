@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser(
     description='Train a flip-flop neural network',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, """adam alphabet device limit niteration
+add_common_command_args(parser, """adam alphabet device eps limit niteration
                                    overwrite quiet save_every version""".split())
 
 parser.add_argument('--batch_size', default=128, metavar='chunks',
@@ -136,7 +136,7 @@ if __name__ == '__main__':
                                                            for p in network.parameters()])))
 
     optimizer = torch.optim.Adam(network.parameters(), lr=args.lr_max,
-                                 betas=args.adam, eps=1e-6)
+                                 betas=args.adam, eps=args.eps)
     lr_scheduler = CosineAnnealingLR(optimizer, args.niteration)
 
     score_smoothed = helpers.WindowedExpSmoother()
