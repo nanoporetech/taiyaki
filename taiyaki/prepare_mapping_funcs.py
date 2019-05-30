@@ -15,8 +15,8 @@ REMAP_ERR_TEXT = 'Failure applying basecall network to remap read.'
 REMAP_SUCCESS_TEXT = ''
 
 
-def oneread_remap(read_tuple, references, model, device, per_read_params_dict,
-                  alphabet_info):
+def oneread_remap(read_tuple, references, model, per_read_params_dict,
+                  alphabet_info, device='cpu'):
     """ Worker function for remapping reads using flip-flop model on raw signal
     :param read_tuple                 : read, identified by a tuple (filepath, read_id)
     :param references                 :dict mapping fast5 filenames to reference strings
