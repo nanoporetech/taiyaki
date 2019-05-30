@@ -48,12 +48,12 @@ install:
 	rm -rf ${envDir}
 	virtualenv --python=${PYTHON} --prompt=${envPrompt} ${envDir}
 	source ${envDir}/bin/activate && \
-	    pip install pip --upgrade && \
+	    ${PYTHON} ${envDir}/bin/pip install pip --upgrade && \
 	    mkdir -p ${buildDir}/wheelhouse/${CUDA} && \
-	    pip download --dest ${buildDir}/wheelhouse/${CUDA} ${TORCH} && \
-	    pip install --find-links ${buildDir}/wheelhouse/${CUDA} --no-index torch && \
-	    pip install -r requirements.txt ${CUPY} && \
-	    pip install -r develop_requirements.txt && \
+	    ${PYTHON} ${envDir}/bin/pip download --dest ${buildDir}/wheelhouse/${CUDA} ${TORCH} && \
+	    ${PYTHON} ${envDir}/bin/pip install --find-links ${buildDir}/wheelhouse/${CUDA} --no-index torch && \
+	    ${PYTHON} ${envDir}/bin/pip install -r requirements.txt ${CUPY} && \
+	    ${PYTHON} ${envDir}/bin/pip install -r develop_requirements.txt && \
 	    ${PYTHON} setup.py develop
 	@echo "To activate your new environment:  source ${envDir}/bin/activate"
 
@@ -91,7 +91,7 @@ unittest:
 accset ?=
 acctest:
 	mkdir -p ${buildDir}/acctest
-	pip install -r test/acceptance/requirements.txt
+	${PYTHON} ${envDir}/bin/pip install -r test/acceptance/requirements.txt
 	cd ${buildDir}/acctest && ${PYTHON} -m pytest ${pyTestArgs} ../../test/acceptance/${accset}
 
 
