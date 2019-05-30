@@ -259,21 +259,21 @@ ${INGREDIENT_DIR}/mapped_remap_%ref.hdf5: ${INGREDIENT_DIR}/per_read_references_
 	@echo ""
 	@echo "------------Creating mapped read file by flip-flop remapping for ${MAXREADS} reads from $<. Using ${NCPU} threads."
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/prepare_mapped_reads.py --device cpu --limit ${MAXREADS} ${STRANDLISTOPT} --overwrite ${READDIR} --jobs ${NCPU} ${PERREADFILE} $@ ${REMAPMODELFILE} $<
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/prepare_mapped_reads.py --limit ${MAXREADS} ${STRANDLISTOPT} --overwrite ${READDIR} --jobs ${NCPU} ${PERREADFILE} $@ ${REMAPMODELFILE} $<
 
 #Recipe for case where per-read-reference file supplied by the user
 ${INGREDIENT_DIR}/mapped_remapuser_ref.hdf5:  ${PERREADFILE} | ${INGREDIENT_DIR}
 	@echo ""
 	@echo "------------Creating mapped read file by flip-flop remapping for ${MAXREADS} reads from $<. Using ${NCPU} threads."
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/prepare_mapped_reads.py --device cpu --limit ${MAXREADS} ${STRANDLISTOPT} --overwrite ${READDIR} --jobs ${NCPU} $< $@ ${REMAPMODELFILE} ${USER_PER_READ_REFERENCE_FILE}
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/prepare_mapped_reads.py --limit ${MAXREADS} ${STRANDLISTOPT} --overwrite ${READDIR} --jobs ${NCPU} $< $@ ${REMAPMODELFILE} ${USER_PER_READ_REFERENCE_FILE}
 
 #Recipe for modified base training from per-read-reference file supplied by the user
 ${INGREDIENT_DIR}/mod_mapped_remapuser_ref.hdf5:  ${PERREADFILE} | ${INGREDIENT_DIR}
 	@echo ""
 	@echo "------------Creating modified base mapped read file by flip-flop remapping for ${MAXREADS} reads from $<. Using ${NCPU} threads."
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/prepare_mapped_reads.py --device cpu --limit ${MAXREADS} ${STRANDLISTOPT} --overwrite --jobs ${NCPU} ${MODIFIED_BASES} ${READDIR} $< $@ ${REMAPMODELFILE} ${USER_PER_READ_MOD_REFERENCE_FILE}
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/prepare_mapped_reads.py --limit ${MAXREADS} ${STRANDLISTOPT} --overwrite --jobs ${NCPU} ${MODIFIED_BASES} ${READDIR} $< $@ ${REMAPMODELFILE} ${USER_PER_READ_MOD_REFERENCE_FILE}
 
 
 ##############################

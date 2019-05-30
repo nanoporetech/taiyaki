@@ -12,7 +12,7 @@ program_description = "Prepare data for model training and save to hdf5 file by 
 parser = argparse.ArgumentParser(description=program_description,
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, 'alphabet device input_folder input_strand_list jobs limit overwrite recursive version'.split())
+add_common_command_args(parser, 'alphabet input_folder input_strand_list jobs limit overwrite recursive version'.split())
 
 parser.add_argument('--mod', nargs=3, metavar=('base', 'canonical', 'name'),
                     default=[], action='append',
@@ -59,7 +59,7 @@ def main():
         recursive=args.recursive)
 
     # Set up arguments (kwargs) for the worker function for each read
-    kwargs = helpers.get_kwargs(args, ['device'])
+    kwargs = {}
     kwargs['per_read_params_dict'] = prepare_mapping_funcs.get_per_read_params_dict_from_tsv(
         args.input_per_read_params)
     kwargs['references'] = helpers.fasta_file_to_dict(args.references,
