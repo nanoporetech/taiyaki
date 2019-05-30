@@ -51,10 +51,11 @@ parser.add_argument('reference', action=FileExists,
 
 def convert_seq(s, alphabet):
     buf = np.array(list(s))
-    assert np.all(buf >= len(alphabet)), "Alphabet violates assumption in convert_seq"
     for i, b in enumerate(alphabet):
         buf[buf == b] = i
-    return flipflopfings.flipflop_code(buf.astype('i4'), len(alphabet))
+    buf = buf.astype('i4')
+    assert np.all(buf < len(alphabet)), "Alphabet violates assumption in convert_seq"
+    return flipflopfings.flipflop_code(buf, len(alphabet))
 
 
 def save_model(network, outdir, index=None):
