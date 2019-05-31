@@ -38,7 +38,6 @@ class AcceptanceTest(unittest.TestCase):
                self.output_mapped_signal_file,
                self.remapping_model,
                self.per_read_refs,
-               "--device", "cpu",
                "--overwrite"]
         r=subprocess.run(cmd, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
@@ -73,7 +72,6 @@ class AcceptanceTest(unittest.TestCase):
                self.output_mapped_signal_file,
                self.remapping_model,
                self.mod_per_read_refs,
-               "--device", "cpu",
                "--mod", "Z", "C", "5mC",
                "--mod", "Y", "A", "6mA",
                "--overwrite"]
