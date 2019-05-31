@@ -3,6 +3,7 @@ import argparse
 from collections import defaultdict
 import numpy as np
 import os
+import platform
 from shutil import copyfile
 import sys
 import time
@@ -94,6 +95,13 @@ def main():
 
     log = helpers.Logger(os.path.join(args.output, 'model.log'), args.quiet)
     log.write('* Taiyaki version {}\n'.format(__version__))
+    log.write('* Platform is {}\n'.format(platform.platform()))
+    log.write('* PyTorch version {}\n'.format(torch.__version__))
+    if device.type == 'cuda':
+        log.write('* CUDA version {}\n'.format(torch.version.cuda))
+        log.write('* CUDA device {}\n'.format(torch.cuda.get_device_name(device)))
+    else:
+        log.write('* Running on CPU')
     log.write('* Command line\n')
     log.write(' '.join(sys.argv) + '\n')
     log.write('* Loading data from {}\n'.format(args.input))
