@@ -2,6 +2,7 @@
 import argparse
 import numpy as np
 import os
+import platform
 import sys
 import time
 import torch
@@ -76,8 +77,15 @@ def main():
         exit(1)
 
     log = helpers.Logger(os.path.join(args.output, 'model.log'), args.quiet)
-    log.write('# Taiyaki version {}\n'.format(__version__))
-    log.write('# Command line\n')
+    log.write('* Taiyaki version {}\n'.format(__version__))
+    log.write('* Platform is {}\n'.format(platform.platform()))
+    log.write('* PyTorch version {}\n'.format(torch.__version__))
+    if device.type == 'cuda':
+        log.write('* CUDA version {}\n'.format(torch.version.cuda))
+        log.write('* CUDA device {}\n'.format(torch.cuda.get_device_name(device)))
+    else:
+        log.write('* Running on CPU')
+    log.write('* Command line\n')
     log.write(' '.join(sys.argv) + '\n')
 
     if args.input_strand_list is not None:
@@ -123,10 +131,10 @@ def main():
 
     conv_net = create_convolution(args.size, args.depth, args.winlen)
     nparam = sum([p.data.detach().numpy().size for p in conv_net.parameters()])
-    log.write('# Created network.  {} parameters\n'.format(nparam))
-    log.write('# Depth {} layers ({} residual layers)\n'.format(args.depth + 2, args.depth))
-    log.write('# Window width {}\n'.format(args.winlen))
-    log.write('# Context +/- {} bases\n'.format((args.depth + 2) * (args.winlen // 2)))
+    log.write('* Created network.  {} parameters\n'.format(nparam))
+    log.write('* Depth {} layers ({} residual layers)\n'.format(args.depth + 2, args.depth))
+    log.write('* Window width {}\n'.format(args.winlen))
+    log.write('* Context +/- {} bases\n'.format((args.depth + 2) * (args.winlen // 2)))
 
     device = torch.device(args.device)
     conv_net = conv_net.to(device)
