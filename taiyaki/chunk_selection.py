@@ -53,8 +53,6 @@ def chunk_filter(chunkdict, args, filter_parameters):
 def sample_chunks(read_data, number_to_sample, chunk_len, args, chunkfunc,
                   fraction_of_fails_allowed=0.5,
                   filter_parameters=None, log=None,
-                  chunk_log=None,
-                  log_accepted_chunks=False,
                   chunk_len_means_sequence_len=False):
     """Sample <number_to_sample> chunks from a list of read_data, returning
     a tuple (chunklist, rejection_dict), where chunklist contains the
@@ -82,14 +80,6 @@ def sample_chunks(read_data, number_to_sample, chunk_len, args, chunkfunc,
                               determines the filter used. If None, then no filtering.
     param: log              : log object used to report if not enough chunks
                               passing the tests can be found.
-    param: chunk_log        : ChunkLog object used to record rejected chunks
-                              (accepted chunks will be recorded along with their
-                              loss scores after the training step)
-    param: log_accepted_chunks : If this is True, then we log all chunks.
-                                 If it's false, then we log only rejected ones.
-                                 During training we use log_accepted_chunks=False
-                                 because the accepted chunks are logged later
-                                 when their loss has been calculated.
     param: chunk_len_means_sequence_len : if this is False (the default) then
                              chunk_len determines the length in samples of the
                              chunk, and we use mapped_signal_files.get_chunk_with_sample_length().
@@ -118,9 +108,6 @@ def sample_chunks(read_data, number_to_sample, chunk_len, args, chunkfunc,
         count_dict[passfail_str] += 1
         if passfail_str == 'pass':
             chunklist.append(chunkfunc(chunkdict))
-        if log_accepted_chunks or passfail_str != 'pass':
-            if chunk_log is not None:
-                chunk_log.write_chunk(-1, chunkdict, passfail_str)
 
     if count_dict['pass'] < number_to_sample_used and log is not None:
         log.write('* Warning: only {} chunks passed tests after {} attempts.\n'.format(count_dict['pass'], attempts))
@@ -133,8 +120,7 @@ def sample_chunks(read_data, number_to_sample, chunk_len, args, chunkfunc,
 
 
 def sample_filter_parameters(read_data, number_to_sample, chunk_len, args,
-                             log=None, chunk_log=None,
-                             chunk_len_means_sequence_len = False):
+                             log=None, chunk_len_means_sequence_len = False):
     """Sample number_to_sample reads from read_data, calculate median and MAD
     of mean dwell. Note the MAD has an adjustment factor so that it would give the
     same result as the std for a normal distribution.
@@ -142,13 +128,12 @@ def sample_filter_parameters(read_data, number_to_sample, chunk_len, args,
     See docstring for sample_chunks() for the parameters.
     """
     meandwells, _ = sample_chunks(read_data, number_to_sample, chunk_len, args, get_mean_dwell,
-                                  log=log, chunk_log=chunk_log, log_accepted_chunks=True,
-                                  chunk_len_means_sequence_len=chunk_len_means_sequence_len)
+                                  log=log, chunk_len_means_sequence_len=chunk_len_means_sequence_len)
     return med_mad(meandwells)
 
 
-def assemble_batch(read_data, batch_size, chunk_len, filter_parameters, args, log,
-                   chunk_log=None, chunk_len_means_sequence_len=False):
+def assemble_batch(read_data, batch_size, chunk_len, filter_parameters, args, 
+                   log=None, chunk_len_means_sequence_len=False):
     """Assemble a batch of data by repeatedly choosing a random read and location
     in that read, continuing until we have found batch_size chunks that pass the
     tests.
@@ -168,8 +153,7 @@ def assemble_batch(read_data, batch_size, chunk_len, filter_parameters, args, lo
     See docstring for sample_chunks for parameters.
     """
     return sample_chunks(read_data, batch_size, chunk_len, chunkfunc=lambda x: x,
-                         filter_parameters=filter_parameters, log=log,
-                         chunk_log=chunk_log, args=args,
+                         filter_parameters=filter_parameters, log=log, args=args,
                          chunk_len_means_sequence_len=chunk_len_means_sequence_len)
 
 
