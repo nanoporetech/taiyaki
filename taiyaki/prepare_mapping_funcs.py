@@ -108,6 +108,7 @@ def generate_output_from_results(results, output, alphabet_info):
     sys.stderr.write('\n')
 
     # report errors at the end to avoid spamming stderr
+    sys.stderr.write('* {} reads mapped successfully\n'.format(progress.count))
     if len(err_types) > 0:
         for err_str, n_errs in err_types.items():
             sys.stderr.write((
