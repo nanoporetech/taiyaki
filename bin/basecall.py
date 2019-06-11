@@ -9,7 +9,7 @@ import torch
 from ont_fast5_api import fast5_interface
 
 from taiyaki import basecall_helpers, fast5utils, layers
-from taiyaki.cmdargs import FileAbsent, FileExists, NonNegative, Positive
+from taiyaki.cmdargs import AutoBool, FileAbsent, FileExists, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DEFAULT_ALPHABET
 from taiyaki.cupy_extensions.flipflop import flipflop_make_trans, flipflop_viterbi
@@ -38,6 +38,8 @@ parser.add_argument("--modified_base_output", action=FileAbsent, default=None,
 parser.add_argument("--overlap", type=NonNegative(int),
                     default=basecall_helpers._DEFAULT_OVERLAP,
                     help="Overlap between signal chunks sent to GPU")
+parser.add_argument('--reverse', default=False, action=AutoBool,
+                    help='Reverse sequences in output')
 parser.add_argument('--scaling', action=FileExists, default=None,
                     help='Per-read scaling params')
 parser.add_argument("model", action=FileExists,
@@ -176,7 +178,7 @@ def main():
                     read_params, n_can_states, stride, args.alphabet,
                     is_cat_mod, mods_fp)
                 if basecall is not None:
-                    fh.write(">{}\n{}\n".format(read_id, basecall))
+                    fh.write(">{}\n{}\n".format(read_id, basecall[::-1] if args.reverse else basecall))
                     nbase += len(basecall)
                     ncalled += 1
                 nread += 1
