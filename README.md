@@ -231,6 +231,8 @@ Example usage:
 A limited range of models can also be used with Guppy, which will provide better performance and stability.
 See the section on [Guppy compatibility](#guppy-compatibility) for more details.
 
+Note: due to the RNA motor processing along the strand from 3' to 5', the base caller sees the read reversed relative to the natural orientation.  Use `bin/basecall.py --reverse` to output the basecall of the read in its natural direction.
+
 
 ## Modified Bases
 

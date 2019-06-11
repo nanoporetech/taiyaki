@@ -146,8 +146,15 @@ For example, the training file for the R941 DNA consists of 1497098 chunks of 20
         ACCTGTCTGAGCTGTTTGGTTTTGAACTG
 
 
+RNA
+---
+The motor for sequencing RNA translocates along the strand from 3' to 5', so it is observed reversed compared to its natural orientation.  For training a basecaller, RNA training sequences must be reversed (but not complemented).
+
+
 Modified bases
 --------------
 .. _modbase: modbase.rst
 Ab initio training does not yet support our modified base models.
 While a model could be trained treating each modified base as an additional canonical base, the recommended proceedure is to train a canonical model using the ab initio process and then use this as the 'pre-trained' model in the modbase_ walk through.
+
+
