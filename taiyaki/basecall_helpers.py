@@ -70,7 +70,8 @@ def run_model(
     """
     device = next(model.parameters()).device
     stride = guess_model_stride(model)
-    chunk_size, overlap = round_chunk_values(chunk_size, overlap, stride)
+    chunk_size *= stride
+    overlap *= stride
 
     chunks, chunk_starts, chunk_ends = chunk_read(
         normed_signal, chunk_size, overlap)
