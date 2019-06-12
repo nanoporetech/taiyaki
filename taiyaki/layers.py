@@ -984,3 +984,58 @@ class GlobalNormRLE(nn.Module):
                                         [('b', self.linear.bias)] if self.has_bias else [])
         return res
 
+
+def crfrle_log_partition(weights, nbase):
+    ntime, nbatch, nstate = weights.shape
+    assert 2 * nbase * nbase == nstate, "Number of states inconsistent with number of states"
+    hole = torch.eye(nbase, device=weights.device, dtype=weights.dtype)
+    holes = -1e30 * torch.cat([hole, hole], dim=1)
+    diag = -1e30 * (1 - torch.cat([hole, hole], dim=1))
+
+    def step(w, ft):
+        w_mat = w.reshape((-1, nbase, 2 * nbase))
+        ft_big = ft.unsqueeze(1)
+        move_score = torch.logsumexp(ft_big + w_mat + holes, 2)
+        stay_score = torch.logsumexp(ft_big + w_mat + diag, 2)
+        return torch.cat([move_score, stay_score], 1)
+
+    fwd = weights.new_zeros((nbatch, 2 * nbase))
+    for w_t in weights:
+        fwd = step(w_t, fwd)
+    return fwd.logsumexp(1, keepdim=True)
+
+
+class GlobalNormCRFRLE(nn.Module):
+    def __init__(self, insize, nbase, has_bias=True):
+        super().__init__()
+        self.insize = insize
+        self.nbase = nbase
+        self.size = nbase * (2 + 2 * nbase)
+        self.has_bias = has_bias
+        self.linear = nn.Linear(insize, self.size, bias=has_bias)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        winit = truncated_normal(list(self.linear.weight.shape), sd=0.5)
+        init_(self.linear.weight, winit / np.sqrt(self.insize + self.size))
+        if self.has_bias:
+            binit = truncated_normal(list(self.linear.bias.shape), sd=0.5)
+            init_(self.linear.bias, binit)
+
+    def forward(self, x):
+        y = self.linear(x)
+        ntime , _ , _ = y.shape
+        shape = 1.0 + activation.softplus(y[... , :self.nbase])
+        scale = 0.1 + activation.softplus(y[... , self.nbase : 2 * self.nbase])
+        trans = 5.0 * activation.tanh(y[... , 2 * self.nbase:])
+        logZ = crfrle_log_partition(trans, self.nbase).unsqueeze(0) / ntime
+        return torch.cat([shape, scale, trans - logZ], dim=2)
+
+    def json(self, params=False):
+        res = OrderedDict([('type', "GlobalNormCRFRLE"),
+                           ('size', self.size),
+                           ('insize', self.insize),
+                           ('bias', self.has_bias)])
+        if params:
+            res['params'] = OrderedDict([('W', self.linear.weight)] + [('b', self.linear.bias)] if self.has_bias else [])
+        return res

@@ -222,7 +222,7 @@ def main():
 
         optimizer.zero_grad()
         outputs = network(indata)
-        lossvector = ctc.runlength_loss(outputs, seqs, seqrles, seqlens)
+        lossvector = ctc.crf_runlength_loss(outputs, seqs, seqrles, seqlens)
         loss = lossvector.sum() / (seqlens > 0.0).float().sum()
         loss.backward()
         optimizer.step()

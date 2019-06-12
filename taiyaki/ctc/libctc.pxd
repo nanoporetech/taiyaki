@@ -22,6 +22,16 @@ cdef extern from "c_runlength.h":
                         float * score);
 
 
+cdef extern from "c_crf_runlength.h":
+    void crf_runlength_grad(const float * logprob, size_t nstate, size_t nblk , size_t nbatch,
+                            const int32_t * seqs, const int32_t * rles, const int32_t * seqlen,
+                            float * score, float * grad);
+
+    void crf_runlength_cost(const float * logprob, size_t nstate, size_t nblk , size_t nbatch,
+                            const int32_t * seqs, const int32_t * rles, const int32_t * seqlen,
+                            float * score);
+
+
 cdef extern from "c_cat_mod_flipflop.h":
     void cat_mod_flipflop_grad(
         const float * logprob, size_t nstate, size_t nblk , size_t nbatch,
