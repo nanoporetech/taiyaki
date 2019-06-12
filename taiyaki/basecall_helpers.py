@@ -8,13 +8,6 @@ _DEFAULT_CHUNK_SIZE = 1000
 _DEFAULT_OVERLAP = 100
 
 
-def round_chunk_values(chunk_size, chunk_overlap, stride):
-    # round chunk size down to nearest stride
-    chunk_size = (chunk_size // stride) * stride
-    # round chunk_overlap down to nearest stride
-    chunk_overlap = (chunk_overlap // stride) * stride
-    return chunk_size, chunk_overlap
-
 def chunk_read(signal, chunk_size, overlap):
     """ Divide signal into overlapping chunks """
     if len(signal) < chunk_size:
