@@ -101,7 +101,7 @@ def main():
         log.write('* CUDA version {}\n'.format(torch.version.cuda))
         log.write('* CUDA device {}\n'.format(torch.cuda.get_device_name(device)))
     else:
-        log.write('* Running on CPU')
+        log.write('* Running on CPU\n')
     log.write('* Command line\n')
     log.write(' '.join(sys.argv) + '\n')
     log.write('* Loading data from {}\n'.format(args.input))

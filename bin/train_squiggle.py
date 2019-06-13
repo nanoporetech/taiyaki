@@ -76,6 +76,8 @@ def main():
         sys.stderr.write('Error: Output location {} is not directory\n'.format(args.output))
         exit(1)
 
+    device = torch.device(args.device)
+
     log = helpers.Logger(os.path.join(args.output, 'model.log'), args.quiet)
     log.write('* Taiyaki version {}\n'.format(__version__))
     log.write('* Platform is {}\n'.format(platform.platform()))
@@ -84,7 +86,7 @@ def main():
         log.write('* CUDA version {}\n'.format(torch.version.cuda))
         log.write('* CUDA device {}\n'.format(torch.cuda.get_device_name(device)))
     else:
-        log.write('* Running on CPU')
+        log.write('* Running on CPU\n')
     log.write('* Command line\n')
     log.write(' '.join(sys.argv) + '\n')
 
@@ -136,10 +138,7 @@ def main():
     log.write('* Window width {}\n'.format(args.winlen))
     log.write('* Context +/- {} bases\n'.format((args.depth + 2) * (args.winlen // 2)))
 
-    device = torch.device(args.device)
     conv_net = conv_net.to(device)
-
-
 
     optimizer = torch.optim.Adam(conv_net.parameters(), lr=args.lr_max,
                                  betas=args.adam, weight_decay=args.weight_decay,
