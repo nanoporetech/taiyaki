@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import argparse
 from taiyaki.iterators import imap_mp
+import numpy as np
 import os
 import sys
-from taiyaki.cmdargs import FileExists
+from taiyaki.cmdargs import FileExists, Maybe
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki import alphabet, fast5utils, helpers, prepare_mapping_funcs
 
@@ -14,6 +15,8 @@ parser = argparse.ArgumentParser(description=program_description,
 
 add_common_command_args(parser, 'alphabet input_folder input_strand_list jobs limit overwrite recursive version'.split())
 
+parser.add_argument('--max_read_length', metavar='bases', default=None, type=Maybe(int),
+                    help='Don\'t attempt remapping for reads longer than this')
 parser.add_argument('--mod', nargs=3, metavar=('base', 'canonical', 'name'),
                     default=[], action='append',
                     help='Modified base description')
@@ -62,16 +65,26 @@ def main():
     kwargs = {}
     kwargs['per_read_params_dict'] = prepare_mapping_funcs.get_per_read_params_dict_from_tsv(
         args.input_per_read_params)
-    kwargs['references'] = helpers.fasta_file_to_dict(args.references,
-                                                      alphabet=full_alphabet)
     kwargs['model'] = helpers.load_model(args.model)
     kwargs['alphabet_info'] = alphabet_info
+    kwargs['max_read_length'] = args.max_read_length
 
     # remaps a single read using flip-flip network
     workerFunction = prepare_mapping_funcs.oneread_remap
 
-    results = imap_mp(workerFunction, fast5_reads, threads=args.jobs,
-                      fix_kwargs=kwargs, unordered=True, chunksize=50)
+    def iter_jobs():
+        references = helpers.fasta_file_to_dict(args.references, alphabet=full_alphabet)
+        for fn, read_id in fast5_reads:
+            yield fn, read_id, references.get(read_id, None)
+
+    if args.limit is not None:
+        chunksize = args.limit // (2 * args.jobs)
+        chunksize = int(np.clip(chunksize, 1, 50))
+    else:
+        chunksize = 50
+
+    results = imap_mp(workerFunction, iter_jobs(), threads=args.jobs,
+                      fix_kwargs=kwargs, unordered=True, chunksize=chunksize)
 
     # results is an iterable of dicts
     # each dict is a set of return values from a single read

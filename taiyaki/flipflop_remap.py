@@ -29,9 +29,11 @@ def map_to_crf_viterbi(scores, step_index, stay_index, localpen=LARGE_VAL):
     end_score = -LARGE_VAL
     alignment_end = 0
 
-    traceback = np.zeros((N + 1, M), dtype='i1')
+    traceback = [np.zeros(M, dtype='u1')]
 
     for n in range(N):
+        traceback.append(np.zeros(M, dtype='u1'))
+
         step_scores = scores[n, step_index]
         stay_scores = scores[n, stay_index]
 
@@ -51,8 +53,8 @@ def map_to_crf_viterbi(scores, step_index, stay_index, localpen=LARGE_VAL):
         cscore[:] = cstay[:]
         cscore[1:] = np.maximum(cscore[1:], cstep)
         cscore[0] = max(cscore[0], start_score)
-        traceback[n + 1, 1:] = cstay[1:] < cstep
-        traceback[n + 1, 0] = 1 if leave_start_score > cstay[0] else 0
+        traceback[n + 1][1:] = cstay[1:] < cstep
+        traceback[n + 1][0] = 1 if leave_start_score > cstay[0] else 0
 
         # end
         remain_in_end_score = end_score + max(stay_scores[-1], -localpen)
@@ -60,6 +62,8 @@ def map_to_crf_viterbi(scores, step_index, stay_index, localpen=LARGE_VAL):
         end_score = max(remain_in_end_score, step_into_end_score)
         if step_into_end_score > remain_in_end_score:
             alignment_end = n
+
+        traceback[-1] = np.packbits(traceback[-1])
 
     path = np.full(N + 1, -1, dtype=int)
     if cscore[-1] > end_score:
@@ -71,7 +75,7 @@ def map_to_crf_viterbi(scores, step_index, stay_index, localpen=LARGE_VAL):
 
     while n >= 0 and m >= 0:
         path[n] = m
-        move = traceback[n, m]
+        move = np.unpackbits(traceback[n])[m]
         m -= move
         n -= 1
 

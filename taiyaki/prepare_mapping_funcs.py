@@ -1,4 +1,5 @@
 from collections import defaultdict
+import enum
 import numpy as np
 import sys
 from ont_fast5_api import fast5_interface
@@ -8,44 +9,48 @@ from taiyaki.config import taiyaki_dtype
 from taiyaki.fileio import readtsv
 
 
-READ_ID_INFO_NOT_FOUND_ERR_TEXT = 'No information for read id found in file.'
-NO_REF_FOUND_ERR_TEXT = 'No fasta reference found.'
-NO_PARAMS_ERR_TEXT = 'No per-read params provided.'
-REMAP_ERR_TEXT = 'Failure applying basecall network to remap read.'
-REMAP_SUCCESS_TEXT = ''
+class RemapResult(enum.Enum):
+    SUCCESS = 'Success!'
+    READ_ID_INFO_NOT_FOUND = 'No information for read id found in file.'
+    NO_REF_FOUND = 'No fasta reference found.'
+    NO_PARAMS = 'No per-read params provided.'
+    NETWORK_ERROR = 'Failure applying basecall network to remap read.'
+    REF_TOO_LONG = 'Reference exceeded maximum allowed read length.'
 
 
-def oneread_remap(read_tuple, references, model, per_read_params_dict,
-                  alphabet_info, device='cpu'):
+def oneread_remap(read_tuple, model, per_read_params_dict,
+                  alphabet_info, max_read_length, device='cpu'):
     """ Worker function for remapping reads using flip-flop model on raw signal
-    :param read_tuple                 : read, identified by a tuple (filepath, read_id)
-    :param references                 :dict mapping fast5 filenames to reference strings
+    :param read_tuple                 : read, identified by a tuple (filepath, read_id, read reference)
     :param model                      :pytorch model (the torch data structure, not a filename)
     :param device                     :integer specifying which GPU to use for remapping, or 'cpu' to use CPU
     :param per_read_params_dict       :dictionary where keys are UUIDs, values are dicts containing keys
                                          trim_start trim_end shift scale
     :param alphabet_info              : AlphabetInfo object for basecalling
+    :param max_read_length            : Don't attempt to remap reads with references longer than this
 
     :returns: tuple of dictionary as specified in mapped_signal_files.Read class
               and a message string indicating an error if one occured
     """
-    filename, read_id = read_tuple
+    filename, read_id, read_ref = read_tuple
+
+    if read_ref is None:
+        return None, RemapResult.NO_REF_FOUND
+
+    if max_read_length is not None and len(read_ref) > max_read_length:
+        return None, RemapResult.REF_TOO_LONG
+
     try:
         with fast5_interface.get_fast5_file(filename, 'r') as f5file:
             read = f5file.get_read(read_id)
             sig = signal.Signal(read)
     except Exception:
-        return None, READ_ID_INFO_NOT_FOUND_ERR_TEXT
-
-    if read_id in references:
-        read_ref = references[read_id]
-    else:
-        return None, NO_REF_FOUND_ERR_TEXT
+        return None, RemapResult.READ_ID_INFO_NOT_FOUND
 
     try:
         read_params_dict = per_read_params_dict[read_id]
     except KeyError:
-        return None, NO_PARAMS_ERR_TEXT
+        return None, RemapResult.NO_PARAMS
 
     sig.set_trim_absolute(read_params_dict['trim_start'], read_params_dict['trim_end'])
 
@@ -61,7 +66,7 @@ def oneread_remap(read_tuple, references, model, per_read_params_dict,
         with torch.no_grad():
             transweights = modelOnDevice(signalTensor).cpu().numpy()
     except Exception:
-        return None, REMAP_ERR_TEXT
+        return None, RemapResult.NETWORK_ERROR
 
     # Extra dimensions introduced by np.newaxis above removed by np.squeeze
     can_read_ref = alphabet_info.collapse_sequence(read_ref)
@@ -81,7 +86,7 @@ def oneread_remap(read_tuple, references, model, per_read_params_dict,
 
     return remapping.get_read_dictionary(read_params_dict['shift'],
                                          read_params_dict['scale'],
-                                         read_id), REMAP_SUCCESS_TEXT
+                                         read_id), RemapResult.SUCCESS
 
 
 def generate_output_from_results(results, output, alphabet_info):
@@ -110,10 +115,10 @@ def generate_output_from_results(results, output, alphabet_info):
     # report errors at the end to avoid spamming stderr
     sys.stderr.write('* {} reads mapped successfully\n'.format(progress.count))
     if len(err_types) > 0:
-        for err_str, n_errs in err_types.items():
+        for result, n_errs in err_types.items():
             sys.stderr.write((
                 '* {} reads failed to produce remapping results ' +
-                'due to: {}\n').format(n_errs, err_str))
+                'due to: {}\n').format(n_errs, result.value))
 
 
 def get_per_read_params_dict_from_tsv(input_file):
