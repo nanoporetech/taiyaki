@@ -15,6 +15,8 @@ parser = argparse.ArgumentParser(description=program_description,
 
 add_common_command_args(parser, 'alphabet input_folder input_strand_list jobs limit overwrite recursive version'.split())
 
+parser.add_argument('--localpen', metavar='penalty', default=0.0, type=float,
+                    help='Penalty for local mapping')
 parser.add_argument('--max_read_length', metavar='bases', default=None, type=Maybe(int),
                     help='Don\'t attempt remapping for reads longer than this')
 parser.add_argument('--mod', nargs=3, metavar=('base', 'canonical', 'name'),
@@ -68,6 +70,7 @@ def main():
     kwargs['model'] = helpers.load_model(args.model)
     kwargs['alphabet_info'] = alphabet_info
     kwargs['max_read_length'] = args.max_read_length
+    kwargs['localpen'] = args.localpen
 
     # remaps a single read using flip-flip network
     workerFunction = prepare_mapping_funcs.oneread_remap
