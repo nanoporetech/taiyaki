@@ -19,7 +19,7 @@ class RemapResult(enum.Enum):
 
 
 def oneread_remap(read_tuple, model, per_read_params_dict,
-                  alphabet_info, max_read_length, device='cpu'):
+                  alphabet_info, max_read_length, device='cpu', localpen=0.0):
     """ Worker function for remapping reads using flip-flop model on raw signal
     :param read_tuple                 : read, identified by a tuple (filepath, read_id, read reference)
     :param model                      :pytorch model (the torch data structure, not a filename)
@@ -28,6 +28,7 @@ def oneread_remap(read_tuple, model, per_read_params_dict,
                                          trim_start trim_end shift scale
     :param alphabet_info              : AlphabetInfo object for basecalling
     :param max_read_length            : Don't attempt to remap reads with references longer than this
+    :param localpen:                  Penalty for local mapping
 
     :returns: tuple of dictionary as specified in mapped_signal_files.Read class
               and a message string indicating an error if one occured
@@ -72,7 +73,7 @@ def oneread_remap(read_tuple, model, per_read_params_dict,
     can_read_ref = alphabet_info.collapse_sequence(read_ref)
     remappingscore, path = flipflop_remap.flipflop_remap(
         np.squeeze(transweights), can_read_ref,
-        alphabet=alphabet_info.can_bases, localpen=0.0)
+        alphabet=alphabet_info.can_bases, localpen=localpen)
     # read_ref comes out as a bytes object, so we need to convert to str
     # localpen=0.0 does local alignment
 
