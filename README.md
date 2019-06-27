@@ -294,6 +294,19 @@ and so we recommend you contact us to get confirmation.
 
 We are working on adding basecalling functionality to Taiyaki itself to support a wider range of models.
 
+## Standard model parameters
+
+Because of differences in the chemistry, particularly sequencing speed, and sample rate, the models used in Guppy are trained with different parameters depending on condition.
+The default parameters for Taiyaki are generally those appropriate for a high accuracy DNA model and should be changed depending on what sample is being trained.
+The table below describes the parameters currently used to train the production models released as part of Guppy:
+
+| Condition                | chunk\_len\_min | chunk\_len\_max | size | stride | winlen | 
++--------------------------+-----------------+-----------------+------+--------+--------+
+| DNA, high accuracy       |   2000          |   4000          | 256  | 2 or 3 | 19     |
+| DNA, fast                |   2000          |   4000          | 96   | 4      | 19     |
+| RNA, high accuracy       |   2000          |   4000          | 256  | 10     | 31     |
+| RNA, fast                |   2000          |   4000          | 96   | 12     | 31     |
+
 
 # Environment variables
 
