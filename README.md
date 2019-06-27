@@ -302,7 +302,7 @@ The table below describes the parameters currently used to train the production 
 
 
 | Condition                | chunk\_len\_min | chunk\_len\_max | size | stride | winlen |
-+--------------------------+-----------------+-----------------+------+--------+--------+
+|--------------------------|-----------------|-----------------|------|--------|--------|
 | DNA, high accuracy       |   2000          |   4000          | 256  | 2 or 3 | 19     |
 | DNA, fast                |   2000          |   4000          | 96   | 4      | 19     |
 | RNA, high accuracy       |   2000          |   4000          | 256  | 10     | 31     |
