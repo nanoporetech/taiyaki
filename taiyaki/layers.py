@@ -929,22 +929,24 @@ class TimeLinear(nn.Module):
         return res
 
 
+@torch.jit.script
+def rle_log_partition_step(w, ft, hole):
+    move = w[:, :4]
+    stay = w[:, 4:]
+    state_sum = torch.logsumexp(ft.unsqueeze(1) * hole, 2)
+    stay_score = ft + stay
+    move_score = state_sum + move
+    return logaddexp(stay_score, move_score)
+
+
 def rle_log_partition(weights):
     ntime, nbatch, nstate = weights.shape
     nbase = nstate // 2
     hole = 1 - torch.eye(nbase, device=weights.device, dtype=weights.dtype)
 
-    def step(w, ft):
-        move = w[:, :4]
-        stay = w[:, 4:]
-        state_sum = torch.logsumexp(ft.unsqueeze(1) * hole, 2)
-        stay_score = ft + stay
-        move_score = state_sum + move
-        return logaddexp(stay_score, move_score)
-
     fwd = weights.new_zeros((nbatch, nbase))
-    for w_t in weights:
-        fwd = step(w_t, fwd)
+    for w_t in weights.unbind(0):
+        fwd = rle_log_partition_step(w_t, fwd, hole)
     return fwd.logsumexp(1, keepdim=True)
 
 
@@ -985,6 +987,16 @@ class GlobalNormRLE(nn.Module):
         return res
 
 
+@torch.jit.script
+def crfrle_log_partition_step(w, ft, nbase, holes, diag):
+    nbase = int(nbase)
+    w_mat = w.reshape((-1, nbase, 2 * nbase))
+    ft_big = ft.unsqueeze(1)
+    move_score = torch.logsumexp(ft_big + w_mat + holes, 2)
+    stay_score = torch.logsumexp(ft_big + w_mat + diag, 2)
+    return torch.cat([move_score, stay_score], 1)
+
+
 def crfrle_log_partition(weights, nbase):
     ntime, nbatch, nstate = weights.shape
     assert 2 * nbase * nbase == nstate, "Number of states inconsistent with number of states"
@@ -992,16 +1004,10 @@ def crfrle_log_partition(weights, nbase):
     holes = -1e30 * torch.cat([hole, hole], dim=1)
     diag = -1e30 * (1 - torch.cat([hole, hole], dim=1))
 
-    def step(w, ft):
-        w_mat = w.reshape((-1, nbase, 2 * nbase))
-        ft_big = ft.unsqueeze(1)
-        move_score = torch.logsumexp(ft_big + w_mat + holes, 2)
-        stay_score = torch.logsumexp(ft_big + w_mat + diag, 2)
-        return torch.cat([move_score, stay_score], 1)
-
     fwd = weights.new_zeros((nbatch, 2 * nbase))
-    for w_t in weights:
-        fwd = step(w_t, fwd)
+    nbase = torch.tensor(nbase, device=weights.device, dtype=torch.long)
+    for w_t in weights.unbind(0):
+        fwd = crfrle_log_partition_step(w_t, fwd, nbase, holes, diag)
     return fwd.logsumexp(1, keepdim=True)
 
 
