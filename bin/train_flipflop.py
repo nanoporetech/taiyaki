@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 from collections import defaultdict
+import datetime
 import numpy as np
 import os
 import platform
@@ -40,11 +41,12 @@ parser.add_argument('--lr_max', default=2.0e-3, metavar='rate',
                     help='Max (and starting) learning rate')
 parser.add_argument('--lr_min', default=1.0e-4, metavar='rate',
                     type=Positive(float), help='Min (and final) learning rate')
-parser.add_argument('--min_batch_size', default=64, metavar='chunks', type=Positive(int),
-                    help='Number of chunks to run in parallel for chunk_len = chunk_len_max.' +
-                         'Actual batch size used is (min_batch_size / chunk_len) * chunk_len_max')
-parser.add_argument('--reporting_batch_size', default=1024, metavar='chunks', type=Positive(int),
-                    help='Number of chunks to use for standard loss reporting')
+parser.add_argument('--min_sub_batches', default=1, metavar='sub_batches', type=Positive(int),
+                    help='Number of sub-batches to run for chunk_len = chunk_len_max.' +
+                    'Actual number of sub-batches used is ' +
+                    '(((min_sub_batches*sub_batch_size*chunk_len_max) / chunk_len)) // sub_batch_size')
+parser.add_argument('--reporting_sub_batches', default=10, metavar='sub_batches', type=Positive(int),
+                    help='Number of sub-batches to use for standard loss reporting')
 parser.add_argument('--seed', default=None, metavar='integer', type=Positive(int),
                     help='Set random number seed')
 parser.add_argument('--sharpen', default=1.0, metavar='factor',
@@ -53,6 +55,8 @@ parser.add_argument('--size', default=256, metavar='neurons',
                     type=Positive(int), help='Base layer size for model')
 parser.add_argument('--stride', default=2, metavar='samples', type=Positive(int),
                     help='Stride for model')
+parser.add_argument('--sub_batch_size', default=96, metavar='chunks', type=Positive(int),
+                    help='Number of chunks to run in parallel per sub-batch')                                        
 parser.add_argument('--winlen', default=19, type=Positive(int),
                     help='Length of window over data')
 parser.add_argument('model', action=FileExists,
@@ -63,19 +67,14 @@ parser.add_argument('input', action=FileExists,
                     help='file containing mapped reads')
 
 
-def prepare_random_batches( device, read_data, batch_chunk_len, 
-                            target_batch_size, nbase, filter_parameters, args, 
+def prepare_random_batches( device, read_data, batch_chunk_len, sub_batch_size,
+                            target_sub_batches, nbase, filter_parameters, args, 
                             log = None ):
     
-    total_batch_size = 0
+    total_sub_batches = 0
         
-    while total_batch_size < target_batch_size:
+    while total_sub_batches < target_sub_batches:
 
-        if (target_batch_size - total_batch_size) > 32:
-            sub_batch_size = 32
-        else:
-            sub_batch_size = target_batch_size - total_batch_size
-        
         # Chunk_batch is a list of dicts
         chunk_batch, batch_rejections = \
             chunk_selection.assemble_batch( read_data, sub_batch_size, 
@@ -85,7 +84,7 @@ def prepare_random_batches( device, read_data, batch_chunk_len,
         # Shape of input tensor must be:
         #     (timesteps) x (batch size) x (input channels)
         # in this case:
-        #     batch_chunk_len x (32 or less) x 1
+        #     batch_chunk_len x sub_batch_size x 1
         stacked_current = np.vstack([d['current'] for d in chunk_batch]).T
         indata = torch.tensor( stacked_current, device=device, 
                                             dtype=torch.float32 ).unsqueeze(2)
@@ -97,7 +96,7 @@ def prepare_random_batches( device, read_data, batch_chunk_len,
         seqlens = torch.tensor( [len(d['sequence']) for d in chunk_batch],
                                                 device=device, dtype=torch.long )
         
-        total_batch_size += sub_batch_size
+        total_sub_batches += 1
         
         yield indata, seqs, seqlens, sub_batch_size, batch_rejections
         
@@ -187,6 +186,7 @@ def main():
         log.write('* Running on CPU\n')
     log.write('* Command line\n')
     log.write(' '.join(sys.argv) + '\n')
+    log.write('* Started on {}\n'.format(datetime.datetime.now()))
     log.write('* Loading data from {}\n'.format(args.input))
     log.write('* Per read file MD5 {}\n'.format(helpers.file_md5(args.input)))
 
@@ -252,8 +252,8 @@ def main():
     #Generating list of batches for standard loss reporting
     reporting_batch_list=list(
         prepare_random_batches( device, read_data, args.chunk_len_max, 
-                                args.reporting_batch_size, nbase, 
-                                filter_parameters, args, log ) )
+                                args.sub_batch_size, args.reporting_sub_batches, 
+                                nbase, filter_parameters, args, log ) )
 
     log.write('* Dumping initial model\n')
     helpers.save_model(network, args.output, 0)
@@ -270,23 +270,29 @@ def main():
 
 
     for i in range(args.niteration):
+
         lr_scheduler.step()
+
         # Chunk length is chosen randomly in the range given but forced to
         # be a multiple of the stride
         batch_chunk_len = (np.random.randint(
             args.chunk_len_min, args.chunk_len_max + 1) //
                            args.stride) * args.stride
-        # We choose the batch size so that the size of the data in the batch
-        # is about the same as args.min_batch_size chunks of length
+
+        # We choose the number of sub-batches so that the size of the data in 
+        # the total batch is about the same as 
+        # (args.min_sub_batches*args.sub_batch_size) chunks of length 
         # args.chunk_len_max
-        target_batch_size = int(args.min_batch_size * args.chunk_len_max /
-                                batch_chunk_len + 0.5)
+        tsize = args.min_sub_batches * args.sub_batch_size * args.chunk_len_max 
+        target_sub_batches = ( tsize / batch_chunk_len ) // args.sub_batch_size
+
 
         optimizer.zero_grad()        
 
         main_batch_gen = prepare_random_batches( device, read_data, 
-                                                 batch_chunk_len, 
-                                                 target_batch_size, nbase, 
+                                                 batch_chunk_len,                                                  
+                                                 args.sub_batch_size,
+                                                 target_sub_batches, nbase, 
                                                  filter_parameters, args, log )
 
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
@@ -315,7 +321,7 @@ def main():
         if (i + 1) % DOTROWLENGTH == 0:
             
             _, rloss, _, _, _ = calculate_loss( network, reporting_batch_list, 
-                                                args.sharpen )            
+                                                args.sharpen )
             
             # In case of super batching, additional functionality must be
             # added here
@@ -330,7 +336,7 @@ def main():
                                total_bases / 1000.0 / dt, learning_rate))
             # Write summary of chunk rejection reasons
             for k, v in rejection_dict.items():
-                log.write(" {}:{} ".format(k, v))
+                log.write(" {}:{}\t".format(k, v))
             log.write("\n")
             total_bases = 0
             total_samples = 0
