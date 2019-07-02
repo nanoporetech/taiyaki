@@ -41,10 +41,10 @@ parser.add_argument('--lr_max', default=2.0e-3, metavar='rate',
                     help='Max (and starting) learning rate')
 parser.add_argument('--lr_min', default=1.0e-4, metavar='rate',
                     type=Positive(float), help='Min (and final) learning rate')
-parser.add_argument('--min_sub_batches', default=1, metavar='sub_batches', type=Positive(int),
-                    help='Number of sub-batches to run for chunk_len = chunk_len_max.' +
-                    'Actual number of sub-batches used is ' +
-                    '(((min_sub_batches*sub_batch_size*chunk_len_max) / chunk_len)) // sub_batch_size')
+parser.add_argument('--min_sub_batch_size', default=96, metavar='chunks', type=Positive(int),
+                    help='Number of chunks to run in parallel per sub-batch for' +
+                    'chunk_len = chunk_len_max. Actual length of sub-batch' +
+                    'used is (min_sub_batch_size * chunk_len_max / chunk_len).')
 parser.add_argument('--reporting_sub_batches', default=10, metavar='sub_batches', type=Positive(int),
                     help='Number of sub-batches to use for standard loss reporting')
 parser.add_argument('--seed', default=None, metavar='integer', type=Positive(int),
@@ -55,8 +55,8 @@ parser.add_argument('--size', default=256, metavar='neurons',
                     type=Positive(int), help='Base layer size for model')
 parser.add_argument('--stride', default=2, metavar='samples', type=Positive(int),
                     help='Stride for model')
-parser.add_argument('--sub_batch_size', default=96, metavar='chunks', type=Positive(int),
-                    help='Number of chunks to run in parallel per sub-batch')                                        
+parser.add_argument('--sub_batches', default=1, metavar='sub_batches', type=Positive(int),
+                    help='Number of sub-batches per batch')
 parser.add_argument('--winlen', default=19, type=Positive(int),
                     help='Length of window over data')
 parser.add_argument('model', action=FileExists,
@@ -80,6 +80,9 @@ def prepare_random_batches( device, read_data, batch_chunk_len, sub_batch_size,
             chunk_selection.assemble_batch( read_data, sub_batch_size, 
                                             batch_chunk_len, filter_parameters, 
                                             args, log )
+    
+        if not all(len(d['sequence']) > 0.0 for d in chunk_batch):
+            raise Exception('Error: zero length sequence')
     
         # Shape of input tensor must be:
         #     (timesteps) x (batch size) x (input channels)
@@ -144,7 +147,8 @@ def calculate_loss( network, batch_gen, sharpen, calc_grads = False ):
             if p.grad is not None:
                 p.grad /= total_non_zero_seqlens
         
-    return total_chunk_count, total_fval/total_non_zero_seqlens, total_samples, total_bases, rejection_dict 
+    return total_chunk_count, total_fval/total_non_zero_seqlens, \
+                                    total_samples, total_bases, rejection_dict 
     
     
 
@@ -184,8 +188,8 @@ def main():
         log.write('* CUDA device {}\n'.format(torch.cuda.get_device_name(device)))
     else:
         log.write('* Running on CPU\n')
-    log.write('* Command line\n')
-    log.write(' '.join(sys.argv) + '\n')
+    log.write('* Command line:\n')
+    log.write('* "' + ' '.join(sys.argv) + '"\n')
     log.write('* Started on {}\n'.format(datetime.datetime.now()))
     log.write('* Loading data from {}\n'.format(args.input))
     log.write('* Per read file MD5 {}\n'.format(helpers.file_md5(args.input)))
@@ -252,8 +256,12 @@ def main():
     #Generating list of batches for standard loss reporting
     reporting_batch_list=list(
         prepare_random_batches( device, read_data, args.chunk_len_max, 
-                                args.sub_batch_size, args.reporting_sub_batches, 
+                                args.min_sub_batch_size, args.reporting_sub_batches, 
                                 nbase, filter_parameters, args, log ) )
+
+    log.write( ('* Standard loss reporting: chunk length = {} & sub-batch size ' + 
+                '= {} for {} sub-batches. \n').format( args.chunk_len_max, 
+                args.min_sub_batch_size, args.reporting_sub_batches) )
 
     log.write('* Dumping initial model\n')
     helpers.save_model(network, args.output, 0)
@@ -279,20 +287,17 @@ def main():
             args.chunk_len_min, args.chunk_len_max + 1) //
                            args.stride) * args.stride
 
-        # We choose the number of sub-batches so that the size of the data in 
-        # the total batch is about the same as 
-        # (args.min_sub_batches*args.sub_batch_size) chunks of length 
-        # args.chunk_len_max
-        tsize = args.min_sub_batches * args.sub_batch_size * args.chunk_len_max 
-        target_sub_batches = ( tsize / batch_chunk_len ) // args.sub_batch_size
-
+        # We choose the size of a sub-batch so that the size of the data in 
+        # the sub-batch is about the same as args.min_sub_batch_size chunks of 
+        # length args.chunk_len_max
+        sub_batch_size = int( args.min_sub_batch_size * args.chunk_len_max /
+                              batch_chunk_len + 0.5)
 
         optimizer.zero_grad()        
 
         main_batch_gen = prepare_random_batches( device, read_data, 
-                                                 batch_chunk_len,                                                  
-                                                 args.sub_batch_size,
-                                                 target_sub_batches, nbase, 
+                                                 batch_chunk_len, sub_batch_size,
+                                                 args.sub_batches, nbase, 
                                                  filter_parameters, args, log )
 
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
@@ -336,7 +341,7 @@ def main():
                                total_bases / 1000.0 / dt, learning_rate))
             # Write summary of chunk rejection reasons
             for k, v in rejection_dict.items():
-                log.write(" {}:{}\t".format(k, v))
+                log.write(" {}:{} ".format(k, v))
             log.write("\n")
             total_bases = 0
             total_samples = 0
