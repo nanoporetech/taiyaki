@@ -76,7 +76,9 @@ static inline float discrete_weibull_logpmf(float x, float sh, float sc, float *
         const float f2 = logf((x+1.0f) / sc) * log_cprob2;
         *dsh = f2 + (f1 - f2) / tmp;
 	if(!isfinite(*dsh)){
-		errx(EXIT_FAILURE, "NAN created %s:%d -- x %f p %f sh %f dsh %f sc %f dsc %f\n", __FILE__, __LINE__, x, cprob, sh, *dsh, sc, *dsc);
+		warnx("NAN created %s:%d -- x %f p %f sh %f dsh %f sc %f dsc %f\n", __FILE__, __LINE__, x, cprob, sh, *dsh, sc, *dsc);
+		*dsc = 0.0;
+		*dsh = 0.0;
 	}
     }
     if(NULL != dsc){
@@ -88,7 +90,9 @@ static inline float discrete_weibull_logpmf(float x, float sh, float sc, float *
         //*dsc = (dF1_dsc - dF2_dsc) / cprob;
         *dsc =  fact * (log_cprob2 - delta_log_cprob / tmp);
 	if(!isfinite(*dsc)){
-		errx(EXIT_FAILURE, "NAN created %s:%d  -- x %f p %f sh %f dsh %f sc %f dsc %f\n", __FILE__, __LINE__, x, cprob, sh, *dsh, sc, *dsc);
+		warnx("NAN created %s:%d  -- x %f p %f sh %f dsh %f sc %f dsc %f\n", __FILE__, __LINE__, x, cprob, sh, *dsh, sc, *dsc);
+		*dsc = 0.0;
+		*dsh = 0.0;
 	}
     }
 
