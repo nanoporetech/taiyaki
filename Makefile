@@ -41,7 +41,7 @@ pyTestArgs ?=
 override pyTestArgs += --durations=20 -v
 
 buildDir = build
-
+cacheDir = $(HOME)/.cache/taiyaki
 
 .PHONY: install
 install:
@@ -49,9 +49,9 @@ install:
 	virtualenv --python=${PYTHON} --prompt=${envPrompt} ${envDir}
 	source ${envDir}/bin/activate && \
 	    ${PYTHON} ${envDir}/bin/pip install pip --upgrade && \
-	    mkdir -p ${buildDir}/wheelhouse/${CUDA} && \
-	    ${PYTHON} ${envDir}/bin/pip download --dest ${buildDir}/wheelhouse/${CUDA} ${TORCH} && \
-	    ${PYTHON} ${envDir}/bin/pip install --find-links ${buildDir}/wheelhouse/${CUDA} --no-index torch && \
+	    mkdir -p ${cacheDir}/wheelhouse/${CUDA} && \
+	    ${PYTHON} ${envDir}/bin/pip download --dest ${cacheDir}/wheelhouse/${CUDA} ${TORCH} && \
+	    ${PYTHON} ${envDir}/bin/pip install --find-links ${cacheDir}/wheelhouse/${CUDA} --no-index torch && \
 	    ${PYTHON} ${envDir}/bin/pip install -r requirements.txt ${CUPY} && \
 	    ${PYTHON} ${envDir}/bin/pip install -r develop_requirements.txt && \
 	    ${PYTHON} setup.py develop
