@@ -15,7 +15,7 @@ import torch
 from taiyaki import (chunk_selection, ctc, flipflopfings, helpers,
                      mapped_signal_files, optim)
 from taiyaki import __version__
-from taiyaki.cmdargs import FileExists, Positive
+from taiyaki.cmdargs import AutoBool, FileExists, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
 
@@ -32,6 +32,9 @@ parser.add_argument('--chunk_len_min', default=2000, metavar='samples', type=Pos
                     help='Min length of each chunk in samples (chunk lengths are random between min and max)')
 parser.add_argument('--chunk_len_max', default=4000, metavar='samples', type=Positive(int),
                     help='Max length of each chunk in samples (chunk lengths are random between min and max)')
+parser.add_argument('--full_filter_status', default=False, action=AutoBool,
+                    help='Output full chunk filtering statistics. ' +
+                    'Default: only proportion of filtered chunks.')
 parser.add_argument('--input_strand_list', default=None, action=FileExists,
                     help='Strand summary file containing column read_id. Filenames in file are ignored.')
 parser.add_argument('--lr_cosine_iters', default=40000, metavar='n', type=Positive(float),
@@ -59,6 +62,7 @@ parser.add_argument('--sub_batches', default=1, metavar='sub_batches', type=Posi
                     help='Number of sub-batches per batch')
 parser.add_argument('--winlen', default=19, type=Positive(int),
                     help='Length of window over data')
+
 parser.add_argument('model', action=FileExists,
                     help='File to read python model description from')
 
@@ -340,8 +344,16 @@ def main():
                                total_samples / 1000.0 / dt,
                                total_bases / 1000.0 / dt, learning_rate))
             # Write summary of chunk rejection reasons
-            for k, v in rejection_dict.items():
-                log.write(" {}:{} ".format(k, v))
+            if args.full_filter_status:
+                for k, v in rejection_dict.items():
+                    log.write(" {}:{} ".format(k, v))
+            else:
+                n_tot = n_fail = 0
+                for k, v in rejection_dict.items():
+                    n_tot += v
+                    if k != 'pass':
+                        n_fail += v
+                log.write("  {:.1%} chunks filtered".format(n_fail / n_tot))
             log.write("\n")
             total_bases = 0
             total_samples = 0

@@ -12,7 +12,7 @@ from collections import defaultdict
 from taiyaki import (activation, chunk_selection, helpers, layers,
                      mapped_signal_files, optim)
 from taiyaki import __version__
-from taiyaki.cmdargs import FileExists, Maybe, Positive, proportion
+from taiyaki.cmdargs import AutoBool, FileExists, Maybe, Positive, proportion
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
 from taiyaki.squiggle_match import squiggle_match_loss, embed_sequence
@@ -33,6 +33,9 @@ parser.add_argument('--depth', metavar='layers' , default=4, type=Positive(int),
                     help='Number of residual convolution layers')
 parser.add_argument('--drop_slip', default=5, type=Maybe(Positive(int)), metavar='length',
                     help='Drop chunks with slips greater than given length (None = off)')
+parser.add_argument('--full_filter_status', default=False, action=AutoBool,
+                    help='Output full chunk filtering statistics. ' +
+                    'Default: only proportion of filtered chunks.')
 parser.add_argument('--input_strand_list', default=None, action=FileExists,
                     help='Strand summary file containing column read_id. Filenames in file are ignored.')
 parser.add_argument('--lr_decay', default=5000, metavar='n', type=Positive(float),
@@ -212,8 +215,16 @@ def main():
             log.write(t.format((i + 1) // DOTROWLENGTH, score_smoothed.value, dt))
             t0 = tn
             # Write summary of chunk rejection reasons
-            for k, v in rejection_dict.items():
-                log.write(" {}:{} ".format(k, v))
+            if args.full_filter_status:
+                for k, v in rejection_dict.items():
+                    log.write(" {}:{} ".format(k, v))
+            else:
+                n_tot = n_fail = 0
+                for k, v in rejection_dict.items():
+                    n_tot += v
+                    if k != 'pass':
+                        n_fail += v
+                log.write("  {:.1%} chunks filtered".format(n_fail / n_tot))
             log.write("\n")
 
 
