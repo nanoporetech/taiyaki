@@ -37,6 +37,10 @@ parser.add_argument(
     help='Min length of each chunk in samples (chunk lengths are random ' +
     'between min and max)')
 parser.add_argument(
+    '--full_filter_status', default=False, action=AutoBool,
+    help='Output full chunk filtering statistics. ' +
+    'Default: only proportion of filtered chunks.')
+parser.add_argument(
     '--input_strand_list', default=None, action=FileExists,
     help='Strand summary file containing column read_id. Filenames in file ' +
     'are ignored.')
@@ -351,8 +355,16 @@ def main():
                            total_samples / 1000 / dt, total_bases / 1000 / dt,
                            learning_rate))
             # Write summary of chunk rejection reasons
-            for k, v in rejection_dict.items():
-                log.write(" {}:{} ".format(k, v))
+            if args.full_filter_status:
+                for k, v in rejection_dict.items():
+                    log.write(" {}:{} ".format(k, v))
+            else:
+                n_tot = n_fail = 0
+                for k, v in rejection_dict.items():
+                    n_tot += v
+                    if k != 'pass':
+                        n_fail += v
+                log.write("  {:.1%} chunks filtered".format(n_fail / n_tot))
             log.write("\n")
             total_bases = 0
             total_samples = 0
