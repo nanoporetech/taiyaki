@@ -132,8 +132,8 @@ def main():
         sys.exit()
     n_can_states = nstate_flipflop(model.sublayers[-1].nbase)
     stride = guess_model_stride(model)
-    chunk_size, chunk_overlap = basecall_helpers.round_chunk_values(
-        args.chunk_size, args.overlap, stride)
+    chunk_size = args.chunk_size * stride
+    chunk_overlap = args.overlap * stride
 
     sys.stderr.write("* Initializing reads file search.\n")
     fast5_reads = list(fast5utils.iterate_fast5_reads(args.input_folder,
