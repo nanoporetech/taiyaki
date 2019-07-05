@@ -933,3 +933,73 @@ class TimeLinear(nn.Module):
             res['params'] = OrderedDict([('W', self.linear.weight)] +
                                         [('b', self.linear.bias)] if self.has_bias else [])
         return res
+
+
+class UpSample(nn.Module):
+    """  Reshape tensor on time--feature axis
+
+    Reshapes a tensor from (nt, nb, nf) to (nt * nfold, nb, nf / nfold)
+
+    :param n: N-fold scaling
+    """
+
+    def __init__(self, nfold):
+        super().__init__()
+        self.nfold = nfold
+
+    def json(self, params=False):
+        return OrderedDict([('type', "UpSample"),
+                            ('nfold', self.nfold)])
+
+    def forward(self, x):
+        nt, nb, nf = x.shape
+        y = x.transpose(1, 0)
+        assert nf % self.nfold == 0, "Number of features must be divisible by nfold"
+        nf_out = nf // self.nfold
+        nt_out = nt * self.nfold
+        z = torch.reshape(y, (nb, nt_out, nf_out))
+        return z.transpose(1, 0)
+
+
+class DownSample(nn.Module):
+    """  Reshape tensor on time--feature axis
+
+    Reshapes a tensor from (nt, nb, nf) to (nt / nfold, nb, nf * nfold)
+
+    :param n: N-fold scaling
+    """
+
+    def __init__(self, nfold):
+        super().__init__()
+        self.nfold = nfold
+
+    def json(self, params=False):
+        return OrderedDict([('type', "DownSample"),
+                            ('nfold', self.nfold)])
+
+    def forward(self, x):
+        nt, nb, nf = x.shape
+        y = x.transpose(1, 0)
+        assert nt % self.nfold == 0, "Number of time points must be divisible by nfold"
+        nt_out = nt // self.nfold
+        nf_out = nf * self.nfold
+        z = torch.reshape(y, (nb, nt_out, nf_out))
+        return z.transpose(1, 0)
+
+
+def DownUpSample(layer, nfold):
+    """  Wrap inner layer between down-sampling and up-sampling layers
+
+    For input nt x nb x nf,
+        Reshapes to (nt / nfold) x nb x (nf * nfold) == nt2 x nb x nf2
+        Runs :layer:  nt2  x nb x nf2 => nt2 x nb x nf3
+        Reshapes to nt2 x nb x nf3  => nt x nb x (nf3 / nfold)
+    The output size of :layer: should be divisible by nfold
+
+    :param layer:  Layer to wrap
+    :param nfold:  N-fold scaling of time
+
+    :returns: A Serial layer wrapping the internal layer between down & up sampling
+    """
+    assert layer.size % nfold == 0, "Output of layer not divisible by nfold"
+    return Serial([DownSample(nfold), layer, UpSample(nfold)])
