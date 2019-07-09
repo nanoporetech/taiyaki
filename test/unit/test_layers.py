@@ -203,12 +203,18 @@ class LayerTest(metaclass=abc.ABCMeta):
             raise NotImplementedError("Please specify layer inputs for testing, or explicitly skip this test.")
         f = self.layer.train(False)
         outs = [f(torch.tensor(x, dtype=torch_dtype)) for x in self._INPUTS]
+        #  Check batch dim is preserved
+        self.assertListEqual([x.shape[1] for x in self._INPUTS],
+                             [x.shape[1] for x in outs])
 
     def test_001_train(self):
         if self._INPUTS is None:
             raise NotImplementedError("Please specify layer inputs for testing, or explicitly skip this test.")
         f = self.layer.train(True)
         outs = [f(torch.tensor(x, dtype=torch_dtype)) for x in self._INPUTS]
+        #  Check batch dim is preserved
+        self.assertListEqual([x.shape[1] for x in self._INPUTS],
+                             [x.shape[1] for x in outs])
 
     def test_002_json_dumps(self):
         js = json.dumps(self.layer.json(), cls=JsonEncoder)
