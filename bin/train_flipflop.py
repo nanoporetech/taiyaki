@@ -12,10 +12,10 @@ import time
 import torch
 
 
-from taiyaki import (chunk_selection, ctc, flipflopfings, helpers,
-                     mapped_signal_files, optim)
+from taiyaki import (chunk_selection, constants, ctc, flipflopfings, helpers,
+                     mapped_signal_files, maths, optim)
 from taiyaki import __version__
-from taiyaki.cmdargs import AutoBool, FileExists, Positive
+from taiyaki.cmdargs import AutoBool, FileExists, Maybe, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
 
@@ -35,10 +35,15 @@ parser.add_argument('--chunk_len_max', default=4000, metavar='samples', type=Pos
 parser.add_argument('--full_filter_status', default=False, action=AutoBool,
                     help='Output full chunk filtering statistics. ' +
                     'Default: only proportion of filtered chunks.')
+parser.add_argument('--gradient_cap_fraction', default=0.05, metavar = 'f', type=Maybe(NonNegative(float)),
+                    help='Cap L2 norm of gradient so that a fraction f of gradients are capped.' +
+                         'Use --gradient_cap_fraction None for no capping')
 parser.add_argument('--input_strand_list', default=None, action=FileExists,
                     help='Strand summary file containing column read_id. Filenames in file are ignored.')
 parser.add_argument('--lr_cosine_iters', default=40000, metavar='n', type=Positive(float),
                     help='Learning rate decreases from max to min like cosine function over n batches')
+parser.add_argument('--lr_frac_decay', default=None, metavar='k', type=Positive(int),
+                    help='If specified, use fractional learning rate schedule, rate=lr_max*k/(k+t)')
 parser.add_argument('--lr_max', default=2.0e-3, metavar='rate',
                     type=Positive(float),
                     help='Max (and starting) learning rate')
@@ -60,11 +65,15 @@ parser.add_argument('--stride', default=2, metavar='samples', type=Positive(int)
                     help='Stride for model')
 parser.add_argument('--sub_batches', default=1, metavar='sub_batches', type=Positive(int),
                     help='Number of sub-batches per batch')
+parser.add_argument('--warmup_batches', type=int, default=200,
+                    help = "For the first n batches, warm up at a low learning rate.")
+parser.add_argument('--lr_warmup', type=float, default=None,
+                    help = "Learning rate used for warmup. Defaults to lr_min")
 parser.add_argument('--winlen', default=19, type=Positive(int),
                     help='Length of window over data')
 
 parser.add_argument('model', action=FileExists,
-                    help='File to read python model description from')
+                    help='File to read python model description (or checkpoint) from')
 
 parser.add_argument('output', help='Prefix for output files')
 parser.add_argument('input', action=FileExists,
@@ -182,7 +191,7 @@ def main():
         exit(1)
 
     copyfile(args.model, os.path.join(args.output, 'model.py'))
-
+    batchlog = helpers.BatchLog(args.output)
     log = helpers.Logger(os.path.join(args.output, 'model.log'), args.quiet)
     log.write('* Taiyaki version {}\n'.format(__version__))
     log.write('* Platform is {}\n'.format(platform.platform()))
@@ -253,7 +262,18 @@ def main():
                                  betas=args.adam, weight_decay=args.weight_decay,
                                  eps=args.eps)
 
-    lr_scheduler = optim.CosineFollowedByFlatLR(optimizer, args.lr_min, args.lr_cosine_iters)
+    if args.lr_warmup is None:
+        lr_warmup = args.lr_min
+    else:
+        lr_warmup = args.lr_warmup
+    
+    if args.lr_frac_decay is not None:
+        lr_scheduler = optim.ReciprocalLR(optimizer, args.lr_frac_decay, args.warmup_batches, lr_warmup)
+        log.write('* Learning rate schedule lr_max*k/(k+t) , k={}, t=iterations.\n'.format(args.lr_frac_decay))
+    else:
+        lr_scheduler = optim.CosineFollowedByFlatLR(optimizer, args.lr_min, args.lr_cosine_iters, args.warmup_batches, lr_warmup)
+        log.write('* Learning rate schedule decreases like cosine from lr_max to lr_min over {} iterations.\n'.format(args.lr_cosine_iters))
+    log.write('* Before schedule starts, train for {} batches at warm-up learning rate {:3.2}\n'.format(args.warmup_batches, lr_warmup))
 
     score_smoothed = helpers.WindowedExpSmoother()
 
@@ -267,8 +287,21 @@ def main():
                 '= {} for {} sub-batches. \n').format( args.chunk_len_max, 
                 args.min_sub_batch_size, args.reporting_sub_batches) )
 
+
+    gradient_cap = constants.LARGE_VAL #Cap at very large value (before we have any gradient stats).
+    if args.gradient_cap_fraction is None:
+        log.write('* No gradient capping\n')
+    else:
+        rolling_quantile = maths.RollingQuantile(args.gradient_cap_fraction)
+        log.write('* Gradient L2 norm cap will be upper' +
+                  ' {:3.2f} quantile of the last {} norms.\n'.format(args.gradient_cap_fraction, rolling_quantile.window))
+        
+
+
     log.write('* Dumping initial model\n')
     helpers.save_model(network, args.output, 0)
+
+
 
     total_bases = 0
     total_samples = 0
@@ -307,8 +340,13 @@ def main():
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
                             calculate_loss( network, main_batch_gen, 
                                             args.sharpen, calc_grads = True )
-        
+                            
+        gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(network.parameters(), gradient_cap)
+        if args.gradient_cap_fraction is not None:
+            gradient_cap = rolling_quantile.update(gradnorm_uncapped)
+            
         optimizer.step()
+        batchlog.record(fval, gradnorm_uncapped, None if args.gradient_cap_fraction is None else gradient_cap)
         
         total_chunks += chunk_count
         total_samples += chunk_samples

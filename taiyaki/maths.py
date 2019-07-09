@@ -1,4 +1,5 @@
 import numpy as np
+from collections import deque
 
 
 def med_mad(data, factor=None, axis=None, keepdims=False):
@@ -118,3 +119,35 @@ def rle(x, tol=0):
     runlength = np.ediff1d(starts, to_end=last_runlength)
 
     return (x[starts], runlength)
+
+
+class RollingQuantile:
+    """Calculate rolling quantile of time series over a specified window"""
+    
+    def __init__(self, upper_quantile, window=100, min_data=1, default_to=None):
+        """Set up rolling quantile calculator. With the default settings, there is
+        no minimum data length and the first call to the calculator
+        returns the first value x, and the second call returns
+         upper_quantile * a + (1-upper_quantile) * b
+        where b>=a and (a,b) are the first two x values.
+        params:
+            upper_quantile : if upper_quantile = 0.05 then we calculate the value
+                                                 exceeded by 5% of the data
+            window         : calculation is done over the last <window> data points
+            min_data       : if fewer than <min_data> data points available...
+            default_to     : ...then return this value.
+        """
+        self.window_data = deque()
+        self.upper_quantile = upper_quantile
+        self.window = window
+        self.min_data = min_data
+        self.default_returnvalue = default_to
+        
+    def update(self, x):
+        """Update with time series value x and return rolling quantile."""
+        self.window_data.append(x)
+        if len(self.window_data)>self.window:
+            self.window_data.popleft()
+        if len(self.window_data) < self.min_data:
+            return self.default_returnvalue
+        return np.quantile(self.window_data, 1.0-self.upper_quantile)

@@ -180,6 +180,41 @@ class Logger(object):
             print("Failed to write to log\n Message: {}\n Error: {}".format(message, repr(e)))
 
 
+
+class BatchLog:
+    """Used to record three-column tsv file containing
+    loss, gradient norm and gradient norm cap
+    for every training step"""
+    def __init__(self, output_dir, filename='batch.log'):
+        """Open log in output_dir with given filename and write header line.
+        If output_dir is None, then
+        initialise class instance but open no file and
+        arrange it so that the output method does nothing."""
+        # Can't have unbuffered text I/O at the moment hence 'b' mode below.
+        # See currently open issue http://bugs.python.org/issue17404
+        if output_dir is None:
+            self.fh = None
+        else:
+            log_file_name = os.path.join(output_dir, filename)
+            self.fh = open(log_file_name, 'wb', 0)
+            self.write("loss\tgradientnorm\tgradientcap\n")
+    def write(self, s):
+        """Write a string to the log, or do nothing if class
+        instance has been initialised with output_dir=None"""
+        if self.fh is not None:
+            self.fh.write(s.encode('utf-8'))
+    def record(self, loss, gradientnorm, gradientcap, nonestring="NaN"):
+        """Write loss, gradient and cap to a row of the log.
+        If gradientcap is None, then write nonestring in its place."""
+        self.write("{:5.4f}\t{:5.4f}\t".format(loss, gradientnorm))
+        if gradientcap is None:
+            self.write("{}\n".format(nonestring))
+        else:
+            self.write("{:5.4f}\n".format(gradientcap))
+
+      
+
+
 def file_md5(filename, nblock=1024):
     hasher = hashlib.md5()
     block_size = nblock * hasher.block_size
