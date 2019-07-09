@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 common_cmdargs.add_common_command_args(parser, """
-adam chunk_logging_threshold device eps filter_max_dwell filter_mean_dwell
+adam device eps filter_max_dwell filter_mean_dwell
 limit lr_max niteration overwrite quiet save_every
 sample_nreads_before_filtering version weight_decay""".split())
 
@@ -179,17 +179,12 @@ def _setup_and_logs(args):
     log.write('* Loading data from {}\n'.format(args.input))
     log.write('* Per read file MD5 {}\n'.format(helpers.file_md5(args.input)))
 
-    # Create a logging file to save details of chunks.
-    # If args.chunk_logging_threshold is set to 0 then we log all chunks
-    # including those rejected.
-    chunk_log = chunk_selection.ChunkLog(args.outdir)
-
-    return log, loss_log, chunk_log, device
+    return log, loss_log, device
 
 
 def main():
     args = parser.parse_args()
-    log, loss_log, chunk_log, device = _setup_and_logs(args)
+    log, loss_log, device = _setup_and_logs(args)
 
     read_data, alphabet_info =  _load_data(args, log)
     # Get parameters for filtering by sampling a subset of the reads
@@ -198,7 +193,7 @@ def main():
     filter_parameters = chunk_selection.sample_filter_parameters(
         read_data, args.sample_nreads_before_filtering,
         (args.chunk_len_min + args.chunk_len_max) // 2,
-        args, log, chunk_log=chunk_log)
+        args, log)
     log.write(("* Sampled {} chunks: median(mean_dwell)={:.2f}, " +
                "mad(mean_dwell)={:.2f}\n").format(
                    args.sample_nreads_before_filtering, *filter_parameters))
@@ -273,17 +268,10 @@ def main():
         # ...but it can't be more than the number of reads.
         batch_size = min(target_batch_size, len(read_data))
 
-        # If the logging threshold is 0 then we log all chunks, including those
-        # rejected, so pass the log
-        # object into assemble_batch
-        if args.chunk_logging_threshold == 0:
-            log_rejected_chunks = chunk_log
-        else:
-            log_rejected_chunks = None
         # chunk_batch is a list of dicts.
         chunk_batch, batch_rejections = chunk_selection.assemble_batch(
             read_data, batch_size, batch_chunk_len, filter_parameters, args,
-            log, chunk_log=log_rejected_chunks)
+            log)
         total_chunks += len(chunk_batch)
         # Update counts of reasons for rejection
         for k, v in batch_rejections.items():
@@ -321,12 +309,6 @@ def main():
 
         fval = float(loss)
         score_smoothed.update(fval)
-
-        # Check for poison chunk and save losses and chunk locations if we're
-        # poisoned If args.chunk_logging_threshold set to zero then we log
-        # everything
-        if fval / score_smoothed.value >= args.chunk_logging_threshold:
-            chunk_log.write_batch(i, chunk_batch, lossvector)
 
         total_bases += int(seqlens.sum())
         total_samples += int(indata.nelement())

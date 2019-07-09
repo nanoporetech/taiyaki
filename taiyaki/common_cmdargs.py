@@ -35,12 +35,6 @@ def add_common_command_args(parser, arglist):
         parser.add_argument('--alphabet', default=DEFAULT_ALPHABET,
                             help='Canonical base alphabet')
 
-    if 'chunk_logging_threshold' in arglist:
-        parser.add_argument('--chunk_logging_threshold', default=10.0, metavar='multiple',
-                            type=NonNegative(float),
-                            help='If loss > (threshold * smoothed loss) for a batch, then log chunks to ' +
-                                 'output/chunklog.tsv. Set to zero to log all, including rejected chunks')
-
     if 'device' in arglist:
         parser.add_argument('--device', default='cpu', action=DeviceAction,
                             help='Integer specifying which GPU to use, or "cpu" to use CPU only. '

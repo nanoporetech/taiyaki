@@ -70,8 +70,6 @@ export OMP_NUM_THREADS
 MAXREADS := 10000000000
 #Max number of training iterations - use small number for testing
 MAX_TRAINING_ITERS := 50000
-# Chunk logging threshold - if set to 0 then all chunks logged. Value of 10 means only batches with unusually high loss are recorded
-CHUNK_LOGGING_THRESHOLD := 0
 
 # Which device to use for remapping and for training (cpu for CPU, or integer for GPU number)
 # Run nvidia-smi to get a summary of which GPUs are in use. Specify DEVICE=cpu if no GPU available.
@@ -298,7 +296,7 @@ ${RESULT_DIR}/train_%/trained: ${INGREDIENT_DIR}/mapped_%.hdf5
 	@echo ""
 	@echo "------------Training with $* chunks"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --size ${NETWORK_SIZE} --overwrite --chunk_logging_threshold ${CHUNK_LOGGING_THRESHOLD} --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} ${TRAININGMODEL} $(dir $@) $<
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --size ${NETWORK_SIZE} --overwrite --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} ${TRAININGMODEL} $(dir $@) $<
 	touch $@
 
 
@@ -317,7 +315,7 @@ ${RESULT_DIR}/mod_train_%/trained: ${INGREDIENT_DIR}/mod_mapped_%.hdf5
 	@echo ""
 	@echo "------------Training with $* chunks"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_mod_flipflop.py --size ${NETWORK_SIZE} --overwrite --chunk_logging_threshold ${CHUNK_LOGGING_THRESHOLD} --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} --outdir $(dir $@) ${MODTRAININGMODEL} $<
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_mod_flipflop.py --size ${NETWORK_SIZE} --overwrite --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} --outdir $(dir $@) ${MODTRAININGMODEL} $<
 	touch $@
 
 
@@ -333,7 +331,7 @@ ${RESULT_DIR}/squiggletrain_%/model_final.checkpoint: ${INGREDIENT_DIR}/mapped_%
 	@echo ""
 	@echo "------------Training squiggle model with $* map chunks"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_squiggle.py --overwrite --chunk_logging_threshold ${CHUNK_LOGGING_THRESHOLD} --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} $< $(dir $@)
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_squiggle.py --overwrite --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} $< $(dir $@)
 
 
 ########################################

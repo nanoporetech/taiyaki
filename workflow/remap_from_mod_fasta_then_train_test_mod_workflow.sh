@@ -26,16 +26,8 @@ rm -rf ${TAIYAKI_DIR}/RESULTS/training_ingredients
 #TAIYAKIACTIVATE=(nothing) makes the test run without activating the venv at each step. Necessary for running on the git server.
 make -f workflow/Makefile NETWORK_SIZE=96 MAXREADS=10 READDIR=${READ_DIR} TAIYAKI_ROOT=${TAIYAKI_DIR} DEVICE=cpu MAX_TRAINING_ITERS=2 USER_PER_READ_MOD_REFERENCE_FILE=${USER_PER_READ_MOD_REFERENCE_FILE} SEED=1 TAIYAKIACTIVATE= mod_train_remapuser_ref
 
-# Check that training chunk log and training log exist and have enough rows for us to be sure something useful has happened
+# Check that training log exists and has enough rows for us to be sure something useful has happened
 
-
-chunklog_lines=`wc -l ${RESULT_DIR}/chunklog.tsv | cut -f1 -d' '`
-echo "Number of lines in training chunk log: ${chunklog_lines}"
-if [ "$chunklog_lines" -lt "20" ]
-then
-    echo "Training chunk log too short - not enough chunks generated"
-    exit 1
-fi
 
 traininglog_lines=`wc -l ${RESULT_DIR}/model.log | cut -f1 -d' '`
 echo "Number of lines in training log: ${traininglog_lines}"
