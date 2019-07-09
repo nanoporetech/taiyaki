@@ -95,9 +95,10 @@ The current in pA is calculated from the integers in Dacs by the equation
 
 ## Modified base output file
 
-Modified base output scores are output from the **bin/basecall.py** into an HDF5 file with the following format.
-More negative modified base scores indicate modified bases and more positive scores indicate canonical bases.
-These scores are not calibrated and thus no statistical meaning should be assumed for the scores.
+The modified base output file, produced by **bin/basecall.py**, stores the information about the presence of modifications given the basecall.
+The information is stored in a per-read dataset, containing the conditional (log) probability of modification for each position of the *basecall*.
+The calls are ordered according to the names given in the ``mod_long_names`` dataset.
+Impossible calls, where the canonical basecall position and modification are incompatible, are indicated by ``nan`` values.
 
 The files are HDF5 files with the following structure:
 
