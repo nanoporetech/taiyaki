@@ -21,7 +21,7 @@ from taiyaki.squiggle_match import squiggle_match_loss, embed_sequence
 parser = argparse.ArgumentParser(description='Train a model to predict ionic current levels from sequence',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, """adam chunk_logging_threshold device eps filter_max_dwell filter_mean_dwell
+add_common_command_args(parser, """adam device eps filter_max_dwell filter_mean_dwell
                                    limit niteration overwrite quiet save_every
                                    sample_nreads_before_filtering version weight_decay""".split())
 
@@ -117,18 +117,13 @@ def main():
         exit(1)
     log.write('* Loaded {} reads.\n'.format(len(read_data)))
 
-    # Create a logging file to save details of chunks.
-    # If args.chunk_logging_threshold is set to 0 then we log all chunks including those rejected.
-    chunk_log = chunk_selection.ChunkLog(args.output)
-
     # Get parameters for filtering by sampling a subset of the reads
     # Result is a tuple median mean_dwell, mad mean_dwell
     filter_parameters = chunk_selection.sample_filter_parameters(read_data,
                                                                  args.sample_nreads_before_filtering,
                                                                  args.target_len,
                                                                  args,
-                                                                 log,
-                                                                 chunk_log=chunk_log)
+                                                                 log)
 
     medmd, madmd = filter_parameters
     log.write("* Sampled {} chunks: median(mean_dwell)={:.2f}, mad(mean_dwell)={:.2f}\n".format(
@@ -158,14 +153,9 @@ def main():
         lr_scheduler.step()
         # If the logging threshold is 0 then we log all chunks, including those rejected, so pass the log
         # object into assemble_batch
-        if args.chunk_logging_threshold == 0:
-            log_rejected_chunks = chunk_log
-        else:
-            log_rejected_chunks = None
         # chunk_batch is a list of dicts.
         chunk_batch, batch_rejections = chunk_selection.assemble_batch(read_data, args.batch_size, args.target_len,
                                                                        filter_parameters, args, log,
-                                                                       chunk_log=log_rejected_chunks,
                                                                        chunk_len_means_sequence_len=True)
 
         total_chunks += len(chunk_batch)
@@ -196,10 +186,6 @@ def main():
 
         score_smoothed.update(float(fval))
 
-        # Check for poison chunk and save losses and chunk locations if we're poisoned
-        # If args.chunk_logging_threshold set to zero then we log everything
-        if fval / score_smoothed.value >= args.chunk_logging_threshold:
-            chunk_log.write_batch(i, chunk_batch, batch_loss)
 
         if (i + 1) % args.save_every == 0:
             helpers.save_model(conv_net, args.output, (i + 1) // args.save_every)

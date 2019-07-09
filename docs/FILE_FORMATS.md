@@ -81,23 +81,6 @@ The current in pA is calculated from the integers in Dacs by the equation
     current = (Dacs + offset ) * range / digitisation
     
     
-## Chunk logs
-
-During training, **bin/train_flipflop.py** generates (input,output) pairs of (signal,sequence) for network training.
-We refer to each of these (signal,sequence) pairs as a chunk. Some chunks are rejected rather than being fed into the
-training loop, either because the required data could not be found or because they are filtered out. For example, we
-filter out chunks which contain very long stays (where the molecule appears to be stationary in the pore for a long time) because we
-expect them to make training more difficult.
-
-With the option **--chunk_logging_threshold 0**, the scripts **bin/train_flipflop.py** and **bin/train_squiggle.py** produce chunk logs.
-
-These are tab-separated text files which describe the chunks selected and rejected, giving the training loss for each chunk that was
-used in training, and a reason for rejection for those chunks which were not used.
-
-Before training starts, 1000 chunks are sampled to determine the baseline for filtering. These chunks are recorded (when **--chunk_logging_threshold 0**) at the start of the
-chunk log file, and they can be distinguished from those generated in the training loop because they are not marked as rejected, but do not have a loss associated with them.
-
-The script **misc/plot_chunk_log.py** can be used to plot the data in this file.
 
 ## Model files
 

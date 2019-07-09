@@ -182,10 +182,7 @@ Basic usage is as follows:
 
     bin/prepare_mapped_reads.py <directory containing fast5 files> <per_read_tsv> <output mapped_signal_file>  <file containing model for remapping>  <reference_fasta>
 
-    bin/train_flipflop.py --device <digit specifying GPU> --chunk_logging_threshold 0  <pytorch model definition> <output directory for checkpoints> <mapped-signal files to train with>
-
-We suggest using the **chunk_logging_threshold** 0 to begin with. This results in all chunks (including rejected chunks) being logged in a tsv file in the training directory.
-This chunk log can be useful for diagnosing problems, but can get quite large, so may be turned off for very long training runs.
+    bin/train_flipflop.py --device <digit specifying GPU> <pytorch model definition> <output directory for checkpoints> <mapped-signal files to train with>
 
 Some scripts mentioned also have a useful option **--limit** which limits the number of reads to be used. This allows a quick test of a workflow.
 
@@ -267,7 +264,7 @@ The input for ab initio training is a set of signal-sequence pairs:
 - Fixed length chunks from reads
 - A reference sequence trimmed for each chunk.
 
-The models produced are not as accurate as normal training process but can be used to bootstrap it.
+The models produced are not as accurate as those produced by the normal training process but can be used to bootstrap it.
 
 
 The process is described in the [abinitio](docs/abinitio.rst) walk-through.
@@ -292,7 +289,6 @@ For example:
 Certain other model architectures may also be Guppy-compatible, but it is hard to give an exhaustive list
 and so we recommend you contact us to get confirmation.
 
-We are working on adding basecalling functionality to Taiyaki itself to support a wider range of models.
 
 ## Standard model parameters
 
@@ -401,9 +397,6 @@ The **misc** directory contains several scripts that are useful for working out 
 Graphs showing the information in mapped read files can be plotted using the script **plot_mapped_signals.py**
 A graph showing the progress of training can be plotted using the script **plot_training.py**
 
-When **train_flipflop.py** is run with the option **--chunk_logging_threshold 0** then all chunks examined are logged (including those used to set
-chunk filtering parameters and those rejected for training). The script **plot_chunklog.py** plots several pictures that make use of this logged
-information.
 
 ---
 
