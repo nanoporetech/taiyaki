@@ -135,8 +135,12 @@ def get_per_read_params_dict_from_tsv(input_file):
 
     per_read_params_dict = {}
     for row in per_read_params_array:
-        per_read_params_dict[row[0]] = {'trim_start': row[1],
-                                        'trim_end': row[2],
-                                        'shift': row[3],
-                                        'scale': row[4]}
+        try:
+            per_read_params_dict[row[0]] = {'trim_start': row[1],
+                                            'trim_end': row[2],
+                                            'shift': row[3],
+                                            'scale': row[4]}
+        except:
+            sys.stderr.write("Warning: ignoring incorrect line {} in {}\n".format(row, input_file))
+
     return per_read_params_dict
