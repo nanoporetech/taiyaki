@@ -601,44 +601,52 @@ def birnn(forward, backward):
     return Parallel([forward, Reverse(backward)])
 
 
+@torch.jit.script
+def logaddexp_fwdbwd(x, y):
+    z = torch.max(x, y) + torch.log1p(torch.exp(-torch.abs(x - y)))
+    return z, (x-z).exp(), (y-z).exp()
+
+
 class LogAddExp(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, y):
-        exp_neg_abs_diff = torch.exp(-torch.abs(x - y))
-        z = torch.max(x, y) + torch.log1p(exp_neg_abs_diff)
-        ctx.save_for_backward(x, y, z)
+        z, xmz, ymz = logaddexp_fwdbwd(x, y)
+        ctx.save_for_backward(xmz, ymz)
         return z
 
     @staticmethod
     def backward(ctx, outgrad):
-        x, y , z = ctx.saved_tensors
+        xmz, ymz = ctx.saved_tensors
 
-        return outgrad * (x - z).exp_(), outgrad * (y - z).exp_()
+        return outgrad * xmz, outgrad * ymz
 
 logaddexp = LogAddExp.apply
 
+
+@torch.jit.script
+def global_norm_flipflop_step(scores_t, fwd_t, nbase):
+    nbase = int(nbase)
+    curr_scores = fwd_t.unsqueeze(1) + scores_t.reshape(
+        (-1, nbase + 1, 2 * nbase))
+    base1_state = curr_scores[:, :nbase].logsumexp(2)
+    base2_state = logaddexp(
+        curr_scores[:, nbase, :nbase], curr_scores[:, nbase, nbase:])
+    new_state = torch.cat([base1_state, base2_state], dim=1)
+    factors = new_state.logsumexp(1, keepdim=True)
+    new_state = new_state - factors
+    return factors, new_state
 
 
 def global_norm_flipflop(scores):
     T, N, C = scores.shape
     nbase = flipflopfings.nbase_flipflop(C)
 
-    def step(scores_t, fwd_t):
-        curr_scores = fwd_t.unsqueeze(1) + scores_t.reshape(
-            (-1, nbase + 1, 2 * nbase))
-        base1_state = curr_scores[:, :nbase].logsumexp(2)
-        base2_state = logaddexp(
-            curr_scores[:, nbase, :nbase], curr_scores[:, nbase, nbase:])
-        new_state = torch.cat([base1_state, base2_state], dim=1)
-        factors = new_state.logsumexp(1, keepdim=True)
-        new_state = new_state - factors
-        return factors, new_state
-
     fwd = scores.new_zeros((N, 2 * nbase))
     logZ = fwd.logsumexp(1, keepdim=True)
     fwd = fwd - logZ
-    for scores_t in scores:
-        factors, fwd = step(scores_t, fwd)
+    nbase = torch.tensor(nbase, device=scores.device, dtype=torch.long)
+    for scores_t in scores.unbind(0):
+        factors, fwd = global_norm_flipflop_step(scores_t, fwd, nbase)
         logZ = logZ + factors
     return scores - logZ / T
 
