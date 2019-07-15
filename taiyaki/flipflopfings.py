@@ -115,7 +115,7 @@ def nbase_flipflop(nstate):
 
     :returns: Number of letters in alphabet
     """
-    nbase_f = np.sqrt(0.25 + (0.5 * nstate)) - 0.5
+    nbase_f = np.sqrt(0.25 + (0.5 * np.float32(nstate))) - 0.5
     assert np.mod(nbase_f, 1) == 0, (
         'Number of states not valid for flip-flop model. ' +
         'nstates: {}\tconverted nbases: {}').format(nstate, nbase_f)
