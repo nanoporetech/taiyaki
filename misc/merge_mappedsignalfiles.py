@@ -5,10 +5,17 @@ import argparse
 from taiyaki import alphabet, mapped_signal_files
 
 parser = argparse.ArgumentParser(
-    description='Combine HDF5 mapped-signal files into a single file. Checks to make sure alphabets agree.')
+    description='Combine HDF5 mapped-signal files into a single file. ' +
+                'Checks to make sure alphabets agree. ' +
+                'Can also be used to shorten a mapped-signal file (with the limit argument)')
+
 
 parser.add_argument('output', help='Output filename')
 parser.add_argument('input', nargs='+', help='One or more input files')
+
+parser.add_argument('--limit', type=int, default=None,
+                    help='Max number of reads to include in total (default no max)')
+
 
 #To convert to any new mapped read format (e.g. mapped_signal_files.SQL)
 #we should be able to just change MAPPED_SIGNAL_WRITER amd READER to equal the new classes.
@@ -55,6 +62,11 @@ def main():
                         hout.write_read(readObject)
                         reads_written.add(read_id)
                         copied_from_this_file += 1
+                        if args.limit is not None and len(reads_written) >= args.limit:
+                            break
+            if args.limit is not None and len(reads_written) >= args.limit:
+                break
+
             print("Copied", copied_from_this_file, "reads from", infile)
     print("Copied", len(reads_written), "reads in total")
 
