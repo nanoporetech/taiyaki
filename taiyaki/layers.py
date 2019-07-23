@@ -617,7 +617,6 @@ class LogAddExp(torch.autograd.Function):
     @staticmethod
     def backward(ctx, outgrad):
         xmz, ymz = ctx.saved_tensors
-
         return outgrad * xmz, outgrad * ymz
 
 logaddexp = LogAddExp.apply
@@ -641,14 +640,14 @@ def global_norm_flipflop(scores):
     T, N, C = scores.shape
     nbase = flipflopfings.nbase_flipflop(C)
 
-    fwd = scores.new_zeros((N, 2 * nbase))
+    fwd = torch.zeros(N, 2 * nbase, device=scores.device, dtype=scores.dtype)
     logZ = fwd.logsumexp(1, keepdim=True)
     fwd = fwd - logZ
     nbase = torch.tensor(nbase, device=scores.device, dtype=torch.long)
     for scores_t in scores.unbind(0):
         factors, fwd = global_norm_flipflop_step(scores_t, fwd, nbase)
         logZ = logZ + factors
-    return scores - logZ / T
+    return scores - logZ / np.float32(T)
 
 
 class GlobalNormFlipFlop(nn.Module):
