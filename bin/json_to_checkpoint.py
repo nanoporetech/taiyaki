@@ -44,13 +44,16 @@ def set_params(layer, jsn_params):
             jsn_name = layer_name
         elif re.search('weight_ih', layer_name) and 'iW' in jsn_params:
             # For gru layers convert from guppy format back to pytorch format
-            jsn_layer_params = torch.Tensor(np.concatenate(jsn_params['iW']))
+            jsn_layer_params = torch.Tensor(np.concatenate([
+                jsn_params['iW'][1], jsn_params['iW'][0], jsn_params['iW'][2]]))
         elif re.search('weight_hh', layer_name) and 'sW' in jsn_params:
             # For gru layers convert from guppy format back to pytorch format
-            jsn_layer_params = torch.Tensor(np.concatenate(jsn_params['sW']))
+            jsn_layer_params = torch.Tensor(np.concatenate([
+                jsn_params['sW'][1], jsn_params['sW'][0], jsn_params['sW'][2]]))
         elif re.search('bias_ih', layer_name) and 'b' in jsn_params:
             # For gru layers convert from guppy format back to pytorch format
-            jsn_layer_params = torch.Tensor(np.concatenate(jsn_params['b']))
+            jsn_layer_params = torch.Tensor(np.concatenate([
+                jsn_params['b'][1], jsn_params['b'][0], jsn_params['b'][2]]))
         elif re.search('bias_hh', layer_name):
             # bias_hh layer not actually used
             pass
