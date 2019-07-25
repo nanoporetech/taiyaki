@@ -39,10 +39,8 @@ parser.add_argument(
 def set_params(layer, jsn_params):
     params_od = OrderedDict()
     for layer_name, layer_params in layer.state_dict().items():
-        # guess matching layer name
-        if layer_name in jsn_params:
-            jsn_name = layer_name
-        elif re.search('weight_ih', layer_name) and 'iW' in jsn_params:
+        # match layer names (see taiyaki.layer.[layer_type].json functions)
+        if re.search('weight_ih', layer_name) and 'iW' in jsn_params:
             # For gru layers convert from guppy format back to pytorch format
             jsn_layer_params = torch.Tensor(np.concatenate([
                 jsn_params['iW'][1], jsn_params['iW'][0], jsn_params['iW'][2]]))
@@ -61,6 +59,8 @@ def set_params(layer, jsn_params):
             jsn_layer_params = torch.Tensor(np.array(jsn_params['W']))
         elif re.search('bias', layer_name) and 'b' in jsn_params:
             jsn_layer_params = torch.Tensor(np.array(jsn_params['b']))
+        elif layer_name in jsn_params:
+            jsn_layer_params = torch.Tensor(np.array(jsn_params[layer_name]))
         else:
             sys.stderr.write((
                 'Incompatible layer parameter type ' +
@@ -72,11 +72,7 @@ def set_params(layer, jsn_params):
         params_od[layer_name] = jsn_layer_params
 
     # set state_dict via OrderedDict of numpy arrays
-    try:
-        layer.load_state_dict(params_od, strict=True)
-    except TypeError:
-        print('\n'.join([str((k,v.shape)) for k, v in params_od.items()]))
-        raise
+    layer.load_state_dict(params_od, strict=True)
 
     return layer
 
