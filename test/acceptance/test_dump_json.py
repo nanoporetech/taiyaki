@@ -22,6 +22,7 @@ class AcceptanceTest(unittest.TestCase):
         test_directory = os.path.splitext(__file__)[0]
         self.testset_work_dir = os.path.basename(test_directory)
         self.script = os.path.join(util.BIN_DIR, "dump_json.py")
+        self.json_to_cp = os.path.join(util.BIN_DIR, "json_to_checkpoint.py")
         self.model_file = os.path.join(util.MODELS_DIR, "mGru_flipflop_remapping_model_r9_DNA.checkpoint")
 
     def work_dir(self, test_name):
@@ -64,3 +65,29 @@ class AcceptanceTest(unittest.TestCase):
         dump = open(output_file, 'r').read()
 
         self.assertTrue(is_valid_json(dump))
+
+    def test_json_to_checkpoint(self):
+        subdir="3"
+        self.assertTrue(os.path.exists(self.model_file))
+        test_work_dir = self.work_dir(os.path.join("test_json_to_checkpoint", subdir))
+
+        output_file = os.path.join(test_work_dir, "output.json")
+        cmd = [self.script, self.model_file, "--output", output_file, "--params"]
+        util.run_cmd(self, cmd).expect_exit_code(0)
+        self.assertTrue(os.path.exists(output_file))
+
+        re_model_file = os.path.join(test_work_dir, "re_model.checkpoint")
+        cmd = [self.json_to_cp, output_file, "--output", re_model_file]
+
+        open(re_model_file, "w").close()
+        error_message = "RuntimeError: File/path for 'output' exists, {}".format(re_model_file)
+        util.run_cmd(self, cmd).expect_exit_code(1).expect_stderr(util.any_line_starts_with(error_message))
+        os.remove(re_model_file)
+
+        util.run_cmd(self, cmd).expect_exit_code(0)
+
+        self.assertTrue(os.path.exists(re_model_file))
+        model_dump = open(self.model_file, 'r').read()
+        re_model_dump = open(re_model_file, 'r').read()
+
+        self.assertEqual(model_dump, re_model_dump)
