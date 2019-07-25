@@ -54,7 +54,7 @@ def set_params(layer, jsn_params):
                 jsn_params['b'][1], jsn_params['b'][0], jsn_params['b'][2]]))
         elif re.search('bias_hh', layer_name):
             # bias_hh layer not actually used
-            pass
+            jsn_layer_params = torch.zeros_like(layer_params)
         elif re.search('weight', layer_name) and 'W' in jsn_params:
             jsn_layer_params = torch.Tensor(np.array(jsn_params['W']))
         elif re.search('bias', layer_name) and 'b' in jsn_params:
@@ -127,6 +127,10 @@ def parse_sublayer(sublayer):
             '\tin size: {}\n\tmod bases: {}\n').format(
                 sublayer['insize'], alphabet_info.mod_long_names))
         layer = GlobalNormFlipFlopCatMod(sublayer['insize'], alphabet_info)
+    else:
+        sys.stderr.write('Encountered invalid layer type ({}).'.format(
+            sublayer['type']))
+        sys.exit(1)
 
     layer = set_params(layer, sublayer['params'])
 
