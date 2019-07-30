@@ -1031,8 +1031,8 @@ class GlobalNormCRFRLE(nn.Module):
     def forward(self, x):
         y = self.linear(x)
         ntime , _ , _ = y.shape
-        shape = 1.0 + activation.softplus(y[... , :self.nbase])
-        scale = 0.1 + activation.softplus(y[... , self.nbase : 2 * self.nbase])
+        shape = 0.25 + activation.softplus(y[... , :self.nbase])
+        scale = 0.01 + activation.softplus(y[... , self.nbase : 2 * self.nbase])
         trans = 5.0 * activation.tanh(y[... , 2 * self.nbase:])
         logZ = crfrle_log_partition(trans, self.nbase).unsqueeze(0) / ntime
         return torch.cat([shape, scale, trans - logZ], dim=2)
