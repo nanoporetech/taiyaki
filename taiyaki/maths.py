@@ -123,7 +123,7 @@ def rle(x, tol=0):
 
 class RollingQuantile:
     """Calculate rolling quantile of time series over a specified window"""
-    
+   
     def __init__(self, upper_quantile, window=100, min_data=1, default_to=None):
         """Set up rolling quantile calculator. With the default settings, there is
         no minimum data length and the first call to the calculator
@@ -142,7 +142,7 @@ class RollingQuantile:
         self.window = window
         self.min_data = min_data
         self.default_returnvalue = default_to
-        
+       
     def update(self, x):
         """Update with time series value x and return rolling quantile."""
         self.window_data.append(x)

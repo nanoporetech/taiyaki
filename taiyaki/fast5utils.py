@@ -215,7 +215,7 @@ def get_read_attributes(read):
 def read_summary(read):
     """Print summary of information available in fast5 file on a particular read
 
-    param read: an ont_fast5_api read object    
+    param read: an ont_fast5_api read object   
     """
     print("ONT interface: read information")
     dacs = read.get_raw_data()

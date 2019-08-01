@@ -113,8 +113,8 @@ class Mapping:
         Construct Mapping object based on downsampled mapping information
         (rather than just copying sigtoref).
         Inputs:
-            sigtoref =  a numpy int vector where sigtoref_downsampled[k] is the 
-                        location in the reference of the base starting at 
+            sigtoref =  a numpy int vector where sigtoref_downsampled[k] is the
+                        location in the reference of the base starting at
                         untrimmed_dacs[k*stride-1+signalstart]
             reference = a string containing the reference
         By default, we assume that signalstart is self.signalstart, the trim start
