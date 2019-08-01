@@ -132,7 +132,7 @@ def sample_filter_parameters(read_data, number_to_sample, chunk_len, args,
     return med_mad(meandwells)
 
 
-def assemble_batch(read_data, batch_size, chunk_len, filter_parameters, args, 
+def assemble_batch(read_data, batch_size, chunk_len, filter_parameters, args,
                    log=None, chunk_len_means_sequence_len=False):
     """Assemble a batch of data by repeatedly choosing a random read and location
     in that read, continuing until we have found batch_size chunks that pass the

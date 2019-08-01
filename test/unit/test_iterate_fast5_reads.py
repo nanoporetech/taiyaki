@@ -15,7 +15,7 @@ class TestStrandList(unittest.TestCase):
         'db6b45aa-5d21-45cf-a435-05fb8f12e839',
         'de1508c4-755b-489e-9ffb-51af35c9a7e6',
     ]
-    
+   
     STRAND_LIST_DIR = os.path.join(DATA_DIR, "strand_lists")
     SEQUENCING_SUMMARY = os.path.join(
         DATA_DIR, "basecaller_output/sequencing_summary.txt")

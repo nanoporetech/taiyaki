@@ -212,7 +212,7 @@ class BatchLog:
         else:
             self.write("{:5.4f}\n".format(gradientcap))
 
-      
+     
 
 
 def file_md5(filename, nblock=1024):

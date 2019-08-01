@@ -8,14 +8,14 @@ class ReciprocalLR(torch.optim.lr_scheduler._LRScheduler):
     """Pytorch learning rate scheduler.
     Learning rate is the base learning rate
     (set in the optimiser), multiplied by
-    
+   
     1 / (1 + niter/lr_decay_iterations),
-    
+   
     so that after lr_decay iterations, the l.r. is divided by 2.
 
     Also allows a warmup period where learning rate is at lr_warmup for warmup_iters
     before all this starts.
-    
+   
     Based on
     https://pytorch.org/docs/stable/_modules/torch/optim/lr_scheduler.html#CosineAnnealingLR
     """
@@ -44,10 +44,10 @@ class CosineFollowedByFlatLR(torch.optim.lr_scheduler._LRScheduler):
     single half-period of a cosine over lr_cosine_iters iterations.
     The learning rate stays constant at lr_min after lr_cosine_iters
     iterations.
-    
+   
     Also allows a warmup period where learning rate is at lr_warmup for warmup_iters
     before all this starts.
-    
+   
     Based on
     https://pytorch.org/docs/stable/_modules/torch/optim/lr_scheduler.html#CosineAnnealingLR
     """

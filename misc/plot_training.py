@@ -68,10 +68,10 @@ def read_batch_log(filepath):
             'training_loss':t['loss'],
             'gradientnorm':t['gradientnorm'],
             'gradientcap':t['gradientcap']}
-        
+       
 def main():
     args = parser.parse_args()
-    
+   
     logdata = {}
     batchdata = {}
     for td in args.input_directories:
@@ -79,7 +79,7 @@ def main():
         batchdata[td] = read_batch_log(os.path.join(td,'batch.log'))
         if args.mav is not None:
             batchdata[td]['training_loss'] = moving_average(batchdata[td]['training_loss'], args.mav)
-        
+       
     #Plot validation and training loss
     plt.figure(figsize=(5,4))
     colour_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
@@ -109,6 +109,6 @@ def main():
     plt.tight_layout()
     plt.savefig(args.output)
     plt.close()
-    
+   
 if __name__=="__main__":
     main()
