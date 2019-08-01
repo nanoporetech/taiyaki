@@ -27,8 +27,7 @@ def add_common_command_args(parser, arglist):
 
     if 'adam' in arglist:
         parser.add_argument('--adam', nargs=2, metavar=('beta1', 'beta2'),
-                            default=(0.9, 0.999), type=(NonNegative(float),
-                                                        NonNegative(float)), action=ParseToNamedTuple,
+                            default=[0.9, 0.999], type=NonNegative(float),
                             help='Parameters beta1, beta2 for Exponential Decay Adaptive Momentum')
 
     if 'alphabet' in arglist:
