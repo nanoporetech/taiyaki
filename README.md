@@ -269,6 +269,16 @@ The models produced are not as accurate as those produced by the normal training
 
 The process is described in the [abinitio](docs/abinitio.rst) walk-through.
 
+## RNA
+
+During DNA sequencing, the strands of DNA go through the pore starting at the 5' end of the molecule. In contrast, during direct RNA sequencing the strands go through the pore starting at the 3' end. As a consequence, the per-read reference sequences used for RNA training must be **reversed** with respect to the genome/exome reference sequence (there is no need to **complement** the sequences). Basecalls produced with RNA models will then need to be reversed again in order to align them to a reference.
+
+In terms of the workflow described above, the following steps need to be changed:
+
+- If using `get_refs_from_sam.py` to produce per-read references, then add the `--reverse` option.
+- If using the `basecall.py` script in taiyaki, then add the `--reverse` option.
+- If basecalling with Guppy then use an RNA-specific config file (see the Guppy docs for more info).
+
 # Guppy compatibility
 
 In order to train a model that is compatible with Guppy (version 2.2 at time of writing), we recommend that you

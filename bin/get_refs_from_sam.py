@@ -4,7 +4,7 @@ import pysam
 import sys
 
 from taiyaki.bio import reverse_complement
-from taiyaki.cmdargs import proportion, FileExists
+from taiyaki.cmdargs import AutoBool, proportion, FileExists
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.helpers import fasta_file_to_dict, open_file_or_stdout
 
@@ -15,10 +15,14 @@ parser = argparse.ArgumentParser(
 
 add_common_command_args(parser, ["output"])
 
+parser.add_argument('--complement', default=False, action=AutoBool,
+                    help='Complement all reference sequences')
 parser.add_argument('--min_coverage', metavar='proportion', default=0.6, type=proportion,
                     help='Ignore reads with alignments shorter than min_coverage * read length')
 parser.add_argument('--pad', type=int, default=0,
                     help='Number of bases by which to pad reference sequence')
+parser.add_argument('--reverse', default=False, action=AutoBool,
+                    help='Reverse all reference sequences (for RNA)')
 parser.add_argument('reference', action=FileExists,
                     help="Genomic references that reads were aligned against")
 parser.add_argument('input', metavar='input.sam', nargs='+',
@@ -55,9 +59,7 @@ def get_refs(sam, ref_seq_dict, min_coverage=0.6, pad=0):
             else:
                 read_ref = reverse_complement(read_ref[start:end].upper())
 
-            fasta = ">{}\n{}\n".format(read.qname, read_ref)
-
-            yield (read.qname, fasta)
+            yield (read.qname, read_ref)
 
 
 def main():
@@ -69,7 +71,13 @@ def main():
     sys.stderr.write("* Extracting read references using SAM alignment\n")
     with open_file_or_stdout(args.output) as fh:
         for samfile in args.input:
-            for (name, fasta) in get_refs(samfile, references, args.min_coverage, args.pad):
+            for (name, read_ref) in get_refs(samfile, references, args.min_coverage, args.pad):
+                if args.reverse:
+                    read_ref = read_ref[::-1]
+                if args.complement:
+                    read_ref = reverse_complement(read_ref)[::-1]
+                fasta = ">{}\n{}\n".format(name, read_ref)
+
                 fh.write(fasta)
 
 
