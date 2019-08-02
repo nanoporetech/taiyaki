@@ -2,9 +2,9 @@
 import argparse
 import numpy as np
 
+from taiyaki.bio import fasta_file_to_dict
 from taiyaki.cmdargs import (AutoBool, FileExists, Positive)
 from taiyaki.fileio import readtsv
-from taiyaki.helpers import fasta_file_to_dict
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--refbackground', default=False, action=AutoBool,

@@ -1,15 +1,12 @@
-from Bio import SeqIO
 from collections import Mapping, Sequence
 import hashlib
 import imp
 import numpy as np
 import os
-import re
 import sys
 import torch
 
 from taiyaki.fileio import readtsv
-from taiyaki.constants import DEFAULT_ALPHABET
 
 
 def _load_python_model(model_file, **model_kwargs):
@@ -74,23 +71,6 @@ def subsample_array(x, length):
     assert len(x) > length
     startpos = np.random.randint(0, len(x) - length + 1)
     return x[startpos : startpos + length]
-
-
-def fasta_file_to_dict(fasta_file_name, allow_N=False, alphabet=DEFAULT_ALPHABET):
-    """Load records from fasta file as a dictionary"""
-    has_nonalphabet = re.compile('[^{}]'.format(alphabet))
-
-    references = {}
-    with open(fasta_file_name, 'r') as fh:
-        for ref in SeqIO.parse(fh, 'fasta'):
-            refseq = str(ref.seq)
-            if len(refseq) == 0:
-                continue
-            if not allow_N and re.search(has_nonalphabet, refseq) is not None:
-                continue
-            references[ref.id] = refseq
-
-    return references
 
 
 def get_column_from_tsv(tsv_file_name, column):
@@ -180,7 +160,6 @@ class Logger(object):
             print("Failed to write to log\n Message: {}\n Error: {}".format(message, repr(e)))
 
 
-
 class BatchLog:
     """Used to record three-column tsv file containing
     loss, gradient norm and gradient norm cap
@@ -211,8 +190,6 @@ class BatchLog:
             self.write("{}\n".format(nonestring))
         else:
             self.write("{:5.4f}\n".format(gradientcap))
-
-     
 
 
 def file_md5(filename, nblock=1024):

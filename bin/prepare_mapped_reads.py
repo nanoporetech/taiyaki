@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 import argparse
-from taiyaki.iterators import imap_mp
+
 import numpy as np
 import os
 import sys
+
+from taiyaki import alphabet, bio, fast5utils, helpers, prepare_mapping_funcs
 from taiyaki.cmdargs import FileExists, Maybe
 from taiyaki.common_cmdargs import add_common_command_args
-from taiyaki import alphabet, fast5utils, helpers, prepare_mapping_funcs
+from taiyaki.iterators import imap_mp
 
 
 program_description = "Prepare data for model training and save to hdf5 file by remapping with flip-flop model"
@@ -76,7 +78,7 @@ def main():
     workerFunction = prepare_mapping_funcs.oneread_remap
 
     def iter_jobs():
-        references = helpers.fasta_file_to_dict(args.references, alphabet=full_alphabet)
+        references = bio.fasta_file_to_dict(args.references, alphabet=full_alphabet)
         for fn, read_id in fast5_reads:
             yield fn, read_id, references.get(read_id, None)
 

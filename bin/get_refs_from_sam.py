@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import argparse
 import pysam
+import re
 import sys
 
-from taiyaki.bio import reverse_complement
+from taiyaki.bio import complement, fasta_file_to_dict, reverse_complement
 from taiyaki.cmdargs import AutoBool, proportion, FileExists
 from taiyaki.common_cmdargs import add_common_command_args
-from taiyaki.helpers import fasta_file_to_dict, open_file_or_stdout
+from taiyaki.helpers import open_file_or_stdout
 
 
 parser = argparse.ArgumentParser(
@@ -28,9 +29,6 @@ parser.add_argument('reference', action=FileExists,
 parser.add_argument('input', metavar='input.sam', nargs='+',
                     help="SAM or BAM file(s) containing read alignments to reference")
 
-STRAND = {0: '+',
-          16: '-'}
-
 
 def get_refs(sam, ref_seq_dict, min_coverage=0.6, pad=0):
     """Read alignments from sam file and return accuracy metrics
@@ -38,44 +36,44 @@ def get_refs(sam, ref_seq_dict, min_coverage=0.6, pad=0):
     with pysam.Samfile(sam, 'r') as sf:
         for read in sf:
             if read.flag != 0 and read.flag != 16:
+                #  No match, or orientation is not 0 or 16
                 continue
 
             coverage = float(read.query_alignment_length) / read.query_length
             if coverage < min_coverage:
+                #  Failed coverage criterian
                 continue
 
             read_ref = ref_seq_dict.get(sf.references[read.reference_id], None)
             if read_ref is None:
+                #  Reference mapped against does not exist in ref_seq_dict
                 continue
 
             start = max(0, read.reference_start - pad)
             end = min(len(read_ref), read.reference_end + pad)
+            read_ref = read_ref[start:end].upper()
 
-            strand = STRAND[read.flag]
-            read_ref = read_ref.decode() if isinstance(read_ref, bytes) else read_ref
+            if read.flag == 16:
+                #  Mapped to reverse strand
+                read_ref = reverse_complement(read_ref)
 
-            if strand == "+":
-                read_ref = read_ref[start:end].upper()
-            else:
-                read_ref = reverse_complement(read_ref[start:end].upper())
-
-            yield (read.qname, read_ref)
+            yield read.qname, read_ref
 
 
 def main():
     args = parser.parse_args()
 
     sys.stderr.write("* Loading references (this may take a while for large genomes)\n")
-    references = fasta_file_to_dict(args.reference, allow_N=True)
+    references = fasta_file_to_dict(args.reference, filter_ambig=False)
 
     sys.stderr.write("* Extracting read references using SAM alignment\n")
     with open_file_or_stdout(args.output) as fh:
         for samfile in args.input:
-            for (name, read_ref) in get_refs(samfile, references, args.min_coverage, args.pad):
+            for name, read_ref in get_refs(samfile, references, args.min_coverage, args.pad):
                 if args.reverse:
                     read_ref = read_ref[::-1]
                 if args.complement:
-                    read_ref = reverse_complement(read_ref)[::-1]
+                    read_ref = complement(read_ref)
                 fasta = ">{}\n{}\n".format(name, read_ref)
 
                 fh.write(fasta)
