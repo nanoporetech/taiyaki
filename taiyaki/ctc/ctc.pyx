@@ -279,7 +279,8 @@ runlength_loss = RunLengthCRF.apply
 def crf_runlength_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
                        np.ndarray[np.int32_t, ndim=1, mode="c"] seqs,
                        np.ndarray[np.int32_t, ndim=1, mode="c"] rles,
-                       np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen):
+                       np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen,
+                       np.ndarray[np.float32_t, ndim=2, mode="c"] log_inv_freq):
     """
     :param logprob: Tensor containing log probabilities
     :param seqs: A vector containing sequences, concatenated
@@ -291,7 +292,7 @@ def crf_runlength_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
 
     cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs = np.zeros((nbatch,), dtype=np.float32)
     libctc.crf_runlength_cost(&logprob[0, 0, 0], nstate, nblk, nbatch, &seqs[0],
-                              &seqlen[0], &rles[0], &costs[0])
+                              &seqlen[0], &rles[0], &log_inv_freq[0, 0], &costs[0])
     assert np.all(costs <= 0.), "Error -- costs must be negative, got {}".format(costs)
     return -costs / nblk
 
@@ -301,7 +302,8 @@ def crf_runlength_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
 def crf_runlength_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
                        np.ndarray[np.int32_t, ndim=1, mode="c"] seqs,
                        np.ndarray[np.int32_t, ndim=1, mode="c"] rles,
-                       np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen):
+                       np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen,
+                       np.ndarray[np.float32_t, ndim=2, mode="c"] log_inv_freq):
     """
     :param logprob: Tensor containing log probabilities
     :param seqs: A vector containing sequences, concatenated
@@ -314,19 +316,21 @@ def crf_runlength_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
     cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs = np.zeros((nbatch,), dtype=np.float32)
     cdef np.ndarray[np.float32_t, ndim=3, mode="c"] grads = np.zeros_like(logprob, dtype=np.float32)
     libctc.crf_runlength_grad(&logprob[0, 0, 0], nstate, nblk, nbatch, &seqs[0],
-                              &rles[0], &seqlen[0], &costs[0], &grads[0, 0, 0])
+                              &rles[0], &seqlen[0], &log_inv_freq[0, 0], &costs[0], &grads[0, 0, 0])
     np.clip(grads, -5.0, 5.0, out=grads)
     return -costs / nblk, -grads / nblk
 
 
 class RunLengthCRF2(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, logprob, seqs, rles, seqlen):
+    def forward(ctx, logprob, seqs, rles, seqlen, log_inv_freq):
         lp = logprob.detach().cpu().numpy().astype(np.float32)
         seqs = seqs.cpu().numpy().astype(np.int32)
         rles = rles.cpu().numpy().astype(np.int32)
         seqlen = seqlen.cpu().numpy().astype(np.int32)
-        cost, grads = crf_runlength_grad(lp, seqs, rles, seqlen)
+        log_inv_freq = log_inv_freq.cpu().numpy().astype(np.float32)
+
+        cost, grads = crf_runlength_grad(lp, seqs, rles, seqlen, log_inv_freq)
         ctx.save_for_backward(torch.tensor(grads, device=logprob.device))
         return torch.tensor(cost, device=logprob.device)
 
@@ -334,6 +338,6 @@ class RunLengthCRF2(torch.autograd.Function):
     def backward(ctx, output_grads):
         grads, = ctx.saved_tensors
         output_grads = output_grads.unsqueeze(1)
-        return grads * output_grads, None, None, None
+        return grads * output_grads, None, None, None, None
 
 crf_runlength_loss = RunLengthCRF2.apply

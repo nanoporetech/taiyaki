@@ -75,11 +75,11 @@ static inline float discrete_weibull_logpmf(float x, float sh, float sc, float *
         const float f1 = (x == 0.0f) ? 0.0f : (logf(x / sc) * log_cprob1);
         const float f2 = logf((x+1.0f) / sc) * log_cprob2;
         *dsh = f2 + (f1 - f2) / tmp;
-	if(!isfinite(*dsh)){
-		warnx("NAN created %s:%d -- x %f p %f sh %f dsh %f sc %f dsc %f\n", __FILE__, __LINE__, x, cprob, sh, *dsh, sc, *dsc);
-		*dsc = 0.0;
-		*dsh = 0.0;
-	}
+        if(!isfinite(*dsh)){
+            warnx("NAN created %s:%d -- x %f p %f sh %f dsh %f sc %f dsc %f\n", __FILE__, __LINE__, x, cprob, sh, *dsh, sc, *dsc);
+            *dsc = 0.0;
+            *dsh = 0.0;
+        }
     }
     if(NULL != dsc){
         // Derivative WRT to scale
@@ -89,11 +89,11 @@ static inline float discrete_weibull_logpmf(float x, float sh, float sc, float *
         //const float dF2_dsc = fact * entropy2;
         //*dsc = (dF1_dsc - dF2_dsc) / cprob;
         *dsc =  fact * (log_cprob2 - delta_log_cprob / tmp);
-	if(!isfinite(*dsc)){
-		warnx("NAN created %s:%d  -- x %f p %f sh %f dsh %f sc %f dsc %f\n", __FILE__, __LINE__, x, cprob, sh, *dsh, sc, *dsc);
-		*dsc = 0.0;
-		*dsh = 0.0;
-	}
+        if(!isfinite(*dsc)){
+            warnx("NAN created %s:%d  -- x %f p %f sh %f dsh %f sc %f dsc %f\n", __FILE__, __LINE__, x, cprob, sh, *dsh, sc, *dsc);
+            *dsc = 0.0;
+            *dsh = 0.0;
+        }
     }
 
     if(!isfinite(log_cprob)){
@@ -109,13 +109,13 @@ static inline float logsumexpf(float x, float y){
 }
 
 static inline size_t rle_index(size_t base_from, bool stay_from, size_t base_to, bool stay_to){
-	assert(stay_to ^ (base_from != base_to));
-	return _PARAM_TRANS_OFF + base_to * 2 * _NBASE + base_from + (stay_from ? _NBASE : 0);
+    assert(stay_to ^ (base_from != base_to));
+    return _PARAM_TRANS_OFF + base_to * 2 * _NBASE + base_from + (stay_from ? _NBASE : 0);
 }
 
 
 float crf_runlength_forward(float const * param, size_t nblk, size_t ldp, int32_t const * seq,
-                            int32_t const * rle, size_t nseqpos, float * fwd){
+                            int32_t const * rle, size_t nseqpos, float const * log_inv_freq, float * fwd){
     assert(nseqpos > 0);
     assert(NULL != param);
     assert(NULL != seq);
@@ -136,17 +136,17 @@ float crf_runlength_forward(float const * param, size_t nblk, size_t ldp, int32_
 
         //  Stay in first position
         for(size_t pos=0 ; pos < nseqpos ; pos++){
-	    const size_t base = seq[pos];
+            const size_t base = seq[pos];
             //  Stay in state -- just moved
             const float stay_from_move = fwd[fwd_prev_off + pos]
                                        + param[post_curr_off + rle_index(base, false, base, true)];
-	    //  Stay in state -- already staying
+            //  Stay in state -- already staying
             const float stay_from_stay = fwd[fwd_prev_off + nseqpos + pos]
                                        + param[post_curr_off + rle_index(base, true, base, true)];
-	    fwd[fwd_curr_off + nseqpos + pos] = logsumexpf(stay_from_stay, stay_from_move);
+            fwd[fwd_curr_off + nseqpos + pos] = logsumexpf(stay_from_stay, stay_from_move);
         }
 
-	fwd[fwd_curr_off] = -LARGE_VAL;
+        fwd[fwd_curr_off] = -LARGE_VAL;
         for(size_t pos=1 ; pos < nseqpos ; pos++){
             //  Move to new position
             const size_t base_from = seq[pos - 1];
@@ -157,23 +157,24 @@ float crf_runlength_forward(float const * param, size_t nblk, size_t ldp, int32_
                                        + param[post_curr_off + rle_index(base_from, false, base_to, false)];
             const float move_from_stay = fwd[fwd_prev_off + nseqpos + pos - 1]
                                        + param[post_curr_off + rle_index(base_from, true, base_to, false)];
-	    const float run_score = discrete_weibull_logpmf(len1 - 1,
+            const float run_score = discrete_weibull_logpmf(len1 - 1,
                                                             param[post_curr_off + _PARAM_SHAPE_OFF + base_to],
                                                             param[post_curr_off + _PARAM_SCALE_OFF + base_to],
-                                                            NULL, NULL);
+                                                            NULL, NULL)
+                                  + log_inv_freq[(len1 - 1) * _NBASE + base_to];
             fwd[fwd_curr_off + pos] = run_score + logsumexpf(move_from_move, move_from_stay);
         }
     }
 
     // Final score is sum of final state + its stay
     float score = logsumexpf(fwd[nblk * npos + nseqpos - 1],
-		             fwd[nblk * npos + nseqpos + nseqpos - 1]);
+                             fwd[nblk * npos + nseqpos + nseqpos - 1]);
     return score;
 }
 
 
 float crf_runlength_backward(float const * param, size_t nblk, size_t ldp, int32_t const * seq,
-                         int32_t const * rle, size_t nseqpos, float * bwd){
+                             int32_t const * rle, size_t nseqpos, float const * log_inv_freq, float * bwd){
     assert(nseqpos > 0);
     assert(NULL != param);
     assert(NULL != seq);
@@ -195,10 +196,10 @@ float crf_runlength_backward(float const * param, size_t nblk, size_t ldp, int32
         const size_t bwd_curr_off = (blk - 1) * npos;
         const size_t post_curr_off = (blk - 1) * ldp;
 
-	// Remained in stay at beginning of sequence
+        // Remained in stay at beginning of sequence
         bwd[bwd_curr_off + nseqpos] = bwd[bwd_prev_off + nseqpos] + param[post_curr_off + rle_index(0, true, 0, true)];
         for(size_t pos=0 ; pos < nseqpos ; pos++){
-	    const size_t base = seq[pos];
+            const size_t base = seq[pos];
             //  Remain in stay state -- just moved
             bwd[bwd_curr_off + pos] = bwd[bwd_prev_off + nseqpos + pos]
                                     + param[post_curr_off + rle_index(base, false, base, true)];
@@ -220,11 +221,12 @@ float crf_runlength_backward(float const * param, size_t nblk, size_t ldp, int32
             const float run_score = discrete_weibull_logpmf(len1 - 1,
                                                             param[post_curr_off + _PARAM_SHAPE_OFF + base_to],
                                                             param[post_curr_off + _PARAM_SCALE_OFF + base_to],
-                                                            NULL, NULL);
+                                                            NULL, NULL)
+                                  + log_inv_freq[(len1 - 1) * _NBASE + base_to];
             bwd[bwd_curr_off + pos - 1] = logsumexpf(bwd[bwd_curr_off + pos - 1],
-			                             move_from_move + run_score);
+                                                     move_from_move + run_score);
             bwd[bwd_curr_off + nseqpos + pos - 1] = logsumexpf(bwd[bwd_curr_off + nseqpos + pos - 1],
-			                                       move_from_stay + run_score);
+                                                               move_from_stay + run_score);
         }
     }
 
@@ -234,7 +236,8 @@ float crf_runlength_backward(float const * param, size_t nblk, size_t ldp, int32
 
 
 void crf_runlength_cost(float const * param, size_t nstate, size_t nblk , size_t nbatch,
-              int32_t const * seqs, int32_t const * rles, int32_t const * seqlen, float * score){
+                        int32_t const * seqs, int32_t const * rles, int32_t const * seqlen,
+                        float const * log_inv_freq, float * score){
     size_t ldp = nbatch * nstate;
     size_t seqidx[nbatch];
     seqidx[0] = 0;
@@ -251,7 +254,8 @@ void crf_runlength_cost(float const * param, size_t nstate, size_t nblk , size_t
         const size_t offset = batch * nstate;
         float * fwd = calloc((1 + nblk) * (2 * seqlen[batch]), sizeof(float));
         score[batch] = crf_runlength_forward(param + offset, nblk, ldp, seqs + seqidx[batch],
-                                         rles + seqidx[batch], seqlen[batch], fwd);
+                                             rles + seqidx[batch], seqlen[batch], 
+                                             log_inv_freq, fwd);
         free(fwd);
     }
 }
@@ -259,14 +263,14 @@ void crf_runlength_cost(float const * param, size_t nstate, size_t nblk , size_t
 
 void crf_runlength_scores_fwd(float const * param, size_t nstate, size_t nblk , size_t nbatch,
                           int32_t const * seqs, int32_t const * rles, int32_t const * seqlen,
-                          float * score){
-    crf_runlength_cost(param, nstate, nblk, nbatch, seqs, rles, seqlen, score);
+                          float const * log_inv_freq, float * score){
+    crf_runlength_cost(param, nstate, nblk, nbatch, seqs, rles, seqlen, log_inv_freq, score);
 }
 
 
 void crf_runlength_scores_bwd(float const * param, size_t nstate, size_t nblk , size_t nbatch,
                           int32_t const * seqs, int32_t const * rles, int32_t const * seqlen,
-                          float * score){
+                          float const * log_inv_freq, float * score){
     size_t ldp = nbatch * nstate;
     size_t seqidx[nbatch];
     seqidx[0] = 0;
@@ -283,7 +287,8 @@ void crf_runlength_scores_bwd(float const * param, size_t nstate, size_t nblk , 
         const size_t offset = batch * nstate;
         float * bwd = calloc((1 + nblk) * (2 * seqlen[batch]), sizeof(float));
         score[batch] = crf_runlength_backward(param + offset, nblk, ldp, seqs + seqidx[batch],
-                                               rles + seqidx[batch], seqlen[batch], bwd);
+                                              rles + seqidx[batch], seqlen[batch], 
+                                              log_inv_freq, bwd);
         free(bwd);
     }
 }
@@ -291,7 +296,7 @@ void crf_runlength_scores_bwd(float const * param, size_t nstate, size_t nblk , 
 
 void crf_runlength_grad(float const * param, size_t nstate, size_t nblk , size_t nbatch,
                     int32_t const * seqs, int32_t const * rles, int32_t const * seqlen,
-                    float * score, float * grad){
+                    float const * log_inv_freq, float * score, float * grad){
     const size_t ldp = nbatch * nstate;
 
     size_t seqidx[nbatch];
@@ -312,8 +317,10 @@ void crf_runlength_grad(float const * param, size_t nstate, size_t nblk , size_t
         int32_t const * rle = rles + seqidx[batch];
         float * fwd = calloc((nblk + 1) * npos, sizeof(float));
         float * bwd = calloc((nblk + 1) * npos, sizeof(float));
-        score[batch] = crf_runlength_forward(param + batch_offset, nblk, ldp, seq, rle, nseqpos, fwd);
-        crf_runlength_backward(param + batch_offset, nblk, ldp, seq, rle, nseqpos, bwd);
+        score[batch] = crf_runlength_forward(param + batch_offset, nblk, ldp, seq, rle,
+                                             nseqpos, log_inv_freq, fwd);
+        crf_runlength_backward(param + batch_offset, nblk, ldp, seq, rle, nseqpos, 
+                               log_inv_freq, bwd);
 
         // Normalised transition matrix
         for(size_t blk=0 ; blk < nblk ; blk++){
@@ -331,19 +338,19 @@ void crf_runlength_grad(float const * param, size_t nstate, size_t nblk , size_t
             }
 
             for(size_t pos=0 ; pos < nseqpos ; pos++){
-		const size_t base = seq[pos];
+                const size_t base = seq[pos];
                 // Remain in stay state from stay
-		const size_t idx_stay = rle_index(base, true, base, true);
+                const size_t idx_stay = rle_index(base, true, base, true);
                 grad[goffset + idx_stay] += expf( fwd[foffset + nseqpos + pos]
-				                + bwd[boffset + nseqpos + pos]
+                                                + bwd[boffset + nseqpos + pos]
                                                 + param[goffset + idx_stay]
-					       	- fact);
+                                                - fact);
                 // Remain in stay state from move
-		const size_t idx_move = rle_index(base, false, base, true);
+                const size_t idx_move = rle_index(base, false, base, true);
                 grad[goffset + idx_move] += expf( fwd[foffset + pos]
-				                + bwd[boffset + nseqpos + pos]
+                                                + bwd[boffset + nseqpos + pos]
                                                 + param[goffset + idx_move]
-					       	- fact);
+                                                - fact);
             }
 
             for(size_t pos=1 ; pos < nseqpos ; pos++){
@@ -356,29 +363,29 @@ void crf_runlength_grad(float const * param, size_t nstate, size_t nblk , size_t
                 const float param_sc = param[goffset + base_to + _PARAM_SCALE_OFF];
 
                 float dsh=NAN, dsc=NAN;
-                const float logpmf = discrete_weibull_logpmf(rle[pos] - 1, param_sh, param_sc, &dsh, &dsc);
-		if(! (isfinite(logpmf) && isfinite(dsh) && isfinite(dsc))){
-			warnx("NAN created %s:%d -- pos %zu x %d p %f sh %f dsh %f sc %f dsc %f\n", __FILE__, __LINE__, pos, rle[pos]-1, logpmf, param_sh, dsh, param_sc, dsc);
-		}
+                const float logpmf = discrete_weibull_logpmf(rle[pos] - 1, param_sh, param_sc, &dsh, &dsc)
+                                   + log_inv_freq[(rle[pos] - 1) * _NBASE + base_to];
+                if(! (isfinite(logpmf) && isfinite(dsh) && isfinite(dsc))){
+                    warnx("NAN created %s:%d -- pos %zu x %d p %f sh %f dsh %f sc %f dsc %f\n", __FILE__, __LINE__, pos, rle[pos]-1, logpmf, param_sh, dsh, param_sc, dsc);
+                }
 
                 const float logdscore_stay = fwd[foffset + nseqpos + pos - 1]
                                            + bwd[boffset + pos]
                                            + param[goffset + idx_stay]
                                            + logpmf;
                 const float dscore_stay = expf(logdscore_stay - fact);
-		if(!isfinite(dscore_stay)){
-			warnx( "NAN pos %zu logdscore_stay %f fact %f\n", pos, logdscore_stay, fact);
-		}
+                if(!isfinite(dscore_stay)){
+                    warnx( "NAN pos %zu logdscore_stay %f fact %f\n", pos, logdscore_stay, fact);
+                }
 
                 const float logdscore_move = fwd[foffset + pos - 1]
                                            + bwd[boffset + pos]
                                            + param[goffset + idx_move]
                                            + logpmf;
                 const float dscore_move = expf(logdscore_move - fact);
-		if(!isfinite(dscore_move)){
-			warnx( "NAN pos %zu logdscore_move %f fact %f\n", pos, logdscore_move, fact);
-		}
-
+                if(!isfinite(dscore_move)){
+                    warnx( "NAN pos %zu logdscore_move %f fact %f\n", pos, logdscore_move, fact);
+                }
 
                 grad[goffset + idx_stay] += dscore_stay;
                 grad[goffset + base_to + _PARAM_SHAPE_OFF] += dscore_stay * dsh;
@@ -641,6 +648,8 @@ int main(int argc, char * argv[]){
     const size_t nbatch = 2;
     float score[2] = {0.0f};
     float score2[2] = {0.0f};
+    float log_inv_freq[8] = {-1.335083, -0.5293611, 0.5587366, 0.4368738,
+                              0.552081, 0.3443120, -1.3801619, -0.7937649};
     const float DELTA = 1e-3f;
     const size_t msize = nblk * nstate * nbatch;
 
@@ -673,37 +682,37 @@ int main(int argc, char * argv[]){
                                            test_param1[offset + _PARAM_SHAPE_OFF],
                                            test_param1[offset + _PARAM_SCALE_OFF],
                                            NULL, NULL)));
-	    float dsh = NAN, dsc = NAN;
-	    const float logpmf0 = discrete_weibull_logpmf(0,
-			                                  test_param1[offset + _PARAM_SHAPE_OFF],
-							  test_param1[offset + _PARAM_SCALE_OFF],
-							  &dsh, &dsc);
-	    const float orig_sh = test_param1[offset + _PARAM_SHAPE_OFF];
-	    test_param1[offset + _PARAM_SHAPE_OFF] += DELTA;
-	    const float logpmf0_psh = discrete_weibull_logpmf(0,
-			                                  test_param1[offset + _PARAM_SHAPE_OFF],
-							  test_param1[offset + _PARAM_SCALE_OFF],
-							  NULL, NULL);
-	    test_param1[offset + _PARAM_SHAPE_OFF] = orig_sh - DELTA;
-	    const float logpmf0_msh = discrete_weibull_logpmf(0,
-			                                  test_param1[offset + _PARAM_SHAPE_OFF],
-							  test_param1[offset + _PARAM_SCALE_OFF],
-							  NULL, NULL);
-	    test_param1[offset + _PARAM_SHAPE_OFF] = orig_sh;
+        float dsh = NAN, dsc = NAN;
+        const float logpmf0 = discrete_weibull_logpmf(0,
+                                              test_param1[offset + _PARAM_SHAPE_OFF],
+                              test_param1[offset + _PARAM_SCALE_OFF],
+                              &dsh, &dsc);
+        const float orig_sh = test_param1[offset + _PARAM_SHAPE_OFF];
+        test_param1[offset + _PARAM_SHAPE_OFF] += DELTA;
+        const float logpmf0_psh = discrete_weibull_logpmf(0,
+                                              test_param1[offset + _PARAM_SHAPE_OFF],
+                              test_param1[offset + _PARAM_SCALE_OFF],
+                              NULL, NULL);
+        test_param1[offset + _PARAM_SHAPE_OFF] = orig_sh - DELTA;
+        const float logpmf0_msh = discrete_weibull_logpmf(0,
+                                              test_param1[offset + _PARAM_SHAPE_OFF],
+                              test_param1[offset + _PARAM_SCALE_OFF],
+                              NULL, NULL);
+        test_param1[offset + _PARAM_SHAPE_OFF] = orig_sh;
 
-	    const float orig_sc = test_param1[offset + _PARAM_SCALE_OFF];
-	    test_param1[offset + _PARAM_SCALE_OFF] += DELTA;
-	    const float logpmf0_psc = discrete_weibull_logpmf(0,
-			                                  test_param1[offset + _PARAM_SHAPE_OFF],
-							  test_param1[offset + _PARAM_SCALE_OFF],
-							  NULL, NULL);
-	    test_param1[offset + _PARAM_SCALE_OFF] = orig_sc - DELTA;
-	    const float logpmf0_msc = discrete_weibull_logpmf(0,
-			                                  test_param1[offset + _PARAM_SHAPE_OFF],
-							  test_param1[offset + _PARAM_SCALE_OFF],
-							  NULL, NULL);
-	    printf("dsh %f  app. %f\n", dsh, 0.5 * (logpmf0_psh - logpmf0_msh) / DELTA);
-	    printf("dsc %f  app. %f\n", dsc, 0.5 * (logpmf0_psc - logpmf0_msc) / DELTA);
+        const float orig_sc = test_param1[offset + _PARAM_SCALE_OFF];
+        test_param1[offset + _PARAM_SCALE_OFF] += DELTA;
+        const float logpmf0_psc = discrete_weibull_logpmf(0,
+                                              test_param1[offset + _PARAM_SHAPE_OFF],
+                              test_param1[offset + _PARAM_SCALE_OFF],
+                              NULL, NULL);
+        test_param1[offset + _PARAM_SCALE_OFF] = orig_sc - DELTA;
+        const float logpmf0_msc = discrete_weibull_logpmf(0,
+                                              test_param1[offset + _PARAM_SHAPE_OFF],
+                              test_param1[offset + _PARAM_SCALE_OFF],
+                              NULL, NULL);
+        printf("dsh %f  app. %f\n", dsh, 0.5 * (logpmf0_psh - logpmf0_msh) / DELTA);
+        printf("dsc %f  app. %f\n", dsc, 0.5 * (logpmf0_psc - logpmf0_msc) / DELTA);
         }
     }
 
@@ -713,17 +722,17 @@ int main(int argc, char * argv[]){
     //
     //    F / B calculations
     //
-    crf_runlength_scores_fwd(test_param1, nstate, nblk, nbatch, test_seq1, test_rle1, test_seqlen1, score);
+    crf_runlength_scores_fwd(test_param1, nstate, nblk, nbatch, test_seq1, test_rle1, test_seqlen1, log_inv_freq, score);
     printf("Forwards scores: %f %f\n", score[0], score[1]);
 
-    crf_runlength_scores_bwd(test_param1, nstate, nblk, nbatch, test_seq1, test_rle1, test_seqlen1, score);
+    crf_runlength_scores_bwd(test_param1, nstate, nblk, nbatch, test_seq1, test_rle1, test_seqlen1, log_inv_freq, score);
     printf("Backwards scores: %f %f\n", score[0], score[1]);
 
     //crf_runlength_viterbi_cost(test_param1, nstate, nblk, nbatch, test_seq1, test_rle1, test_seqlen1, score);
     //printf("Viterbi scores: %f %f\n", score[0], score[1]);
 
     float * grad = calloc(msize, sizeof(float));
-    crf_runlength_grad(test_param1, nstate, nblk, nbatch, test_seq1, test_rle1, test_seqlen1, score2, grad);
+    crf_runlength_grad(test_param1, nstate, nblk, nbatch, test_seq1, test_rle1, test_seqlen1, log_inv_freq, score2, grad);
     float maxdelta = 0.0;
     for(size_t blk=0 ; blk < nblk ; blk++){
         const size_t offset = blk * nbatch * nstate;
@@ -742,12 +751,12 @@ int main(int argc, char * argv[]){
             // Positive difference
             const float orig = test_param1[offset + st];
             test_param1[offset + st] = orig + DELTA;
-            crf_runlength_scores_fwd(test_param1, nstate, nblk, nbatch, test_seq1, test_rle1, test_seqlen1, score);
+            crf_runlength_scores_fwd(test_param1, nstate, nblk, nbatch, test_seq1, test_rle1, test_seqlen1, log_inv_freq, score);
             fscore[0] = score[0];
             fscore[1] = score[1];
             // Negative difference
             test_param1[offset + st] = orig - DELTA;
-            crf_runlength_scores_fwd(test_param1, nstate, nblk, nbatch, test_seq1, test_rle1, test_seqlen1, score);
+            crf_runlength_scores_fwd(test_param1, nstate, nblk, nbatch, test_seq1, test_rle1, test_seqlen1, log_inv_freq, score);
             fscore[0] = (fscore[0] - score[0]) / (2.0f * DELTA);
             fscore[1] = (fscore[1] - score[1]) / (2.0f * DELTA);
             // Report and reset
