@@ -374,6 +374,7 @@ void flipflop_viterbi(
       tb_offset -= 2 * nbase * N;
       bp_offset -= N;
     }
+    bp[bp_offset] = s;
   }
 }
 ''', 'flipflop_viterbi')
