@@ -143,16 +143,7 @@ def _setup_and_logs(args):
 
     np.random.seed(args.seed)
 
-    if not os.path.exists(args.outdir):
-        os.makedirs(args.outdir)
-    elif not args.overwrite:
-        sys.stderr.write(('Error: Output directory {} exists but ' +
-                          '--overwrite is false\n').format(args.outdir))
-        exit(1)
-    if not os.path.isdir(args.outdir):
-        sys.stderr.write(('Error: Output location {} is not ' +
-                          'directory\n').format(args.outdir))
-        exit(1)
+    helpers.prepare_outdir(args.outdir, args.overwrite)
 
     copyfile(args.model, os.path.join(args.outdir, 'model.py'))
 

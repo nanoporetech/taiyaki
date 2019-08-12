@@ -266,9 +266,9 @@ class open_file_or_stdout():
 
 def set_torch_device(device):
     """  Set Pytorch device
-    
+
     :param device: device string or cuda device number. E.g. 'cpu', 1, 'cuda:1'
-    
+
     Raises exception if cuda device requested but cuda is not available
     """
     device = torch.device(device)
@@ -278,3 +278,16 @@ def set_torch_device(device):
         else:
             raise ValueError('GPU device requested but cannot be set (PyTorch not compiled with CUDA enabled?)')
     return device
+
+
+def prepare_outdir(outdir, overwrite=False):
+    """  Creates output directory
+    Will overwrite if overwrite is true
+    """
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+    elif not overwrite:
+        raise FileExistsError('\"{}\" exists but --overwrite is false\n'.format(outdir))
+
+    if not os.path.isdir(outdir):
+        raise NotADirectoryError('\"{}\" is not directory'.format(outdir))

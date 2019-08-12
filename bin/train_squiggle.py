@@ -70,14 +70,7 @@ def main():
     args = parser.parse_args()
     np.random.seed(args.seed)
 
-    if not os.path.exists(args.output):
-        os.makedirs(args.output)
-    elif not args.overwrite:
-        sys.stderr.write('Error: Output directory {} exists but --overwrite is false\n'.format(args.output))
-        exit(1)
-    if not os.path.isdir(args.output):
-        sys.stderr.write('Error: Output location {} is not directory\n'.format(args.output))
-        exit(1)
+    helpers.prepare_outdir(args.output, args.overwrite)
 
     device = helpers.set_torch_device(args.device)
 
