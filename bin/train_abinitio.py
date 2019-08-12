@@ -78,14 +78,7 @@ if __name__ == '__main__':
 
     device = helpers.set_torch_device(args.device)
 
-    if not os.path.exists(args.outdir):
-        os.makedirs(args.outdir)
-    elif not args.overwrite:
-        sys.stderr.write('Error: Output directory {} exists but --overwrite is false\n'.format(args.outdir))
-        exit(1)
-    if not os.path.isdir(args.outdir):
-        sys.stderr.write('Error: Output location {} is not directory\n'.format(args.outdir))
-        exit(1)
+    helpers.prepare_outdir(args.outdir, args.overwrite)
 
     copyfile(args.model, os.path.join(args.outdir, 'model.py'))
 
