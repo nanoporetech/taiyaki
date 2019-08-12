@@ -79,7 +79,7 @@ def main():
         sys.stderr.write('Error: Output location {} is not directory\n'.format(args.output))
         exit(1)
 
-    device = torch.device(args.device)
+    device = helpers.set_torch_device(args.device)
 
     log = helpers.Logger(os.path.join(args.output, 'model.log'), args.quiet)
     log.write('* Taiyaki version {}\n'.format(__version__))

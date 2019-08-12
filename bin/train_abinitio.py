@@ -76,9 +76,7 @@ if __name__ == '__main__':
 
     np.random.seed(args.seed)
 
-    device = torch.device(args.device)
-    if device.type == 'cuda':
-        torch.cuda.set_device(device)
+    device = helpers.set_torch_device(args.device)
 
     if not os.path.exists(args.outdir):
         os.makedirs(args.outdir)

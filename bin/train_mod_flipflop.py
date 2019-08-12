@@ -139,14 +139,7 @@ def _load_data(args, log):
     return read_data, alphabet_info
 
 def _setup_and_logs(args):
-    device = torch.device(args.device)
-    if device.type == 'cuda':
-        try:
-            torch.cuda.set_device(device)
-        except AttributeError:
-            sys.stderr.write('ERROR: Torch not compiled with CUDA enabled ' +
-                             'and GPU device set.')
-            sys.exit(1)
+    device = helpers.set_torch_device(args.device)
 
     np.random.seed(args.seed)
 

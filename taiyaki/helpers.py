@@ -263,3 +263,18 @@ class open_file_or_stdout():
         if self.filename is not None:
             self.fh.close()
 
+
+def set_torch_device(device):
+    """  Set Pytorch device
+    
+    :param device: device string or cuda device number. E.g. 'cpu', 1, 'cuda:1'
+    
+    Raises exception if cuda device requested but cuda is not available
+    """
+    device = torch.device(device)
+    if device.type == 'cuda':
+        if torch.cuda.is_available():
+            torch.cuda.set_device(device)
+        else:
+            raise ValueError('GPU device requested but cannot be set (PyTorch not compiled with CUDA enabled?)')
+    return device
