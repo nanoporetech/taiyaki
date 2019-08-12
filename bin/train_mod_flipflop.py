@@ -25,7 +25,7 @@ parser = argparse.ArgumentParser(
 
 common_cmdargs.add_common_command_args(parser, """
 adam device eps filter_max_dwell filter_mean_dwell
-limit lr_max niteration overwrite quiet save_every
+limit lr_max niteration outdir overwrite quiet save_every
 sample_nreads_before_filtering version weight_decay""".split())
 
 parser.add_argument(
@@ -65,9 +65,6 @@ parser.add_argument(
 parser.add_argument(
     '--num_inv_freq_reads', default=1000, type=Positive(int),
     help='Sample N reads for modified base inverse scaling')
-parser.add_argument(
-    '--outdir', default='training',
-    help='Output directory, created when run. Default: %(default)s')
 parser.add_argument(
     '--scale_mod_loss', default=False, action=AutoBool,
     help='Scale mod parameter loss/gradients by inverse of category frequency')

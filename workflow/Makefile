@@ -296,7 +296,7 @@ ${RESULT_DIR}/train_%/trained: ${INGREDIENT_DIR}/mapped_%.hdf5
 	@echo ""
 	@echo "------------Training with $* chunks"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --size ${NETWORK_SIZE} --overwrite --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} ${TRAININGMODEL} $(dir $@) $<
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --size ${NETWORK_SIZE} --outdir $(dir $@) --overwrite --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} ${TRAININGMODEL} $<
 	touch $@
 
 
@@ -331,7 +331,7 @@ ${RESULT_DIR}/squiggletrain_%/model_final.checkpoint: ${INGREDIENT_DIR}/mapped_%
 	@echo ""
 	@echo "------------Training squiggle model with $* map chunks"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_squiggle.py --overwrite --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} $< $(dir $@)
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_squiggle.py --overwrite --outdir $(dir $@) --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} $<
 
 
 ########################################

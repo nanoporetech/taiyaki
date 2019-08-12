@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description='Train a model to predict ionic cur
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 add_common_command_args(parser, """adam device eps filter_max_dwell filter_mean_dwell
-                                   limit niteration overwrite quiet save_every
+                                   limit niteration outdir overwrite quiet save_every
                                    sample_nreads_before_filtering version weight_decay""".split())
 
 parser.add_argument('--batch_size', default=100, metavar='chunks', type=Positive(int),
@@ -54,7 +54,6 @@ parser.add_argument('--target_len', metavar='n', default=300, type=Positive(int)
 parser.add_argument('--winlen', metavar='n', default=7, type=Positive(int),
                     help='Window for convolution network')
 parser.add_argument('input', action=FileExists, help='HDF5 file containing mapped reads')
-parser.add_argument('output', help='Prefix for output files')
 
 
 def create_convolution(size, depth, winlen):
@@ -70,11 +69,11 @@ def main():
     args = parser.parse_args()
     np.random.seed(args.seed)
 
-    helpers.prepare_outdir(args.output, args.overwrite)
+    helpers.prepare_outdir(args.outdir, args.overwrite)
 
     device = helpers.set_torch_device(args.device)
 
-    log = helpers.Logger(os.path.join(args.output, 'model.log'), args.quiet)
+    log = helpers.Logger(os.path.join(args.outdir, 'model.log'), args.quiet)
     log.write('* Taiyaki version {}\n'.format(__version__))
     log.write('* Platform is {}\n'.format(platform.platform()))
     log.write('* PyTorch version {}\n'.format(torch.__version__))
@@ -181,7 +180,7 @@ def main():
 
 
         if (i + 1) % args.save_every == 0:
-            helpers.save_model(conv_net, args.output, (i + 1) // args.save_every)
+            helpers.save_model(conv_net, args.outdir, (i + 1) // args.save_every)
             log.write('C')
         else:
             log.write('.')
@@ -207,7 +206,7 @@ def main():
             log.write("\n")
 
 
-    helpers.save_model(conv_net, args.output)
+    helpers.save_model(conv_net, args.outdir)
 
 
 if __name__ == '__main__':

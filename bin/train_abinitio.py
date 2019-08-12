@@ -25,14 +25,12 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 add_common_command_args(parser, """adam alphabet device eps limit niteration
-                                   overwrite quiet save_every version""".split())
+                                   outdir overwrite quiet save_every version""".split())
 
 parser.add_argument('--batch_size', default=128, metavar='chunks',
                     type=Positive(int), help='Number of chunks to run in parallel')
 parser.add_argument( '--lr_max', default=4.0e-3, metavar='rate',
                     type=Positive(float), help='Initial learning rate')
-parser.add_argument('--outdir', default='training',
-                    help='Output directory, created when run.')
 parser.add_argument('--size', default=96, metavar='neurons',
                     type=Positive(int), help='Base layer size for model')
 parser.add_argument('--seed', default=None, metavar='integer', type=Positive(int),

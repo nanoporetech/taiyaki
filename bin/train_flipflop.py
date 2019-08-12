@@ -25,7 +25,7 @@ parser = argparse.ArgumentParser(description='Train a flip-flop neural network',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 add_common_command_args(parser, """adam device eps filter_max_dwell filter_mean_dwell
-                                   limit lr_cosine_iters niteration overwrite quiet save_every
+                                   limit lr_cosine_iters niteration outdir overwrite quiet save_every
                                    sample_nreads_before_filtering version weight_decay""".split())
 
 parser.add_argument('--chunk_len_min', default=2000, metavar='samples', type=Positive(int),
@@ -74,8 +74,6 @@ parser.add_argument('--winlen', default=19, type=Positive(int),
 
 parser.add_argument('model', action=FileExists,
                     help='File to read python model description (or checkpoint) from')
-
-parser.add_argument('output', help='Prefix for output files')
 parser.add_argument('input', action=FileExists,
                     help='file containing mapped reads')
 
@@ -172,11 +170,11 @@ def main():
 
     device = helpers.set_torch_device(args.device)
 
-    helpers.prepare_outdir(args.output, args.overwrite)
+    helpers.prepare_outdir(args.outdir, args.overwrite)
 
-    copyfile(args.model, os.path.join(args.output, 'model.py'))
-    batchlog = helpers.BatchLog(args.output)
-    log = helpers.Logger(os.path.join(args.output, 'model.log'), args.quiet)
+    copyfile(args.model, os.path.join(args.outdir, 'model.py'))
+    batchlog = helpers.BatchLog(args.outdir)
+    log = helpers.Logger(os.path.join(args.outdir, 'model.log'), args.quiet)
     log.write('* Taiyaki version {}\n'.format(__version__))
     log.write('* Platform is {}\n'.format(platform.platform()))
     log.write('* PyTorch version {}\n'.format(torch.__version__))
@@ -283,7 +281,7 @@ def main():
 
 
     log.write('* Dumping initial model\n')
-    helpers.save_model(network, args.output, 0)
+    helpers.save_model(network, args.outdir, 0)
 
 
 
@@ -343,7 +341,7 @@ def main():
         score_smoothed.update(fval)
 
         if (i + 1) % args.save_every == 0:
-            helpers.save_model(network, args.output, (i + 1) // args.save_every)
+            helpers.save_model(network, args.outdir, (i + 1) // args.save_every)
             log.write('C')
         else:
             log.write('.')
@@ -381,7 +379,7 @@ def main():
             total_samples = 0
             t0 = tn
 
-    helpers.save_model(network, args.output)
+    helpers.save_model(network, args.outdir)
 
 
 if __name__ == '__main__':

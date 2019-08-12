@@ -69,6 +69,10 @@ def add_common_command_args(parser, arglist):
         parser.add_argument('--niteration', metavar='batches', type=Positive(int),
                             default=50000, help='Maximum number of batches to train for')
 
+    if 'outdir' in arglist:
+        parser.add_argument('--outdir', default='training',
+                            help='Output directory, created when run.')
+
     if 'output' in arglist:
         parser.add_argument('--output', default=None, metavar='filename',
                             action=FileAbsent, help='Write output to file')
