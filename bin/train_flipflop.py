@@ -83,9 +83,9 @@ parser.add_argument('input', action=FileExists,
 def prepare_random_batches( device, read_data, batch_chunk_len, sub_batch_size,
                             target_sub_batches, nbase, filter_parameters, args,
                             log = None ):
-   
+
     total_sub_batches = 0
-       
+
     while total_sub_batches < target_sub_batches:
 
         # Chunk_batch is a list of dicts
@@ -93,10 +93,10 @@ def prepare_random_batches( device, read_data, batch_chunk_len, sub_batch_size,
             chunk_selection.assemble_batch( read_data, sub_batch_size,
                                             batch_chunk_len, filter_parameters,
                                             args, log )
-   
+
         if not all(len(d['sequence']) > 0.0 for d in chunk_batch):
             raise Exception('Error: zero length sequence')
-   
+
         # Shape of input tensor must be:
         #     (timesteps) x (batch size) x (input channels)
         # in this case:
@@ -104,31 +104,31 @@ def prepare_random_batches( device, read_data, batch_chunk_len, sub_batch_size,
         stacked_current = np.vstack([d['current'] for d in chunk_batch]).T
         indata = torch.tensor( stacked_current, device=device,
                                             dtype=torch.float32 ).unsqueeze(2)
-               
+
         # Sequence input tensor is just a 1D vector, and so is seqlens
         seqs = torch.tensor( np.concatenate(
         [flipflopfings.flipflop_code(d['sequence'], nbase) for d in chunk_batch]),
                                                 device=device, dtype=torch.long )
         seqlens = torch.tensor( [len(d['sequence']) for d in chunk_batch],
                                                 device=device, dtype=torch.long )
-       
+
         total_sub_batches += 1
-       
+
         yield indata, seqs, seqlens, sub_batch_size, batch_rejections
-       
+
 
 def calculate_loss( network, batch_gen, sharpen, calc_grads = False ):
 
     total_chunk_count = 0
     total_non_zero_seqlens = 0
     total_fval = 0
-    total_samples = 0       
-    total_bases = 0       
-       
+    total_samples = 0
+    total_bases = 0
+
     rejection_dict = defaultdict(int)
-   
+
     for indata, seqs, seqlens, sub_batch_size, batch_rejections in batch_gen:
-           
+
         # Update counts of reasons for rejection
         for k, v in batch_rejections.items():
             rejection_dict[k] += v
@@ -140,44 +140,37 @@ def calculate_loss( network, batch_gen, sharpen, calc_grads = False ):
             lossvector = ctc.crf_flipflop_loss(outputs, seqs, seqlens, sharpen)
             loss = lossvector.sum()
             fval = float(loss)
-           
+
         total_non_zero_seqlens += (seqlens > 0.0).float().sum()
         total_fval += fval
-           
+
         total_samples += int(indata.nelement())
         total_bases += int(seqlens.sum())
-           
+
         if calc_grads:
             loss.backward()
-           
+
         # Doing this deletion leads to less CUDA memory usage.
         #del indata, seqs, seqlens, outputs, lossvector, loss
         #if device.type == 'cuda':
         #    torch.cuda.empty_cache()
 
-    if calc_grads:   
+    if calc_grads:
         for p in network.parameters():
             if p.grad is not None:
                 p.grad /= total_non_zero_seqlens
-       
+
     return total_chunk_count, total_fval/total_non_zero_seqlens, \
                                     total_samples, total_bases, rejection_dict
-   
-   
+
+
 
 def main():
     args = parser.parse_args()
 
     np.random.seed(args.seed)
 
-    device = torch.device(args.device)
-    if device.type == 'cuda':
-        try:
-            torch.cuda.set_device(device)
-        except AttributeError:
-            sys.stderr.write('ERROR: Torch not compiled with CUDA enabled ' +
-                             'and GPU device set.')
-            sys.exit(1)
+    device = helpers.set_torch_device(args.device)
 
     if not os.path.exists(args.output):
         os.makedirs(args.output)
@@ -266,7 +259,7 @@ def main():
         lr_warmup = args.lr_min
     else:
         lr_warmup = args.lr_warmup
-   
+
     if args.lr_frac_decay is not None:
         lr_scheduler = optim.ReciprocalLR(optimizer, args.lr_frac_decay, args.warmup_batches, lr_warmup)
         log.write('* Learning rate schedule lr_max*k/(k+t) , k={}, t=iterations.\n'.format(args.lr_frac_decay))
@@ -295,7 +288,7 @@ def main():
         rolling_quantile = maths.RollingQuantile(args.gradient_cap_fraction)
         log.write('* Gradient L2 norm cap will be upper' +
                   ' {:3.2f} quantile of the last {} norms.\n'.format(args.gradient_cap_fraction, rolling_quantile.window))
-       
+
 
 
     log.write('* Dumping initial model\n')
@@ -330,7 +323,7 @@ def main():
         sub_batch_size = int( args.min_sub_batch_size * args.chunk_len_max /
                               batch_chunk_len + 0.5)
 
-        optimizer.zero_grad()       
+        optimizer.zero_grad()
 
         main_batch_gen = prepare_random_batches( device, read_data,
                                                  batch_chunk_len, sub_batch_size,
@@ -340,18 +333,18 @@ def main():
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
                             calculate_loss( network, main_batch_gen,
                                             args.sharpen, calc_grads = True )
-                           
+
         gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(network.parameters(), gradient_cap)
         if args.gradient_cap_fraction is not None:
             gradient_cap = rolling_quantile.update(gradnorm_uncapped)
-           
+
         optimizer.step()
         batchlog.record(fval, gradnorm_uncapped, None if args.gradient_cap_fraction is None else gradient_cap)
-       
+
         total_chunks += chunk_count
         total_samples += chunk_samples
         total_bases += chunk_bases
-       
+
         # Update counts of reasons for rejection
         for k, v in batch_rejections.items():
             rejection_dict[k] += v
@@ -366,10 +359,10 @@ def main():
 
 
         if (i + 1) % DOTROWLENGTH == 0:
-           
+
             _, rloss, _, _, _ = calculate_loss( network, reporting_batch_list,
                                                 args.sharpen )
-           
+
             # In case of super batching, additional functionality must be
             # added here
             learning_rate = lr_scheduler.get_lr()[0]

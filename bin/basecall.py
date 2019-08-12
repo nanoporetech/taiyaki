@@ -122,7 +122,7 @@ def main():
     args = parser.parse_args()
 
     assert args.device != 'cpu', "Flipflop basecalling in taiyaki requires a GPU and for cupy to be installed"
-    device = torch.device(args.device)
+    device = helpers.set_torch_device(args.device)
     # TODO convert to logging
     sys.stderr.write("* Loading model.\n")
     model = load_model(args.model).to(device)
