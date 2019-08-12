@@ -45,7 +45,7 @@ For the impatient, the following commands will be run.  These will be explained,
     prepare_mapped_reads.py  --jobs 32 reads read_params.tsv mapped_reads.hdf5  pretrained/r941_dna_minion.checkpoint read_references.fasta
 
     # Train a Model
-    train_flipflop.py --device 0 taiyaki/models/mGru_flipflop.py training mapped_reads.hdf5
+    train_flipflop.py --device 0 taiyaki/models/mGru_flipflop.py mapped_reads.hdf5
 
     # Export to Guppy
     dump_json.py training/model_final.checkpoint > model.json
@@ -291,14 +291,12 @@ Depending the speed of the GPU used, this process can take several days.
 
 .. code-block:: bash
 
-    train_flipflop.py --device 0 taiyaki/models/mGru_flipflop.py training mapped_reads.hdf5
+    train_flipflop.py --device 0 taiyaki/models/mGru_flipflop.py mapped_reads.hdf5
 
 +--------------------------------------+-----------------------------------------------------------+
 |  --device 0                          |  Use CUDA device 0                                        |
 +--------------------------------------+-----------------------------------------------------------+
 |  taiyaki/models/mGru_flipflop.py     |  Model definition file                                    |
-+--------------------------------------+-----------------------------------------------------------+
-|  training                            |  Output directory for model checkpoints and training log  |
 +--------------------------------------+-----------------------------------------------------------+
 |  mapped_reads.hdf5                   |  Mapped reads file created by ``prepare_mapped_reads.py`` |
 +--------------------------------------+-----------------------------------------------------------+

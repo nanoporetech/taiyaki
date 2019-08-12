@@ -38,9 +38,10 @@ class AcceptanceTest(unittest.TestCase):
 
         train_cmd = [self.script, "--batch_size", "50",
                      "--niteration", "1", "--save_every", "1",
+                     "--outdir", output_directory,
                      # Seed random numbers so test is reproducible
                      "--seed", "1",
-                     hdf5_file, output_directory]
+                     hdf5_file]
 
         util.run_cmd(self, train_cmd).expect_exit_code(0)
 

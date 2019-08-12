@@ -182,7 +182,7 @@ Basic usage is as follows:
 
     bin/prepare_mapped_reads.py <directory containing fast5 files> <per_read_tsv> <output mapped_signal_file>  <file containing model for remapping>  <reference_fasta>
 
-    bin/train_flipflop.py --device <digit specifying GPU> <pytorch model definition> <output directory for checkpoints> <mapped-signal files to train with>
+    bin/train_flipflop.py --device <digit specifying GPU> <pytorch model definition> <mapped-signal files to train with>
 
 Some scripts mentioned also have a useful option **--limit** which limits the number of reads to be used. This allows a quick test of a workflow.
 
