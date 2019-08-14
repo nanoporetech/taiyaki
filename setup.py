@@ -73,7 +73,6 @@ for Oxford Nanopore Technologies' sequencing platforms.""",
     ],
 
     packages=find_packages(exclude=["*.test", "*.test.*", "test.*", "test", "bin"]),
-    package_data={'configs': 'data/configs/*'},
     exclude_package_data={'': ['*.hdf', '*.c', '*.h']},
     ext_modules=extensions,
     setup_requires=["pytest-runner", "pytest-xdist"],
