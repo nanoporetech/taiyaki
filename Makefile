@@ -119,3 +119,14 @@ workflow:
 	./workflow/remap_from_samrefs_then_train_squiggle_test_workflow.sh
 	./workflow/remap_from_mod_fasta_then_train_test_mod_workflow.sh
 #(The scripts each check to see if the training log file and chunk log file exist and contain data)
+
+
+# By default, test_multiGPU.sh uses GPUs 0,1.
+# If a different combination is required then set the environment variable CUDA_VISIBLE_DEVICES before running.
+# E.g.
+# export CUDA_VISIBLE_DEVICES="2,6"
+# make multiGPU_test
+.PHONY: multiGPU_test
+multiGPU_test:
+	./workflow/test_multiGPU.sh
+

@@ -30,19 +30,35 @@ expect to get your hands dirty.
 
 # Contents
 
-1. [Install system prerequisites](#install-system-prerequisites)
-2. [Installation](#installation)
+1. [Installing system prerequisites](#installing-system-prerequisites)
+2. [Installing Taiyaki](#installation)
 3. [Tests](#tests)
 4. [Walk through](#walk-through)
-5. [Workflows](#workflows)
-6. [Guppy compatibility](#guppy-compatibility)
+5. [Workflows](#workflows)<br>
+        * [Using the workflow Makefile](#using-the-workflow-makefile)<br>
+        * [Steps from fast5 files to basecalling](#steps-from-fast5-files-to-basecalling)<br>
+        * [Preparing a training set](#preparing-a-training-set)<br>
+        * [Basecalling](#basecalling)<br>
+        * [Modified bases](#modified-bases)<br>
+        * [Abinitio training](#abinitio-training)<br>
+6. [Guppy compatibility](#guppy-compatibility)<br>
+        * [Standard model parameters](#standard-model-parameters)<br>
 7. [Environment variables](#environment-variables)
-8. [CUDA](#cuda)
-9. [Running on UGE](#running-on-a-uge-cluster)
-10. [Diagnostics](#diagnostics)
+8. [CUDA](#cuda)<br>
+        * [Troubleshooting](#troubleshooting)<br>
+9. [Using multiple GPUs](#using-multiple-gpus)<br>
+        * [How to launch training with multiple GPUs](#how-to-launch-training-with-multiple-gpus)<br>
+        * [Choice of learning rates for multi-GPU training](#choice-of-learning-rates-for-multi-gpu-training)<br>
+        * [Selection of GPUs](#selection-of-gpus-for-multi-gpu-training)<br>
+        * [More than one multi-GPU training group on a single machine](#more-than-one-multi-gpu-training-group-on-a-single-machine)<br>
+10. [Running on SGE](#running-on-an-sge-cluster)<br>
+        * [Installation](#SGEinstall)<br>
+        * [Execution](#SGEexec)<br>
+        * [Selection of multiple GPUs in SGE](#SGEmultiGPU)<br>
+11. [Diagnostics](#diagnostics)
 
 
-# Install system prerequisites
+# Installing system prerequisites
 
 To install required system packages on ubuntu 16.04:
 
@@ -63,7 +79,7 @@ Some analysis scripts require a recent version of the [BWA aligner](https://gith
 
 Windows is not supported.
 
-# Installation
+# Installing Taiyaki
 
 ---
 **NOTE**
@@ -100,8 +116,9 @@ Tests can be run as follows:
     make workflow           #runs scripts which carry out the workflow for basecall-network training and for squiggle-predictor training
     make acctest            #runs acceptance tests
     make unittest           #runs unit tests
+    make multiGPU_test      #runs multi-GPU test (GPUs 0 and 1 must be available, and CUDA must be installed - see below)
 
-If Taiyaki has install in a virtual environment, it will have to activated before running tests: `source venv/bin/activate`.  To deactivate, run `deactivate`.
+If Taiyaki has been installed in a virtual environment, it will have to activated before running tests: `source venv/bin/activate`.  To deactivate, run `deactivate`.
 
 # Walk throughs and further documentation
 For a walk-through of Taiyaki model training, including how to obtain sample training data, see [docs/walkthrough.rst](docs/walkthrough.rst).
@@ -130,7 +147,7 @@ The paragraph below describes the steps in the workflow in more detail.
 
 ## Steps from fast5 files to basecalling
 
-The script **bin/prepare_mapped_reads.py** prepares a file containing mapped signals. This mapped signal file is then used to train a basecalling model.
+The script **bin/prepare_mapped_reads.py** prepares a file containing mapped signals. This file is the main ingredient used to train a basecalling model.
 
 The simplest workflow looks like this. The flow runs from top to bottom and lines show the inputs required for each stage.
 The scripts in the Taiyaki package are shown, as are the files they work with.
@@ -219,7 +236,7 @@ so long as they produce data conformant with [this format](docs/FILE_FORMATS.md)
 ## Basecalling
 
 Taiyaki comes with a script to perform flip-flop basecalling using a GPU.
-This script requries CUDA and cupy to be installed.
+This script requires CUDA and cupy to be installed.
 
 Example usage:
 
@@ -234,7 +251,7 @@ Note: due to the RNA motor processing along the strand from 3' to 5', the base c
 ## Modified Bases
 
 Taiyaki enables the training of models to predict the presence of modified bases (a.k.a. non-canonical or alternative bases) alongside the standard flip-flop canonical base probabilities via an alteration to the model architecture (model architecture referred to as categorical modifications, or `cat_mod` for short).
-This alteration results in a second stream of data from the neural network which represents the probability that any base is canonical or modified (potentially include any number of modifications).
+This alteration results in a second stream of data from the neural network which represents the probability that any base is canonical or modified (potentially including any number of modifications).
 
 A number of adjustments to the training workflow are required to train a modified base model.
 These adjustments begin with the “FASTA with reference sequence for each read” which is input to the `prepare_mapped_reads.py` command.
@@ -373,12 +390,70 @@ To place cuda on your path enter the following:
 Once CUDA is correctly configured and you are installing Taiyaki in a new virtual environment (as recommended), you may need to run `make install` again to ensure that you have the correct pytorch package to match your CUDA version.
 
 
-# Running on a UGE cluster
+# Using multiple GPUs
 
-There are two things to get right: (a) installing with the correct CUDA version, and (b) executing with the correct choice of GPU.
+The script **bin/train_flipflop.py** can be used in multi-GPU mode with Pytorch's DistributedDataParallel class. With N GPUs available on a single machine, we can run N processes, each
+using one of the GPUs and processing different random selections from the same training data. The gradients are synchronised by averaging across the processes. The outcome is that the batch
+size is larger by a factor N than the batch size in single-GPU mode.
 
-(a) It is important that **when the package is installed**, it knows which version of the CUDA compiler is available on the machine where it will be executed.
-When running on a UGE cluster we might want to do installation on a different machine from execution.
+## How to launch training with multiple GPUs
+
+Multi-GPU training runs can be launched using the Pytorch **distributed.launch** module. For example, in a Taiyaki environment:
+
+    python -m torch.distributed.launch --nproc_per_node=4 train_flipflop.py --lr_max 0.004 --lr_min 0.0002 taiyaki/models/mGru_flipflop.py mapped_reads.hdf5
+    
+This command line launches four processes, each using a GPU. Four GPUs numbered 0,1,2,3 must be available.
+
+Note that all command-line options for **train_flipflop.py** are used in the same way as normal, apart from **device**.
+
+The script **workflow/test_multiGPU.sh** provides an example. Note that the line choosing GPUs (**export CUDA_VISIBLE_DEVICES...**) may need to be edited to specify the GPUs to be used on your system.
+
+## Choice of learning rates for multi-GPU training
+
+A higher learning rate can be used for large-batch or multi-GPU training. As a starting point, with N GPUs we recommend using a learning rate sqrt(N) times higher than used for a single GPU. With these
+settings we expect to make roughly the same training progress as a single-GPU training run but in N times fewer batches. This will not always be true: as always, experiments are necessary to find the
+best choice of hyperparameters. In particular, a lower learning rate than suggested by the square-root rule may be necessary in the early stages of training. One way to achieve this is by using the
+command-line arguments **lr_warmup** and **warmup_batches**. Also bear in mind that the timescale for the learning rate schedule, **lr_cosine_iters** should be changed to take into account the faster progress of training.
+
+## Selection of GPUs for multi-GPU training
+
+The settings above use the first **nproc_per_node** GPUs available on the machine. For example, with 8 GPUs and **nproc_per_node** = 4, we will use the GPUs numbered 0,1,2,3. This selection can be altered
+using the environment variable **CUDA_VISIBLE_DEVICES**. For example,
+
+    export CUDA_VISIBLE_DEVICES="2,4,6,7"
+    
+will make the GPUs numbered 2,4,6,7 available to CUDA as if they were numbers 0,1,2,3.
+If we then launch using the command line above (**python -m torch.distributed.launch...**), GPUs 2,4,6,7 will be used.
+
+See below for how this applies in a SGE system.
+
+## More than one multi-GPU training group on a single machine
+
+Suppose that there are 8 GPUs on your machine and you want to train two models, each using 4 GPUs. Setting **CUDA_VISIBLE_DEVICES** to **"4,5,6,7"** for the second training job, you set things off,
+but find that the second job fails with an error message like this
+
+    File "./bin/train_flipflop.py", line 178, in main
+        torch.distributed.init_process_group(backend='nccl')
+    File "XXXXXX/taiyaki/venv/lib/python3.5/site-packages/torch/distributed/distributed_c10d.py", line 354, in init_process_group
+        store, rank, world_size = next(rendezvous(url))
+    File "XXXXXX/taiyaki/venv/lib/python3.5/site-packages/torch/distributed/rendezvous.py", line 143, in _env_rendezvous_handler
+        store = TCPStore(master_addr, master_port, start_daemon)
+    RuntimeError: Address already in use
+
+The reason is that **torch.distributed.launch** sets up the process group with a fixed default IP address and port for communication between
+processes (**master_addr** 127.0.0.1, **master_port** 29500). The two process groups are trying to use the same port.
+To fix this, set off your second process group with a different address and port:
+
+    python -m torch.distributed.launch --nproc_per_node=4 --master_addr 127.0.0.2 --master_port 29501 train_flipflop.py <command-line-options>
+
+
+# Running on an SGE cluster
+
+There are two things to get right: installing with the correct CUDA version, and executing with the correct choice of GPU.
+
+## Installation
+It is important that **when the package is installed**, it knows which version of the CUDA compiler is available on the machine where it will be executed.
+When running on an SGE cluster we might want to do installation on a different machine from execution.
 There are two ways of getting around this. You can qlogin to a node which has the same resources
 as the execution node, and then install using that machine:
 
@@ -390,7 +465,8 @@ as the execution node, and then install using that machine:
 
     CUDA=8.0 make install
 
-(b) When **executing** on a UGE cluster you need to make sure you run on a node which has GPUs available, and then tell Taiyaki to use the correct GPU.
+## Execution
+When **executing** on an SGE cluster you need to make sure you run on a node which has GPUs available, and then tell Taiyaki to use the correct GPU.
 
 You tell the system to wait for a node which has an available GPU by adding the option **-l gpu=1** to your qsub command.
 To find out which GPU has been allocated to your job, you need to look at the environment variable **SGE_HGR_gpu**. If it has the value **cuda0**, then
@@ -399,6 +475,15 @@ accepts inputs such as 'cuda0' or 'cuda1' or integers 0 or 1, so SGE_HGR_gpu can
 
 The easy way to achieve this is with a Makefile like the one in the directory **workflow**. This Makefile contains comments which will help users run the package on a UGE system.
 
+## Selection of multiple GPUs in SGE
+
+When multiple GPUs are available to a SGE job (for example, if we use the command line option **-l gpu=4** in **qsub** to request 4 GPUS), the GPUs allocated are passed to the process
+as a space-separated list in **SGE_HGR_gpu**. Unfortunately, **CUDA_VISIBLE_DEVICES** requires a comma-separated list. To get around this we execute
+
+    export CUDA_VISIBLE_DEVICES=${SGE_HGR_gpu// /,}
+
+Also note that on nodes with many GPUs, port clashes may occur (see 'More than one multi-GPU training group on a single machine' above). They can be avoided with clever use of
+the command-line arguments of **torch.distributed.launch**.
 
 # Diagnostics
 
