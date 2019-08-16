@@ -5,16 +5,13 @@ import h5py
 import numpy as np
 import os
 import pickle
-import platform
 from shutil import copyfile
-import sys
 import time
 
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from taiyaki import ctc, flipflopfings, helpers
-from taiyaki import __version__
 from taiyaki.cmdargs import FileExists, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 
@@ -81,16 +78,7 @@ if __name__ == '__main__':
     copyfile(args.model, os.path.join(args.outdir, 'model.py'))
 
     log = helpers.Logger(os.path.join(args.outdir, 'model.log'), args.quiet)
-    log.write('* Taiyaki version {}\n'.format(__version__))
-    log.write('* Platform is {}\n'.format(platform.platform()))
-    log.write('* PyTorch version {}\n'.format(torch.__version__))
-    if device.type == 'cuda':
-        log.write('* CUDA version {}\n'.format(torch.version.cuda))
-        log.write('* CUDA device {}\n'.format(torch.cuda.get_device_name(device)))
-    else:
-        log.write('* Running on CPU')
-    log.write('* Command line\n')
-    log.write(' '.join(sys.argv) + '\n')
+    log.write(helpers.formatted_env_info(device))
     log.write('* Loading data from {}\n'.format(args.chunks))
     log.write('* Per read file MD5 {}\n'.format(helpers.file_md5(args.chunks)))
 

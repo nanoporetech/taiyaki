@@ -2,7 +2,6 @@
 import argparse
 import numpy as np
 import os
-import platform
 import sys
 import time
 import torch
@@ -11,7 +10,6 @@ from collections import defaultdict
 
 from taiyaki import (activation, chunk_selection, helpers, layers,
                      mapped_signal_files, optim)
-from taiyaki import __version__
 from taiyaki.cmdargs import AutoBool, FileExists, Maybe, Positive, proportion
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
@@ -73,17 +71,8 @@ def main():
 
     device = helpers.set_torch_device(args.device)
 
-    log = helpers.Logger(os.path.join(args.outdir, 'model.log'), args.quiet)
-    log.write('* Taiyaki version {}\n'.format(__version__))
-    log.write('* Platform is {}\n'.format(platform.platform()))
-    log.write('* PyTorch version {}\n'.format(torch.__version__))
-    if device.type == 'cuda':
-        log.write('* CUDA version {}\n'.format(torch.version.cuda))
-        log.write('* CUDA device {}\n'.format(torch.cuda.get_device_name(device)))
-    else:
-        log.write('* Running on CPU\n')
-    log.write('* Command line\n')
-    log.write(' '.join(sys.argv) + '\n')
+    log = helpers.Logger(os.path.join(args.output, 'model.log'), args.quiet)
+    log.write(helpers.formatted_env_info(device))
 
     if args.input_strand_list is not None:
         read_ids = list(set(helpers.get_read_ids(args.input_strand_list)))
