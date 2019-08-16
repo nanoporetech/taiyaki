@@ -71,7 +71,7 @@ def main():
 
     device = helpers.set_torch_device(args.device)
 
-    log = helpers.Logger(os.path.join(args.output, 'model.log'), args.quiet)
+    log = helpers.Logger(os.path.join(args.outdir, 'model.log'), args.quiet)
     log.write(helpers.formatted_env_info(device))
 
     if args.input_strand_list is not None:
