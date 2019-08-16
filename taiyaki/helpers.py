@@ -1,4 +1,3 @@
-from collections import Mapping, Sequence
 import hashlib
 import imp
 import numpy as np
@@ -15,16 +14,49 @@ def _load_python_model(model_file, **model_kwargs):
     return network
 
 
-def save_model(network, output, index=None):
+def save_model(network, output, index=None, model_skeleton=None):
+    """
+    Save a trained model.
+
+    Two versions are saved: the checkpoint file,
+    which is a pickled version of the model as a class instance, and
+    the params file which saves a state_dict.
+
+    : param network  : a pytorch model
+    : param output   : an output base (files will be saved as
+                       <output>model_checkpoint_XXXXX.checkpoint
+                       and <output>model_checkpoint_XXXXX.checkpoint.params
+                       where XXXX is either an index number or 'final').
+    : param index    : if this is supplied, then an index number is used.
+                       otherwise 'final'.
+    : param model_skeleton : a pytorch model having the class
+                         structure that we want to use for saving.
+                         For use with DistributedDataParallel (see
+                         below)
+
+    .. note ::
+    The model_skeleton arg should be used when saving a
+    DistributedDataParallel model.
+    If model_skeleton is specified, then the parameters from the
+    .module attribute in the <network> to be saved are placed into the
+    model skeleton and the model skeleton is then saved.
+    In this way, we can save a DistributedDataParallel model in the same
+    format that we save ordinary models.
+    """
+    if model_skeleton is not None:
+        model_skeleton.load_state_dict(network.module.state_dict())
+        _network = model_skeleton
+    else:
+        _network = network
     if index is None:
         basename = 'model_final'
     else:
         basename = 'model_checkpoint_{:05d}'.format(index)
 
     model_file = os.path.join(output, basename + '.checkpoint')
-    torch.save(network, model_file)
+    torch.save(_network, model_file)
     params_file = os.path.join(output, basename + '.params')
-    torch.save(network.state_dict(), params_file)
+    torch.save(_network.state_dict(), params_file)
 
 
 def load_model(model_file, params_file=None, **model_kwargs):
@@ -141,12 +173,19 @@ class WindowedExpSmoother(object):
 
 class Logger(object):
 
-    def __init__(self, log_file_name, quiet=False):
+    def __init__(self, log_file_name=None, quiet=False):
+        """Open file for logging training results.
+
+        :param log_file_name: If log_file_name is None, then no file is used.
+        :param quiet: If quiet = False, then log entries also echoed to stdout."""
         #
         # Can't have unbuffered text I/O at the moment hence 'b' mode below.
         # See currently open issue http://bugs.python.org/issue17404
         #
-        self.fh = open(log_file_name, 'wb', 0)
+        if log_file_name is None:
+            self.fh = None
+        else:
+            self.fh = open(log_file_name, 'wb', 0)
 
         self.quiet = quiet
 
@@ -154,6 +193,8 @@ class Logger(object):
         if not self.quiet:
             sys.stdout.write(message)
             sys.stdout.flush()
+        if self.fh is None:
+            return
         try:
             self.fh.write(message.encode('utf-8'))
         except IOError as e:
@@ -164,26 +205,27 @@ class BatchLog:
     """Used to record three-column tsv file containing
     loss, gradient norm and gradient norm cap
     for every training step"""
+
     def __init__(self, output_dir, filename='batch.log'):
         """Open log in output_dir with given filename and write header line.
-        If output_dir is None, then
-        initialise class instance but open no file and
-        arrange it so that the output method does nothing."""
+
+        :param output_dir: output directory
+        :param filename: filename to use for batch log. Do nothing if filename is None.
+        """
         # Can't have unbuffered text I/O at the moment hence 'b' mode below.
         # See currently open issue http://bugs.python.org/issue17404
-        if output_dir is None:
-            self.fh = None
-        else:
-            log_file_name = os.path.join(output_dir, filename)
-            self.fh = open(log_file_name, 'wb', 0)
-            self.write("loss\tgradientnorm\tgradientcap\n")
+        log_file_name = os.path.join(output_dir, filename)
+        self.fh = open(log_file_name, 'wb', 0)
+        self.write("loss\tgradientnorm\tgradientcap\n")
+
     def write(self, s):
-        """Write a string to the log, or do nothing if class
-        instance has been initialised with output_dir=None"""
-        if self.fh is not None:
-            self.fh.write(s.encode('utf-8'))
+        """Write a string to the log.
+        """
+        self.fh.write(s.encode('utf-8'))
+
     def record(self, loss, gradientnorm, gradientcap, nonestring="NaN"):
         """Write loss, gradient and cap to a row of the log.
+
         If gradientcap is None, then write nonestring in its place."""
         self.write("{:5.4f}\t{:5.4f}\t".format(loss, gradientnorm))
         if gradientcap is None:
