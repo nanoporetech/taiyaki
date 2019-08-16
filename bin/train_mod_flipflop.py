@@ -3,7 +3,6 @@ import argparse
 from collections import defaultdict
 import numpy as np
 import os
-import platform
 from shutil import copyfile
 import sys
 import time
@@ -15,7 +14,6 @@ from taiyaki.flipflopfings import flipflop_code
 
 from taiyaki import (alphabet, chunk_selection, ctc, helpers,
                      mapped_signal_files, layers, optim)
-from taiyaki import __version__
 
 
 # This is here, not in main to allow documentation to be built
@@ -147,16 +145,7 @@ def _setup_and_logs(args):
     log = helpers.Logger(os.path.join(args.outdir, 'model.log'), args.quiet)
     loss_log = helpers.Logger(
         os.path.join(args.outdir, 'model.all_loss.txt'), True)
-    log.write('* Taiyaki version {}\n'.format(__version__))
-    log.write('* Platform is {}\n'.format(platform.platform()))
-    log.write('* PyTorch version {}\n'.format(torch.__version__))
-    if device.type == 'cuda':
-        log.write('* CUDA version {}\n'.format(torch.version.cuda))
-        log.write('* CUDA device {}\n'.format(torch.cuda.get_device_name(device)))
-    else:
-        log.write('* Running on CPU\n')
-    log.write('* Command line\n')
-    log.write(' '.join(sys.argv) + '\n')
+    log.write(helpers.formatted_env_info(device))
     log.write('* Loading data from {}\n'.format(args.input))
     log.write('* Per read file MD5 {}\n'.format(helpers.file_md5(args.input)))
 

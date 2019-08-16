@@ -2,10 +2,8 @@
 import argparse
 import copy
 from collections import defaultdict
-import datetime
 import numpy as np
 import os
-import platform
 from shutil import copyfile
 import sys
 import time
@@ -15,7 +13,6 @@ import torch
 
 from taiyaki import (chunk_selection, constants, ctc, flipflopfings, helpers,
                      mapped_signal_files, maths, optim)
-from taiyaki import __version__
 from taiyaki.cmdargs import AutoBool, FileExists, Maybe, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
@@ -216,19 +213,8 @@ def main():
         logfile = None
 
     log = helpers.Logger(logfile, args.quiet)
+    log.write(helpers.formatted_env_info(device))
 
-    log.write('* Taiyaki version {}\n'.format(__version__))
-    log.write('* Platform is {}\n'.format(platform.platform()))
-    log.write('* PyTorch version {}\n'.format(torch.__version__))
-    if device.type == 'cuda':
-        log.write('* CUDA version {}\n'.format(torch.version.cuda))
-        log.write('* CUDA device {}\n'.format(
-                torch.cuda.get_device_name(device)))
-    else:
-        log.write('* Running on CPU\n')
-    log.write('* Command line:\n')
-    log.write('* "' + ' '.join(sys.argv) + '"\n')
-    log.write('* Started on {}\n'.format(datetime.datetime.now()))
     log.write('* Loading data from {}\n'.format(args.input))
     log.write('* Per read file MD5 {}\n'.format(helpers.file_md5(args.input)))
 

@@ -1,10 +1,13 @@
+import datetime
 import hashlib
 import imp
 import numpy as np
 import os
+import platform
 import sys
 import torch
 
+from taiyaki import __version__
 from taiyaki.fileio import readtsv
 
 
@@ -333,3 +336,22 @@ def prepare_outdir(outdir, overwrite=False):
 
     if not os.path.isdir(outdir):
         raise NotADirectoryError('\"{}\" is not directory'.format(outdir))
+
+
+def formatted_env_info(device):
+    """  Collect and format information about environment
+
+    :param device: `torch.device`
+
+    :returns: formatted string
+    """
+    info = ['* Taiyaki version {}'.format(__version__),
+            '* Platform is {}'.format(platform.platform()),
+            '* PyTorch version {}'.format(torch.__version__),
+            '* CUDA version {} on device {}'.format(torch.version.cuda,
+                                                    torch.cuda.get_device_name(device))
+            if device.type == 'cuda' else '* Running on CPU',
+            '* Command line:',
+            '* "' + ' '.join(sys.argv),
+            '* Started on {}'.format(datetime.datetime.now())]
+    return '\n'.join(info) + '\n'
