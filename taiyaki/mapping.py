@@ -181,20 +181,31 @@ class Mapping:
         """
         siglen = len(self.signal.untrimmed_dacs)
         reflen = len(self.reference)
-        sig_to_ref_non_zero_idxs = np.nonzero(self.signalpos_to_refpos != -1)[0].astype(np.int32)
-        sig_to_ref_non_zeros = self.signalpos_to_refpos[sig_to_ref_non_zero_idxs]
-        copy_rights = np.diff(sig_to_ref_non_zeros)
+        sig_to_ref_non_zero_idxs = np.nonzero(
+            self.signalpos_to_refpos != -1)[0].astype(np.int32)
+        sig_to_ref_non_zeros = self.signalpos_to_refpos[
+            sig_to_ref_non_zero_idxs]
+        move_pos = np.where(
+            sig_to_ref_non_zeros[:-1] != sig_to_ref_non_zeros[1:])[0]
+        # concatenate end of last position
+        ref_to_sig = np.concatenate([
+            sig_to_ref_non_zero_idxs[move_pos],
+            [sig_to_ref_non_zero_idxs[-1] + 1,]])
 
-        putative_ref_to_sig = np.repeat(sig_to_ref_non_zero_idxs[:-1], copy_rights)
-        #Insert the right number of -1s to get to the beginning of the mapped region
-        if len(sig_to_ref_non_zeros) > 0:
-            first_nonzero_refpos = sig_to_ref_non_zeros[0]
+        # Insert the right number of -1s to get to the beginning of the
+        # mapped region
+        first_nonzero_refpos = sig_to_ref_non_zeros[0] \
+                               if len(sig_to_ref_non_zeros) > 0 else reflen
+        if first_nonzero_refpos == 0:
+            ref_to_sig = np.concatenate([
+                [sig_to_ref_non_zero_idxs[0],], ref_to_sig])
         else:
-            first_nonzero_refpos = reflen
-        putative_ref_to_sig = np.append(-1 * np.ones(first_nonzero_refpos, dtype=np.int32), putative_ref_to_sig)
-
-        ref_to_sig = np.append(putative_ref_to_sig, siglen * np.ones(reflen +
-                                                                     1 - len(putative_ref_to_sig), dtype=np.int32))
+            ref_to_sig = np.concatenate([
+                -1 * np.ones(first_nonzero_refpos, dtype=np.int32),
+                ref_to_sig])
+        if reflen + 1 > len(ref_to_sig):
+            ref_to_sig = np.append(ref_to_sig, (siglen + 1) * np.ones(
+                reflen + 1 - len(ref_to_sig), dtype=np.int32))
 
         return ref_to_sig
 
