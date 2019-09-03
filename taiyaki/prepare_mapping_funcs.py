@@ -128,6 +128,9 @@ def get_per_read_params_dict_from_tsv(input_file):
 
     per_read_params_dict = {}
     for row in per_read_params_array:
+        if len(row)!=5 or not row[1].isdigit() or not row[2].isdigit():
+            sys.stderr.write("[WARNING] Incorrect line in %s: %s\n"%(input_file, row))
+            continue
         per_read_params_dict[row[0]] = {'trim_start': row[1],
                                         'trim_end': row[2],
                                         'shift': row[3],
