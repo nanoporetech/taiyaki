@@ -322,8 +322,9 @@ def main():
     score_smoothed = helpers.WindowedExpSmoother()
 
     #Generating list of batches for standard loss reporting
+    reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
     reporting_batch_list=list(
-        prepare_random_batches( device, read_data, args.chunk_len_max,
+        prepare_random_batches( device, read_data, reporting_chunk_len,
                                 args.min_sub_batch_size,
                                 args.reporting_sub_batches,
                                 nbase, filter_parameters, args, log ) )
