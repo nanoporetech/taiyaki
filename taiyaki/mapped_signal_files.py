@@ -143,11 +143,13 @@ class Read(dict):
         of the reference"""
         daclen = len(self['Dacs'])
         r = self['Ref_to_signal']
-        mappedlocations = np.where((r >= 0) & (r < daclen))[0]  # Locations in the ref that are mapped
-        if len(mappedlocations) > 0:
-            return np.min(mappedlocations), np.max(mappedlocations) + 1  # +1 to make it exclusive
-        else:
-            return 0,0
+        # Locations in the ref that are mapped
+        # note daclen indicates a valid mapping end position
+        # while daclen + 1 indicates unmapped reference positions
+        valid_ref_locs = np.where((r >= 0) & (r <= daclen))[0]
+        if len(valid_ref_locs) == 0:
+            return 0, 0
+        return valid_ref_locs[0], valid_ref_locs[-1]
 
     def get_mapped_dacs_region(self):
         """Return tuple (start,end_exc) so that
@@ -155,11 +157,13 @@ class Read(dict):
         of the signal"""
         r = self['Ref_to_signal']
         daclen = len(self['Dacs'])
-        r = r[(r >= 0) & (r < daclen)]  # Locations in the signal (not the end points -1, daclen ) that are mapped to
-        if len(r) > 0:
-            return np.min(r), np.max(r) + 1  # +1 to make it exclusive
-        else:
-            return 0,0
+        # Locations in the DACs that are mapped
+        # note daclen indicates a valid mapping end position
+        # while daclen + 1 indicates unmapped reference positions
+        valid_sig_locs = r[(r >= 0) & (r <= daclen)]
+        if len(valid_sig_locs) == 0:
+            return 0, 0
+        return valid_sig_locs[0], valid_sig_locs[-1]
 
     def get_reference_locations(self, signal_location_vector):
         """Return reference locations that go with given signal locations.
