@@ -68,10 +68,10 @@ def read_batch_log(filepath):
             'training_loss':t['loss'],
             'gradientnorm':t['gradientnorm'],
             'gradientcap':t['gradientcap']}
-       
+
 def main():
     args = parser.parse_args()
-   
+
     logdata = {}
     batchdata = {}
     for td in args.input_directories:
@@ -79,19 +79,22 @@ def main():
         batchdata[td] = read_batch_log(os.path.join(td,'batch.log'))
         if args.mav is not None:
             batchdata[td]['training_loss'] = moving_average(batchdata[td]['training_loss'], args.mav)
-       
+
     #Plot validation and training loss
-    plt.figure(figsize=(5,4))
+    plt.figure(figsize=(6, 4.8))
     colour_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
-    for td,colour in zip(args.input_directories,colour_cycle):
-        label = os.path.basename(td)
+    for td, colour in zip(args.input_directories, colour_cycle):
+        label = os.path.basename(os.path.normpath(td))
         plt.plot(batchdata[td]['t'], batchdata[td]['training_loss'],
-                 color=colour, label=label+' (training)')
+                 color=colour, label=label+' (training)', alpha=0.5,
+                 linewidth=0.5)
         if len(logdata[td]['t'])==0:
             print("No log data for {} - perhaps <{} iterations complete?".format(td,DOTROWLENGTH))
             continue
-        plt.scatter(logdata[td]['t'],logdata[td]['validation_loss'],
-                    marker = '+', color=colour, label=label+' (validation)')
+        plt.plot(logdata[td]['t'],logdata[td]['validation_loss'],
+                 color=colour, label=label+' (validation)',
+                 linewidth=0.5)
+
     plt.grid()
     plt.xlabel('Iterations')
     plt.ylabel('Loss')
@@ -103,12 +106,15 @@ def main():
         plt.xlim(right=args.upper_x_limit)
     if args.lower_x_limit is not None:
         plt.xlim(left=args.lower_x_limit)
-    plt.legend(loc='upper right')
+    leg = plt.legend(loc='upper right')
+    for legobj in leg.legendHandles:
+        legobj.set_linewidth(4.0)
+
     if args.mav is not None:
         plt.title('Moving average window = {} iterations'.format(args.mav))
     plt.tight_layout()
-    plt.savefig(args.output)
+    plt.savefig(args.output, dpi=300)
     plt.close()
-   
+
 if __name__=="__main__":
     main()
