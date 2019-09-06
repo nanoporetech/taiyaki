@@ -179,7 +179,7 @@ class Mapping:
         with a sequence of (-1)s
 
         if the end of the reference is not mapped, then reftosig will end with
-         ... f, f, f, f]  where f is the last mapped location in the signal.
+         ... f, f, f, f]  where f = siglen + 1.
         """
         valid_sig_to_ref_idxs = np.where(
             self.signalpos_to_refpos != -1)[0].astype(np.int32)
