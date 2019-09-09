@@ -143,11 +143,13 @@ class Read(dict):
         of the reference"""
         daclen = len(self['Dacs'])
         r = self['Ref_to_signal']
-        mappedlocations = np.where((r >= 0) & (r < daclen))[0]  # Locations in the ref that are mapped
-        if len(mappedlocations) > 0:
-            return np.min(mappedlocations), np.max(mappedlocations) + 1  # +1 to make it exclusive
-        else:
-            return 0,0
+        # Locations in the ref that are mapped
+        # note daclen indicates a valid mapping end position
+        # while daclen + 1 indicates unmapped reference positions
+        valid_ref_locs = np.where((r >= 0) & (r <= daclen))[0]
+        if len(valid_ref_locs) == 0:
+            return 0, 0
+        return valid_ref_locs[0], valid_ref_locs[-1]
 
     def get_mapped_dacs_region(self):
         """Return tuple (start,end_exc) so that
@@ -155,11 +157,13 @@ class Read(dict):
         of the signal"""
         r = self['Ref_to_signal']
         daclen = len(self['Dacs'])
-        r = r[(r >= 0) & (r < daclen)]  # Locations in the signal (not the end points -1, daclen ) that are mapped to
-        if len(r) > 0:
-            return np.min(r), np.max(r) + 1  # +1 to make it exclusive
-        else:
-            return 0,0
+        # Locations in the DACs that are mapped
+        # note daclen indicates a valid mapping end position
+        # while daclen + 1 indicates unmapped reference positions
+        valid_sig_locs = r[(r >= 0) & (r <= daclen)]
+        if len(valid_sig_locs) == 0:
+            return 0, 0
+        return valid_sig_locs[0], valid_sig_locs[-1]
 
     def get_reference_locations(self, signal_location_vector):
         """Return reference locations that go with given signal locations.
@@ -167,8 +171,8 @@ class Read(dict):
         The return value is a numpy integer vector of reference locations.
         (feeding in a tuple works too but the result is still a vector)
 
-        In the output,-1 and len(self['Dacs']) are used as markers for
-        unmapped points at the start and end.
+        If signal locations outside of the mapped region are requested an
+        IndexError is raised.
 
         If we have a numpy-style range in a tuple
         t = (signal_start_inclusive, signal_end_exclusive)
@@ -180,10 +184,12 @@ class Read(dict):
             signal_location_vector = np.array(signal_location_vector)
         reflen = len(self['Reference'])
 
-        first_mapped_sigloc, first_unmapped_sigloc = self.get_mapped_dacs_region()
+        mapped_dacs_start, mapped_dacs_end = self.get_mapped_dacs_region()
         result = np.searchsorted(self['Ref_to_signal'], signal_location_vector)
-        result[signal_location_vector < first_mapped_sigloc] = -1
-        result[signal_location_vector >= first_unmapped_sigloc] = reflen
+        if any(signal_location_vector < mapped_dacs_start):
+            raise IndexError('Signal location before mapped region requested.')
+        if any(signal_location_vector > mapped_dacs_end):
+            raise IndexError('Signal location after mapped region requested.')
 
         return result
 
@@ -300,7 +306,12 @@ class Read(dict):
             dacstart = start_sample + mapped_dacs_region[0]
 
         dacs_region = dacstart, chunk_len + dacstart
-        ref_region = self.get_reference_locations(dacs_region)
+        try:
+            ref_region = self.get_reference_locations(dacs_region)
+        except IndexError:
+            # this should never happen, but we don't want to halt training if
+            # this is an outlier bug
+            return {'rejected':'nullmapping', 'read_id':self.get('read_id')}
         return self._get_chunk(dacs_region, ref_region, verbose)
 
     def get_chunk_with_sequence_length(self, chunk_bases, start_base=None):

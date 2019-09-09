@@ -9,15 +9,15 @@ minimap2 -I 16G -x map-ont -t 32 -a --secondary=no taiyaki_walkthrough/reference
 # Map only reads with filenames ending _1.fastq
 minimap2 -I 16G -x map-ont -t 32 -a --secondary=no taiyaki_walkthrough/reference.fasta taiyaki_walkthrough/intermediate_files/basecalls/*_1.fastq | samtools view -bST taiyaki_walkthrough/reference.fasta - > basecalls_1.bam
 
-#Get references for filenames ending _0.fastq
+# Get references for filenames ending _0.fastq
 taiyaki/bin/get_refs_from_sam.py taiyaki_walkthrough/reference.fasta basecalls_0.bam --min_coverage 0.8 > read_references_0.fasta
-#Get references for filenames ending _0.fastq
+# Get references for filenames ending _1.fastq
 taiyaki/bin/get_refs_from_sam.py taiyaki_walkthrough/reference.fasta basecalls_1.bam --min_coverage 0.8 > read_references_1.fasta
 
 #Generate per read params for all files
 taiyaki/bin/generate_per_read_params.py --jobs 32 taiyaki_walkthrough/reads > read_params.tsv
 
-#Prepare a set of mapped reads from the _0 files
-taiyaki/bin/prepare_mapped_reads.py  --overwrite --limit 5 --jobs 32 taiyaki_walkthrough/reads read_params.tsv mapped_reads_0.hdf5 taiyaki_walkthrough/pretrained/r941_dna_minion.checkpoint read_references_0.fasta
-#Prepare a set of mapped reads from the _1 files
-taiyaki/bin/prepare_mapped_reads.py  --limit 25 --overwrite --jobs 32 taiyaki_walkthrough/reads read_params.tsv mapped_reads_1.hdf5 taiyaki_walkthrough/pretrained/r941_dna_minion.checkpoint read_references_1.fasta
+# Prepare a set of mapped reads from the _0 files
+taiyaki/bin/prepare_mapped_reads.py  --limit 2 --jobs 32 taiyaki_walkthrough/reads read_params.tsv mapped_reads_0.hdf5 taiyaki_walkthrough/pretrained/r941_dna_minion.checkpoint read_references_0.fasta
+# Prepare a set of mapped reads from the _1 files (note that 25 reads are needed to get 5 valid mappings)
+taiyaki/bin/prepare_mapped_reads.py  --limit 25 --jobs 32 taiyaki_walkthrough/reads read_params.tsv mapped_reads_1.hdf5 taiyaki_walkthrough/pretrained/r941_dna_minion.checkpoint read_references_1.fasta

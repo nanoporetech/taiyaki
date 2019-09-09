@@ -29,7 +29,9 @@ class Mapping:
                                           (useful when writing new factory functions)
        """
 
-        if len(signal.untrimmed_dacs) != len(signalpos_to_refpos):
+        self.siglen = len(signal.untrimmed_dacs)
+        self.reflen = len(reference)
+        if self.siglen != len(signalpos_to_refpos):
             raise Exception('Mapping: mapping vector is different length from untrimmed signal')
         self.signal = signal
         self.signalpos_to_refpos = signalpos_to_refpos
@@ -49,8 +51,8 @@ class Mapping:
         if verbose:
             print("Signal constructor finished.")
             print("Signal (trimmed) length:", self.signal.trimmed_length)
-            print("Mapping vector length:", len(self.signalpos_to_refpos))
-            print("reference length", len(self.reference))
+            print("Mapping vector length:", self.siglen)
+            print("reference length", self.reflen)
 
     @property
     def trimmed_length(self):
@@ -177,24 +179,31 @@ class Mapping:
         with a sequence of (-1)s
 
         if the end of the reference is not mapped, then reftosig will end with
-         ... f, f, f, f]  where f is the last mapped location in the signal.
+         ... f, f, f, f]  where f = siglen + 1.
         """
-        siglen = len(self.signal.untrimmed_dacs)
-        reflen = len(self.reference)
-        sig_to_ref_non_zero_idxs = np.nonzero(self.signalpos_to_refpos != -1)[0].astype(np.int32)
-        sig_to_ref_non_zeros = self.signalpos_to_refpos[sig_to_ref_non_zero_idxs]
-        copy_rights = np.diff(sig_to_ref_non_zeros)
+        valid_sig_to_ref_idxs = np.where(
+            self.signalpos_to_refpos != -1)[0].astype(np.int32)
+        # if the full read is clipped return an array of negative ones
+        if len(valid_sig_to_ref_idxs) == 0:
+            return -1 * np.ones(self.reflen + 1, dtype=np.int32)
 
-        putative_ref_to_sig = np.repeat(sig_to_ref_non_zero_idxs[:-1], copy_rights)
-        #Insert the right number of -1s to get to the beginning of the mapped region
-        if len(sig_to_ref_non_zeros) > 0:
-            first_nonzero_refpos = sig_to_ref_non_zeros[0]
-        else:
-            first_nonzero_refpos = reflen
-        putative_ref_to_sig = np.append(-1 * np.ones(first_nonzero_refpos, dtype=np.int32), putative_ref_to_sig)
+        valid_sig_to_ref = self.signalpos_to_refpos[valid_sig_to_ref_idxs]
+        move_pos = np.concatenate([[1,], np.diff(valid_sig_to_ref)])
+        ref_to_sig = np.repeat(valid_sig_to_ref_idxs, move_pos)
+        # add the end of the last mapped position
+        ref_to_sig = np.concatenate([
+            ref_to_sig,
+            np.array([valid_sig_to_ref_idxs[-1] + 1,], dtype=np.int32)])
 
-        ref_to_sig = np.append(putative_ref_to_sig, siglen * np.ones(reflen +
-                                                                     1 - len(putative_ref_to_sig), dtype=np.int32))
+        # Insert the right number of -1s to get to the beginning of the
+        # mapped region
+        if valid_sig_to_ref[0] > 0:
+            ref_to_sig = np.concatenate([
+                -1 * np.ones(valid_sig_to_ref[0], dtype=np.int32),
+                ref_to_sig])
+        if self.reflen + 1 > len(ref_to_sig):
+            ref_to_sig = np.append(ref_to_sig, (self.siglen + 1) * np.ones(
+                self.reflen + 1 - len(ref_to_sig), dtype=np.int32))
 
         return ref_to_sig
 
