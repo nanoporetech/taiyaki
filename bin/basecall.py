@@ -8,7 +8,7 @@ import torch
 
 from ont_fast5_api import fast5_interface
 
-from taiyaki import basecall_helpers, fast5utils, layers
+from taiyaki import basecall_helpers, fast5utils, helpers, layers
 from taiyaki.cmdargs import AutoBool, FileAbsent, FileExists, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DEFAULT_ALPHABET
