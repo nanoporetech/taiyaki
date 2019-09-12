@@ -178,7 +178,7 @@ if __name__ == '__main__':
             learning_rate = lr_scheduler.get_lr()[0]
             tn = time.time()
             dt = tn - t0
-            t = ' {:5d} {:5.3f}  {:5.2f}s ({:.2f} ksample/s {:.2f} kbase/s) lr={:.2e}\n'
+            t = ' {:5d} {:7.5f}  {:5.2f}s ({:.2f} ksample/s {:.2f} kbase/s) lr={:.2e}\n'
             log.write(t.format((i + 1) // 50, score_smoothed.value,
                                dt, total_samples / 1000.0 / dt,
                                total_bases / 1000.0 / dt, learning_rate))
