@@ -11,8 +11,8 @@ import time
 import torch
 
 
-from taiyaki import (chunk_selection, constants, ctc, flipflopfings, helpers,
-                     mapped_signal_files, maths, optim)
+from taiyaki import (alphabet, chunk_selection, constants, ctc, flipflopfings,
+                     helpers, layers, mapped_signal_files, maths, optim)
 from taiyaki.cmdargs import AutoBool, FileExists, Maybe, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
@@ -70,6 +70,10 @@ parser.add_argument('--min_sub_batch_size', default=96, metavar='chunks',
                     'for chunk_len = chunk_len_max. Actual length of ' +
                     'sub-batch used is ' +
                     '(min_sub_batch_size * chunk_len_max / chunk_len).')
+parser.add_argument('--mod_factor', type=float, default=0.1,
+                    help='Relative modified base weight (compared to ' +
+                    'canonical transitions) in loss/gradient (only ' +
+                    'applicable for modified base models).')
 parser.add_argument('--reporting_sub_batches', default=10,
                     metavar='sub_batches', type=Positive(int),
                     help='Number of sub-batches to use for std loss reporting')
@@ -98,9 +102,12 @@ parser.add_argument('model', action=FileExists,
 parser.add_argument('input', action=FileExists,
                     help='file containing mapped reads')
 
+def is_cat_mod_model(network):
+    return isinstance(network.sublayers[-1], layers.GlobalNormFlipFlopCatMod)
 
 def prepare_random_batches( device, read_data, batch_chunk_len, sub_batch_size,
-                            target_sub_batches, nbase, filter_parameters, args,
+                            target_sub_batches, alphabet_info,
+                            filter_parameters, args, network, network_is_catmod,
                             log = None ):
 
     total_sub_batches = 0
@@ -124,19 +131,38 @@ def prepare_random_batches( device, read_data, batch_chunk_len, sub_batch_size,
         indata = torch.tensor( stacked_current, device=device,
                                             dtype=torch.float32 ).unsqueeze(2)
 
-        # Sequence input tensor is just a 1D vector, and so is seqlens
-        seqs = torch.tensor( np.concatenate(
-        [flipflopfings.flipflop_code(d['sequence'], nbase) for d in chunk_batch]),
-                                                device=device, dtype=torch.long )
-        seqlens = torch.tensor( [len(d['sequence']) for d in chunk_batch],
-                                                device=device, dtype=torch.long )
+        # Prepare seqs, seqlens and (if necessary) mod_cats
+        seqs, seqlens = [], []
+        mod_cats = [] if network_is_catmod else None
+        for chunk in chunk_batch:
+            chunk_labels = chunk['sequence']
+            seqlens.append(len(chunk_labels))
+            if network_is_catmod:
+                chunk_mod_cats = np.ascontiguousarray(
+                    network.sublayers[-1].mod_labels[chunk_labels])
+                mod_cats.append(chunk_mod_cats)
+                # convert chunk_labels to canonical base labels
+                chunk_labels = np.ascontiguousarray(
+                    network.sublayers[-1].can_labels[chunk_labels])
+            chunk_seq = flipflopfings.flipflop_code(
+                chunk_labels, alphabet_info.ncan_base)
+            seqs.append(chunk_seq)
+
+        seqs = torch.tensor(
+            np.concatenate(seqs), dtype=torch.float32, device=device)
+        seqlens = torch.tensor(seqlens, dtype=torch.long, device=device)
+        if network_is_catmod:
+            mod_cats = torch.tensor(
+                np.concatenate(mod_cats), dtype=torch.long, device=device)
 
         total_sub_batches += 1
 
-        yield indata, seqs, seqlens, sub_batch_size, batch_rejections
+        yield indata, seqs, seqlens, mod_cats, sub_batch_size, batch_rejections
 
 
-def calculate_loss( network, batch_gen, sharpen, calc_grads = False ):
+def calculate_loss( network, network_is_catmod, batch_gen, sharpen,
+                    can_mods_offsets = None, mod_cat_weights = None,
+                    mod_factor_t = None, calc_grads = False ):
 
     total_chunk_count = 0
     total_fval = 0
@@ -146,7 +172,8 @@ def calculate_loss( network, batch_gen, sharpen, calc_grads = False ):
     rejection_dict = defaultdict(int)
 
     n_subbatches = 0
-    for indata, seqs, seqlens, sub_batch_size, batch_rejections in batch_gen:
+    for (indata, seqs, seqlens, mod_cats, sub_batch_size,
+         batch_rejections) in batch_gen:
         n_subbatches += 1
         # Update counts of reasons for rejection
         for k, v in batch_rejections.items():
@@ -156,7 +183,14 @@ def calculate_loss( network, batch_gen, sharpen, calc_grads = False ):
 
         with torch.set_grad_enabled(calc_grads):
             outputs = network(indata)
-            lossvector = ctc.crf_flipflop_loss(outputs, seqs, seqlens, sharpen)
+            if network_is_catmod:
+                lossvector = ctc.cat_mod_flipflop_loss(
+                    outputs, seqs, seqlens, mod_cats, can_mods_offsets,
+                    mod_cat_weights, mod_factor_t, sharpen)
+            else:
+                lossvector = ctc.crf_flipflop_loss(
+                    outputs, seqs, seqlens, sharpen)
+
             non_zero_seqlens = (seqlens > 0.0).float().sum()
             # In multi-GPU mode, gradients are synchronised when
             # loss.backward() is called. We need to make sure we are
@@ -177,7 +211,7 @@ def calculate_loss( network, batch_gen, sharpen, calc_grads = False ):
                 p.grad /= n_subbatches
 
     return total_chunk_count, total_fval / n_subbatches, \
-                                    total_samples, total_bases, rejection_dict
+        total_samples, total_bases, rejection_dict
 
 
 def main():
@@ -230,12 +264,13 @@ def main():
         log.write('* Limiting number of strands to {}\n'.format(args.limit))
 
     with mapped_signal_files.HDF5Reader(args.input) as per_read_file:
-        alphabet, _, _ = per_read_file.get_alphabet_information()
+        alphabet_info = per_read_file.get_alphabet_information()
         read_data = per_read_file.get_multiple_reads(
             read_ids, max_reads=args.limit)
         # read_data now contains a list of reads
         # (each an instance of the Read class defined in
         # mapped_signal_files.py, based on dict)
+    log.write('* Using alphabet definition: {}\n'.format(str(alphabet_info)))
 
     if len(read_data) == 0:
         log.write('* No reads remaining for training, exiting.\n')
@@ -256,7 +291,6 @@ def main():
     log.write(": median(mean_dwell)={:.2f}".format(medmd))
     log.write(", mad(mean_dwell)={:.2f}\n".format(madmd))
     log.write('* Reading network from {}\n'.format(args.model))
-    nbase = len(alphabet)
     model_kwargs = {
         'stride': args.stride,
         'winlen': args.winlen,
@@ -264,7 +298,7 @@ def main():
         # models (level, std, dwell)
         'insize': 1,
         'size' : args.size,
-        'outsize': flipflopfings.nstate_flipflop(nbase)
+        'alphabet_info': alphabet_info
     }
 
     if is_lead_process:
@@ -275,6 +309,26 @@ def main():
         network_save_skeleton = helpers.load_model(args.model, **model_kwargs)
         log.write('* Network has {} parameters.\n'.format(
                   sum([p.nelement() for p in network_save_skeleton.parameters()])))
+        if not alphabet_info.is_compatible_model(network_save_skeleton):
+            sys.stderr.write(
+                '* ERROR: Model and mapped signal files contain incompatible ' +
+                'alphabet definitions (including modified bases).')
+            sys.exit(1)
+        if is_cat_mod_model(network_save_skeleton):
+            log.write('* Loaded categorical modified base model.\n')
+            if not alphabet_info.contains_modified_bases():
+                sys.stderr.write(
+                    '* ERROR: Modified bases model specified, but mapped ' +
+                    'signal file does not contain modified bases.')
+                sys.exit(1)
+        else:
+            log.write('* Loaded standard (canonical bases-only) model.\n')
+            if alphabet_info.contains_modified_bases():
+                sys.stderr.write(
+                    '* ERROR: Standard (canonical bases only) model ' +
+                    'specified, but mapped signal file does contains ' +
+                    'modified bases.')
+                sys.exit(1)
         log.write('* Dumping initial model\n')
         helpers.save_model(network_save_skeleton, args.outdir, 0)
 
@@ -321,13 +375,21 @@ def main():
 
     score_smoothed = helpers.WindowedExpSmoother()
 
+    # prepare modified base paramter tensors
+    network_is_catmod = is_cat_mod_model(network)
+    mod_factor_t = torch.tensor(args.mod_factor, dtype=torch.float32).to(device)
+    can_mods_offsets = (network.sublayers[-1].can_mods_offsets
+                        if network_is_catmod else None)
+    # mod cat inv freq weighting is currently disabled. Compute and set this
+    # value to enable mod cat weighting
+    mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
+
     #Generating list of batches for standard loss reporting
     reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
-    reporting_batch_list=list(
-        prepare_random_batches( device, read_data, reporting_chunk_len,
-                                args.min_sub_batch_size,
-                                args.reporting_sub_batches,
-                                nbase, filter_parameters, args, log ) )
+    reporting_batch_list = list(prepare_random_batches(
+            device, read_data, reporting_chunk_len, args.min_sub_batch_size,
+            args.reporting_sub_batches, alphabet_info, filter_parameters, args,
+            network, network_is_catmod, log))
 
     log.write( ('* Standard loss report: chunk length = {} & sub-batch size ' +
                 '= {} for {} sub-batches. \n').format( args.chunk_len_max,
@@ -372,15 +434,16 @@ def main():
 
         optimizer.zero_grad()
 
-        main_batch_gen = prepare_random_batches( device, read_data,
-                                                 batch_chunk_len,
-                                                 sub_batch_size,
-                                                 args.sub_batches, nbase,
-                                                 filter_parameters, args, log )
+        main_batch_gen = prepare_random_batches(
+            device, read_data, batch_chunk_len, sub_batch_size,
+            args.sub_batches, alphabet_info, filter_parameters, args,
+            network, network_is_catmod, log )
 
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
-                            calculate_loss( network, main_batch_gen,
-                                            args.sharpen, calc_grads = True )
+                            calculate_loss( network, network_is_catmod,
+                                            main_batch_gen, args.sharpen,
+                                            can_mods_offsets, mod_cat_weights,
+                                            mod_factor_t, calc_grads = True )
 
         gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
                                       network.parameters(), gradient_cap)
@@ -413,8 +476,10 @@ def main():
 
         if (i + 1) % DOTROWLENGTH == 0:
 
-            _, rloss, _, _, _ = calculate_loss( network, reporting_batch_list,
-                                                args.sharpen )
+            _, rloss, _, _, _ = calculate_loss( network, network_is_catmod,
+                                                reporting_batch_list,
+                                                args.sharpen, can_mods_offsets,
+                                                mod_cat_weights, mod_factor_t )
 
             # In case of super batching, additional functionality must be
             # added here

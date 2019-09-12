@@ -263,13 +263,12 @@ The `--mod` argument should be repeated once for each modification.
 For example, to encode 5-methyl-cytosine and 6-methyl-adenosine with the single letter codes `Z` and `Y` respectively, the following commandline arguments would be added `--mod Z C 5mC --mod Y A 6mA`.
 These values will be stored in the prepared signal mapped HDF5 output file for use in training downstream.
 
-Next the `mapped-signal-file` is passed into the `train_mod_flipflop.py` command (as opposed to `train_flipflop.py` from standard workflow).
+Next the `mapped-signal-file` is passed into the `train_flipflop.py` command.
 This script requires a `cat_mod` model to be provided (e.g. `taiyaki/models/mGru_cat_mod_flipflop.py`).
-This script also provides a number of arguments specific to training a `cat_mod` model.
-Specifically, the `--mod_factor` argument controls the proportion of the training loss attributed to the modified base output stream in comparison to the canonical base output stream.
-When training a model from scratch it is generally recommended to set this factor to a lower value (`0.01` for example) to train the model to call canonical bases and then restart training with the default, `1`, value in order to train the model to identify modified bases.
+The `--mod_factor` argument controls the proportion of the training loss attributed to the modified base output stream in comparison to the canonical base output stream.
+When training a model from scratch it is generally recommended to set this factor to a lower value (`0.01` for example) to train the model to call canonical bases and then restart training with a larger value, `0.1 -- 1`, value in order to train the model to identify modified bases.
 
-Modified base models can be used in megalodon (release imminent) to call modified bases anchored to a reference.
+Modified base models can be used in `guppy` to call modified base anchored to the basecalls or `megalodon` to call modified bases anchored to a reference.
 
 ## Abinitio training
 

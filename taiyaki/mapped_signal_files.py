@@ -10,6 +10,8 @@ import h5py
 import numpy as np
 import posixpath
 
+from taiyaki import alphabet
+
 _version = 8
 
 class Read(dict):
@@ -407,7 +409,7 @@ class AbstractMappedSignalReader(ABC):
 
     @abstractmethod
     def get_alphabet_information(self):
-        """Return alphabet, collapse_alphabet and mod_long_names"""
+        """Return taiyaki.alphabet.AlphabetInfo object"""
         pass
 
     # This function is not abstract because it can be left as-is.
@@ -566,9 +568,9 @@ class HDF5Reader(AbstractMappedSignalReader):
 
     def get_alphabet_information(self):
         mod_long_names = self.hdf5.attrs['mod_long_names'].splitlines()
-        return (self.hdf5.attrs['alphabet'],
-                self.hdf5.attrs['collapse_alphabet'],
-                mod_long_names)
+        return alphabet.AlphabetInfo(
+            self.hdf5.attrs['alphabet'], self.hdf5.attrs['collapse_alphabet'],
+            mod_long_names)
 
 
 class HDF5Writer(AbstractMappedSignalWriter):

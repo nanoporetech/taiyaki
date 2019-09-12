@@ -64,6 +64,23 @@ class AlphabetInfo(object):
                     lab_counts[can_lab] / lab_counts[mod_lab])
         return np.array(mod_inv_weights, dtype=np.float32)
 
+    def contains_modified_bases(self):
+        return len(self.mod_long_names) > 0
+
+    def is_compatible_model(self, network):
+        flipflop_layer = network.sublayers[-1]
+        if hasattr(flipflop_layer, 'alphabet'):
+            return all(
+                self.alphabet == flipflop_layer.alphabet,
+                self.collapse_alphabet == flipflop_layer.collapse_alphabet,
+                self.mod_long_names == flipflop_layer.mod_long_names,
+                self.mod_name_conv == flipflop_layer.mod_name_conv,
+                self.can_bases == flipflop_layer.can_bases,
+                self.mod_bases == flipflop_layer.mod_bases,
+                self.ncan_base == flipflop_layer.ncan_base,
+                self.nmod_base == flipflop_layer.nmod_base)
+        return self.nbase == flipflop_layer.nbase
+
     def collapse_sequence(self, sequence_with_mods):
         """ Replace modified bases in a string sequence with corresponding
         canonical bases
