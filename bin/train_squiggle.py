@@ -85,8 +85,8 @@ def main():
         log.write('* Limiting number of strands to {}\n'.format(args.limit))
 
     with mapped_signal_files.HDF5Reader(args.input) as per_read_file:
-        alphabet, _, _ = per_read_file.get_alphabet_information()
-        assert len(alphabet) == 4, (
+        alphabet_info = per_read_file.get_alphabet_information()
+        assert alphabet_info.nbase == 4, (
             'Squiggle prediction with modified base training data is ' +
             'not currenly supported.')
         read_data = per_read_file.get_multiple_reads(read_ids, max_reads=args.limit)

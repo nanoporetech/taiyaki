@@ -315,7 +315,7 @@ ${RESULT_DIR}/mod_train_%/trained: ${INGREDIENT_DIR}/mod_mapped_%.hdf5
 	@echo ""
 	@echo "------------Training with $* chunks"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_mod_flipflop.py --size ${NETWORK_SIZE} --overwrite --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} --outdir $(dir $@) ${MODTRAININGMODEL} $<
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --size ${NETWORK_SIZE} --overwrite --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} --outdir $(dir $@) ${MODTRAININGMODEL} $<
 	touch $@
 
 

@@ -39,7 +39,7 @@ def main():
     first_in_fn = args.input[0]
     with MAPPED_SIGNAL_READER(first_in_fn) as hin:
         #  Copy alphabet and modification information from first file
-        alph_info = alphabet.AlphabetInfo(*hin.get_alphabet_information())
+        alph_info = hin.get_alphabet_information()
     reads_written = set()
     print("Writing reads to ", args.output)
     with  MAPPED_SIGNAL_WRITER(args.output, alph_info) as hout:
@@ -47,7 +47,7 @@ def main():
             copied_from_this_file = 0
             with MAPPED_SIGNAL_READER(infile) as hin:
                 check_version(hin, infile)
-                in_alph_info = alphabet.AlphabetInfo(*hin.get_alphabet_information())
+                in_alph_info = hin.get_alphabet_information()
                 if not alph_info.equals(in_alph_info):
                     raise Exception(
                         "Alphabet info in {} differs from that in {}".format(

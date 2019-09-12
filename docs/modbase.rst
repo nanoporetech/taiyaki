@@ -33,8 +33,8 @@ For the impatient, the following commands will be run.  These will be explained,
         prepare_mapped_reads.py  --jobs 32 --mod Z C 5mC --mod Y A 6mA reads modbase.tsv modbase.hdf5  pretrained/r941_dna_minion.checkpoint modbase_references.fasta
 
         # Train modified base model
-        train_mod_flipflop.py --device 0 --mod_factor 0.01 --outdir training taiyaki/models/mGru_cat_mod_flipflop.py modbase.hdf5
-        train_mod_flipflop.py --device 0 --mod_factor 1.0 --outdir training2 training/model_final.checkpoint modbase.hdf5
+        train_flipflop.py --device 0 --mod_factor 0.01 --outdir training taiyaki/models/mGru_cat_mod_flipflop.py modbase.hdf5
+        train_flipflop.py --device 0 --mod_factor 0.1 --outdir training2 training/model_final.checkpoint modbase.hdf5
 
         # Basecall
         basecall.py --device 0 --modified_base_output basecalls.hdf5 reads training2/model_final.checkpoint  > basecalls.fa
@@ -68,7 +68,7 @@ An additional directory ``taiyaki_modbase/intermediate_files`` contains examples
     + ``r941_rna_minion.checkpoint``
 - ``reads``
     + 10k single-read *fast5* files for training
-- ``modbase_references.fasta`` 
+- ``modbase_references.fasta``
 
 
 Obtain and install Taiyaki
@@ -163,7 +163,7 @@ The following creates the input data for training.  Notice that each modificatio
 
 Train a Model
 -------------
-Having prepared the mapped read file, the ``train_mod_flipflop.py`` script training a flip-flop model.
+Having prepared the mapped read file, the ``train_flipflop.py`` script trains a flip-flop model.
 Progress is displayed on the screen and written to a log file in output directory. 
 Checkpoints are regularly saved and training can be restarted from a checkpoint by replacing the model description file with the checkpoint file on the command line.
 
@@ -179,8 +179,8 @@ Depending the speed of the GPU used, this process can take several days.
 
 .. code-block:: bash
 
-    train_mod_flipflop.py --device 0 --mod_factor 0.01 --outdir training taiyaki/models/mGru_cat_mod_flipflop.py modbase.hdf5
-    train_mod_flipflop.py --device 0 --mod_factor 1.0 --outdir training2 training/model_final.checkpoint modbase.hdf5
+    train_flipflop.py --device 0 --mod_factor 0.01 --outdir training taiyaki/models/mGru_cat_mod_flipflop.py modbase.hdf5
+    train_flipflop.py --device 0 --mod_factor 1.0 --outdir training2 training/model_final.checkpoint modbase.hdf5
 
 +----------------------------------------------+-------------------------------------------------------------+
 |  --device 0                                  |  Use CUDA device 0                                          |
