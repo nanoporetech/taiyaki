@@ -90,7 +90,7 @@ def oneread_remap(read_tuple, model, per_read_params_dict,
                                          read_id), RemapResult.SUCCESS
 
 
-def generate_output_from_results(results, output, alphabet_info):
+def generate_output_from_results(results, output, alphabet_info, verbose=True):
     """
     Given an iterable of dictionaries, each representing the results of mapping
     a single read, output a mapped-read file.
@@ -101,7 +101,7 @@ def generate_output_from_results(results, output, alphabet_info):
     param: output      : output filename
     param: alphabet_info : taiyaki.alphabet.AlphabetInfo instance
     """
-    progress = helpers.Progress()
+    progress = helpers.Progress(quiet=not verbose)
     err_types = defaultdict(int)
     with mapped_signal_files.HDF5Writer(output, alphabet_info) as f:
         for resultdict, mesg in results:
