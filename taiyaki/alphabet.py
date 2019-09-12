@@ -70,7 +70,7 @@ class AlphabetInfo(object):
     def is_compatible_model(self, network):
         flipflop_layer = network.sublayers[-1]
         if hasattr(flipflop_layer, 'alphabet'):
-            return all(
+            return all([
                 self.alphabet == flipflop_layer.alphabet,
                 self.collapse_alphabet == flipflop_layer.collapse_alphabet,
                 self.mod_long_names == flipflop_layer.mod_long_names,
@@ -78,7 +78,7 @@ class AlphabetInfo(object):
                 self.can_bases == flipflop_layer.can_bases,
                 self.mod_bases == flipflop_layer.mod_bases,
                 self.ncan_base == flipflop_layer.ncan_base,
-                self.nmod_base == flipflop_layer.nmod_base)
+                self.nmod_base == flipflop_layer.nmod_base])
         return self.nbase == flipflop_layer.nbase
 
     def collapse_sequence(self, sequence_with_mods):
