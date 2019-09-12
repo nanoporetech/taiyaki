@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 import argparse
-import copy
 from collections import defaultdict
 import numpy as np
 import os
 from shutil import copyfile
-import sys
 import time
 
 import torch
@@ -102,23 +100,24 @@ parser.add_argument('model', action=FileExists,
 parser.add_argument('input', action=FileExists,
                     help='file containing mapped reads')
 
+
 def is_cat_mod_model(network):
     return isinstance(network.sublayers[-1], layers.GlobalNormFlipFlopCatMod)
 
-def prepare_random_batches( device, read_data, batch_chunk_len, sub_batch_size,
-                            target_sub_batches, alphabet_info,
-                            filter_parameters, args, network, network_is_catmod,
-                            log = None ):
 
+def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
+                           target_sub_batches, alphabet_info,
+                           filter_params, network, network_is_catmod, log):
     total_sub_batches = 0
 
     while total_sub_batches < target_sub_batches:
 
         # Chunk_batch is a list of dicts
         chunk_batch, batch_rejections = \
-            chunk_selection.assemble_batch( read_data, sub_batch_size,
-                                            batch_chunk_len, filter_parameters,
-                                            args, log )
+            chunk_selection.assemble_batch(read_data, sub_batch_size,
+                                           batch_chunk_len, filter_params)
+        if len(chunk_batch) < sub_batch_size:
+            log.write('* Warning: only {} chunks passed filters (asked for {}).\n'.format(len(chunk_batch), sub_batch_size))
 
         if not all(len(d['sequence']) > 0.0 for d in chunk_batch):
             raise Exception('Error: zero length sequence')
@@ -281,15 +280,15 @@ def main():
     # Result is a tuple median mean_dwell, mad mean_dwell
     # Choose a chunk length in the middle of the range for this
     sampling_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
-    filter_parameters = chunk_selection.sample_filter_parameters(
+    filter_params = chunk_selection.sample_filter_parameters(
         read_data, args.sample_nreads_before_filtering, sampling_chunk_len,
-        args, log )
-
-    medmd, madmd = filter_parameters
+        args.filter_mean_dwell, args.filter_max_dwell)
 
     log.write("* Sampled {} chunks".format(args.sample_nreads_before_filtering))
-    log.write(": median(mean_dwell)={:.2f}".format(medmd))
-    log.write(", mad(mean_dwell)={:.2f}\n".format(madmd))
+    log.write(": median(mean_dwell)={:.2f}".format(
+        filter_params.median_meandwell))
+    log.write(", mad(mean_dwell)={:.2f}\n".format(
+        filter_params.mad_meandwell))
     log.write('* Reading network from {}\n'.format(args.model))
     model_kwargs = {
         'stride': args.stride,
@@ -386,13 +385,14 @@ def main():
 
     #Generating list of batches for standard loss reporting
     reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
-    reporting_batch_list = list(prepare_random_batches(
-            device, read_data, reporting_chunk_len, args.min_sub_batch_size,
-            args.reporting_sub_batches, alphabet_info, filter_parameters, args,
-            network, network_is_catmod, log))
+    reporting_batch_list=list(
+        prepare_random_batches(device, read_data, reporting_chunk_len,
+                               args.min_sub_batch_size,
+                               args.reporting_sub_batches, alphabet_info,
+                               filter_params, network, network_is_catmod, log))
 
     log.write( ('* Standard loss report: chunk length = {} & sub-batch size ' +
-                '= {} for {} sub-batches. \n').format( args.chunk_len_max,
+                '= {} for {} sub-batches. \n').format(reporting_chunk_len,
                 args.min_sub_batch_size, args.reporting_sub_batches) )
 
     #Set cap at very large value (before we have any gradient stats).
@@ -434,10 +434,11 @@ def main():
 
         optimizer.zero_grad()
 
-        main_batch_gen = prepare_random_batches(
-            device, read_data, batch_chunk_len, sub_batch_size,
-            args.sub_batches, alphabet_info, filter_parameters, args,
-            network, network_is_catmod, log )
+        main_batch_gen = prepare_random_batches(device, read_data,
+                                                batch_chunk_len, sub_batch_size,
+                                                args.sub_batches, alphabet_info,
+                                                filter_params, network,
+                                                network_is_catmod, log)
 
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
                             calculate_loss( network, network_is_catmod,
