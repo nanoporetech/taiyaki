@@ -99,15 +99,14 @@ def main():
 
     # Get parameters for filtering by sampling a subset of the reads
     # Result is a tuple median mean_dwell, mad mean_dwell
-    filter_parameters = chunk_selection.sample_filter_parameters(read_data,
-                                                                 args.sample_nreads_before_filtering,
-                                                                 args.target_len,
-                                                                 args,
-                                                                 log)
+    filter_parameters = chunk_selection.sample_filter_parameters(
+        read_data, args.sample_nreads_before_filtering, args.target_len,
+        args.filter_mean_dwell, args.filter_max_dwell)
 
-    medmd, madmd = filter_parameters
     log.write("* Sampled {} chunks: median(mean_dwell)={:.2f}, mad(mean_dwell)={:.2f}\n".format(
-              args.sample_nreads_before_filtering, medmd, madmd))
+        args.sample_nreads_before_filtering,
+        filter_parameters.median_meandwell,
+        filter_parameters.mad_meandwell))
 
     conv_net = create_convolution(args.size, args.depth, args.winlen)
     nparam = sum([p.data.detach().numpy().size for p in conv_net.parameters()])
@@ -134,9 +133,11 @@ def main():
         # If the logging threshold is 0 then we log all chunks, including those rejected, so pass the log
         # object into assemble_batch
         # chunk_batch is a list of dicts.
-        chunk_batch, batch_rejections = chunk_selection.assemble_batch(read_data, args.batch_size, args.target_len,
-                                                                       filter_parameters, args, log,
-                                                                       chunk_len_means_sequence_len=True)
+        chunk_batch, batch_rejections = chunk_selection.assemble_batch(
+            read_data, args.batch_size, args.target_len, filter_parameters,
+            chunk_len_means_sequence_len=True)
+        if len(chunk_batch) < args.batch_size:
+            log.write('* Warning: only {} chunks passed filters.\n'.format(len(chunk_batch)))
 
         total_chunks += len(chunk_batch)
         # Update counts of reasons for rejection

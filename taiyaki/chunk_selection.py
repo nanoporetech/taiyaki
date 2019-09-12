@@ -1,9 +1,25 @@
 # Functions to select and filter chunks for training.
 # Data structures are based on the read dictionary defined in mapped_signal_files.py
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import os
 import numpy as np
 from taiyaki.maths import med_mad
+
+
+class FILTER_PARAMETERS(namedtuple(
+        'FILTER_PARAMETERS', (
+            'filter_mean_dwell', 'filter_max_dwell',
+            'median_meandwell', 'mad_meandwell'))):
+    """ Parameters to filter signal chunk selections
+
+    param: filter_mean_dwell : Number of deviations from median to reject read
+    param: filter_max_dwell  : Multiple of median dwell to reject read based
+        based on maximum dwell.
+    param: median_meandwell  : Drop chunks with mean dwell more than radius
+        deviations from the median
+    param: mad_meandwell     : Drop chunks with max dwell more than multiple
+        of median
+    """
 
 
 def get_mean_dwell(chunkdict, TINY=0.00000001):
@@ -12,51 +28,54 @@ def get_mean_dwell(chunkdict, TINY=0.00000001):
     or by mapped_signal_files.Read.get_chunk_with_sequence_length().
     TINY is added to the denominator to avoid overflow in the case
     of zero sequence length"""
-    if not ('current' in chunkdict and 'sequence' in chunkdict):
-        return None
     return len(chunkdict['current']) / (len(chunkdict['sequence']) + TINY)
 
 
-def chunk_filter(chunkdict, args, filter_parameters):
+def chunk_filter(chunkdict, filter_params):
     """Given a chunk dict as returned by mapped_signal_files.Read._get_chunk(),
     apply filtering conditions, returning "pass" if everything OK
     or a string describing reason for failure if not.
 
-    param : chunkdict        : a dictionary as returned by mapped_signal_files.get_chunk()
-    param : args             : command-line args object used to determine filter limits
-    param : filter_parameters: tuple median(mean_dwell), mad(mean_dwell) from sampled
-                               reads, used to determine filter centre values
+    param: chunkdict         : a dictionary as returned by mapped_signal_files.get_chunk()
+    param: filter_params : taiyaki.chunk_selection.FILTER_PARAMETERS namedtuple
 
-    If filter_parameters is None, then don't filter according to dwell,
-    but still reject reads which haven't produced a chunk at all because
-    they're not long enough or end in a slip.
+    If filter_params.median_mean_dwell or filter_params.mad_dwell are
+    None, then don't filter according to dwell, but still reject reads which
+    haven't produced a chunk at all because they're not long enough or end in
+    a slip.
     """
-    if chunkdict is None:  # Not possible to get a chunk
+    if chunkdict is None:
+        # Not possible to get a chunk
         return "nochunk"
     if 'rejected' in chunkdict:
         # The chunkdict contains a reason why it should be rejected. Return this.
         return chunkdict['rejected']
 
-    if filter_parameters is not None:
-        mean_dwell = get_mean_dwell(chunkdict)
-        if mean_dwell is None:
-            return 'data_missing'
-        median_meandwell, mad_meandwell = filter_parameters
-        mean_dwell_dev_from_median = abs(mean_dwell - median_meandwell)
-        if mean_dwell_dev_from_median > args.filter_mean_dwell * mad_meandwell:
-            return 'meandwell'
-        if chunkdict['max_dwell'] > args.filter_max_dwell * median_meandwell:
-            return 'maxdwell'
+    if (filter_params.median_meandwell is None or
+        filter_params.mad_meandwell is None):
+        #  Short-circuit no filtering
+        return 'pass'
+
+    mean_dwell = get_mean_dwell(chunkdict)
+    mean_dwell_dev_from_median = abs(
+        mean_dwell - filter_params.median_meandwell)
+    if (mean_dwell_dev_from_median >
+        filter_params.filter_mean_dwell * filter_params.mad_meandwell):
+        #  Failed mean dwell filter
+        return 'meandwell'
+
+    if (chunkdict['max_dwell'] >
+        filter_params.filter_max_dwell * filter_params.median_meandwell):
+        #  Failed maximum dwell filter
+        return 'maxdwell'
     return 'pass'
 
 
-def sample_chunks(read_data, number_to_sample, chunk_len, args, chunkfunc,
+def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
                   fraction_of_fails_allowed=0.5,
-                  filter_parameters=None, log=None,
                   chunk_len_means_sequence_len=False):
     """Sample <number_to_sample> chunks from a list of read_data, returning
-    a tuple (chunklist, rejection_dict), where chunklist contains the
-    results of applying <chunkfunc> to each chunk that is not rejected.
+    a tuple (chunklist, rejection_dict)
 
     rejection_dict is a dictionary with keys describing the reasons for
     rejection and values being the number rejected for that reason. E.g.
@@ -69,17 +88,10 @@ def sample_chunks(read_data, number_to_sample, chunk_len, args, chunkfunc,
                               of read_data items supplied.
     param: chunk_len        : desired length of chunk in samples, or length
                               of sequence in bases if chunk_len_means_sequence_len
-    param: args             : command-line args object from argparse. Used to
-                              pass the filter command-line arguments.
-    param: chunkfunc        : the function to be applied to the chunkdict to get a single
-                              data item in the list returned
     param: fraction_of_fails_allowed : Visit a maximum of
                              (number_to_sample / fraction_of_fails_allowed) reads
                              before stopping.
-    param: filter_parameters: a tuple (median_meandwell, mad_meandwell) which
-                              determines the filter used. If None, then no filtering.
-    param: log              : log object used to report if not enough chunks
-                              passing the tests can be found.
+    param: filter_params    : taiyaki.chunk_selection.FILTER_PARAMETERS namedtuple
     param: chunk_len_means_sequence_len : if this is False (the default) then
                              chunk_len determines the length in samples of the
                              chunk, and we use mapped_signal_files.get_chunk_with_sample_length().
@@ -104,36 +116,38 @@ def sample_chunks(read_data, number_to_sample, chunk_len, args, chunkfunc,
             chunkdict = read.get_chunk_with_sequence_length(chunk_len)
         else:
             chunkdict = read.get_chunk_with_sample_length(chunk_len)
-        passfail_str = chunk_filter(chunkdict, args, filter_parameters)
+        passfail_str = chunk_filter(chunkdict, filter_params)
         count_dict[passfail_str] += 1
         if passfail_str == 'pass':
-            chunklist.append(chunkfunc(chunkdict))
-
-    if count_dict['pass'] < number_to_sample_used and log is not None:
-        log.write('* Warning: only {} chunks passed tests after {} attempts.\n'.format(count_dict['pass'], attempts))
-        log.write('* Summary:')
-        for k, v in count_dict.items():
-            log.write(' {}:{}'.format(k, v))
-        log.write('\n')
+            chunklist.append(chunkdict)
 
     return chunklist, count_dict
 
 
-def sample_filter_parameters(read_data, number_to_sample, chunk_len, args,
-                             log=None, chunk_len_means_sequence_len = False):
+def sample_filter_parameters(read_data, number_to_sample, chunk_len,
+                             filter_mean_dwell, filter_max_dwell,
+                             chunk_len_means_sequence_len = False):
     """Sample number_to_sample reads from read_data, calculate median and MAD
     of mean dwell. Note the MAD has an adjustment factor so that it would give the
     same result as the std for a normal distribution.
 
     See docstring for sample_chunks() for the parameters.
     """
-    meandwells, _ = sample_chunks(read_data, number_to_sample, chunk_len, args, get_mean_dwell,
-                                  log=log, chunk_len_means_sequence_len=chunk_len_means_sequence_len)
-    return med_mad(meandwells)
+    no_filter_params = FILTER_PARAMETERS(
+        filter_mean_dwell=filter_mean_dwell, filter_max_dwell=filter_max_dwell,
+        median_meandwell=None, mad_meandwell=None)
+    chunks, _ = sample_chunks(read_data, number_to_sample, chunk_len,
+                              no_filter_params,
+                              chunk_len_means_sequence_len=chunk_len_means_sequence_len)
+    meandwells = [get_mean_dwell(chunk) for chunk in chunks]
+    median_meandwell, mad_meandwell = med_mad(meandwells)
+    return FILTER_PARAMETERS(
+        filter_mean_dwell=filter_mean_dwell, filter_max_dwell=filter_max_dwell,
+        median_meandwell=median_meandwell, mad_meandwell=mad_meandwell)
 
 
-def assemble_batch(read_data, batch_size, chunk_len, filter_parameters, args,
-                   log=None, chunk_len_means_sequence_len=False):
+def assemble_batch(read_data, batch_size, chunk_len, filter_params,
+                   chunk_len_means_sequence_len=False):
     """Assemble a batch of data by repeatedly choosing a random read and location
     in that read, continuing until we have found batch_size chunks that pass the
     tests.
@@ -152,57 +166,6 @@ def assemble_batch(read_data, batch_size, chunk_len, filter_parameters, args,
 
     See docstring for sample_chunks for parameters.
     """
-    return sample_chunks(read_data, batch_size, chunk_len, chunkfunc=lambda x: x,
-                         filter_parameters=filter_parameters, log=log, args=args,
+    return sample_chunks(read_data, batch_size, chunk_len,
+                         filter_params=filter_params,
                          chunk_len_means_sequence_len=chunk_len_means_sequence_len)
-
-
-class ChunkLog:
-    """Handles saving of chunk metadata to file"""
-
-    def __init__(self, outputdirectory, outputfilename="chunklog.tsv"):
-        """Open and write header line"""
-        filepath = os.path.join(outputdirectory, outputfilename)
-        self.dumpfile = open(filepath, "w")
-        self.dumpfile.write(
-            "iteration\t read_id\t start_sample\t chunk_len_samples\t chunk_len_bases\t max_dwell\t status\t loss\n")
-
-    def write_chunk(self, iteration, chunk_dict, status, lossvalue=None, loss_not_calculated=-1.0):
-        """Write a single line of data to the chunk log, using -1 to indicate missing data.
-        param iteration  : the training iteration (measured in batches, or -1 if not used in training)
-        param chunk_dict : chunk dictionary
-        param status     : string for reject/accept status (e.g. 'pass', 'meandwell')
-        param lossvalue  : loss if available (not calculated for rejected chunks)
-        param loss_not_calculated : value to store in the log file in the loss column
-                                    for chunks where loss has not been calculated
-        """
-        format_string = ("{}\t" * 6) + "{}\n"
-        if lossvalue is None:
-            lossvalue_written = loss_not_calculated
-        else:
-            lossvalue_written = lossvalue
-        if chunk_dict is None:
-            self.dumpfile.write(format_string.format(iteration, '--------', -1, -1, -1, status, lossvalue_written))
-        else:
-            # Some elements of dict may be missing if chunk construction failed
-            self.dumpfile.write('{}\t{}\t'.format(iteration, chunk_dict['read_id']))
-            if 'start_sample' in chunk_dict:
-                self.dumpfile.write('{}\t'.format(chunk_dict['start_sample']))
-            else:
-                self.dumpfile.write('-1\t')
-            for k in ['current', 'sequence']:
-                if k in chunk_dict:
-                    self.dumpfile.write('{}\t'.format(len(chunk_dict[k])))
-                else:
-                    self.dumpfile.write('-1\t')
-            if 'max_dwell' in chunk_dict:
-                self.dumpfile.write('{}\t'.format(chunk_dict['max_dwell']))
-            else:
-                self.dumpfile.write('-1\t')
-            self.dumpfile.write("{}\t{}\n".format(status, lossvalue_written))
-
-    def write_batch(self, iteration, chunk_batch, lossvector):
-        """Write information about a single batch to the log.
-        All these chunks will have been accepted, so their status is 'pass'"""
-        for chunk_dict, lossvalue in zip(chunk_batch, lossvector):
-            self.write_chunk(iteration, chunk_dict, "pass", lossvalue)
