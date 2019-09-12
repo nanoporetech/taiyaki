@@ -370,7 +370,7 @@ def main():
                                                     lr_warmup)
         log.write('* Learning rate goes like cosine from lr_max to lr_min ')
         log.write('over {} iterations.\n'.format(args.lr_cosine_iters))
-    log.write('* At start, train for {}'.format(args.warmup_batches))
+    log.write('* At start, train for {} '.format(args.warmup_batches))
     log.write('batches at warm-up learning rate {:3.2}\n'.format(lr_warmup))
 
     score_smoothed = helpers.WindowedExpSmoother()
