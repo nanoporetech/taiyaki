@@ -2,7 +2,6 @@
 import argparse
 import numpy as np
 import os
-import sys
 import time
 import torch
 
@@ -178,7 +177,7 @@ def main():
         if (i + 1) % DOTROWLENGTH == 0:
             tn = time.time()
             dt = tn - t0
-            t = ' {:5d} {:5.3f}  {:5.2f}s'
+            t = ' {:5d} {:7.5f}  {:5.2f}s'
             log.write(t.format((i + 1) // DOTROWLENGTH, score_smoothed.value, dt))
             t0 = tn
             # Write summary of chunk rejection reasons
