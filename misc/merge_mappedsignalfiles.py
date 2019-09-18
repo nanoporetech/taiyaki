@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Combine mapped-read files in HDF5 format into a single file
 
+import sys
 import argparse
 from taiyaki import alphabet, mapped_signal_files
 
