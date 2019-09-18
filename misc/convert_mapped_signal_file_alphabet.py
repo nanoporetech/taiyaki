@@ -3,6 +3,7 @@
 
 import re
 import sys
+import h5py
 import argparse
 from taiyaki import alphabet, mapped_signal_files
 
@@ -37,8 +38,8 @@ def main():
     args = get_parser().parse_args()
     with mapped_signal_files.HDF5Reader(args.input) as hin:
         alphabet_info = hin.get_alphabet_information()
-    sys.stderr.write('File, "{}", currently contains alphabet: {}\n'.format(
-        args.Input, str(alphabet_info)))
+    sys.stderr.write('File, "{}", currently contains: {}\n'.format(
+        args.input, str(alphabet_info)))
     if args.print_only:
         sys.exit()
 
@@ -53,7 +54,7 @@ def main():
         if curr_can_base not in alphabet_info.can_bases_set:
             sys.stderr.write((
                 'Specified current canonical base ({}) not found in ' +
-                'file.').format(curr_can_base))
+                'file.\n').format(curr_can_base))
             sys.exit(1)
         new_alphabet_bases[
             alphabet_info.alphabet.index(curr_can_base)] = new_can_base
@@ -75,7 +76,7 @@ def main():
         if curr_mod_base not in alphabet_info.mod_bases_set:
             sys.stderr.write((
                 'Specified current modified base ({}) not found in ' +
-                'file.').format(curr_mod_base))
+                'file.\n').format(curr_mod_base))
             sys.exit(1)
         new_alphabet_bases[
             alphabet_info.alphabet.index(curr_mod_base)] = new_mod_base
@@ -104,7 +105,7 @@ def main():
             new_collapse_alphabet, new_alphabet, new_mod_long_names)):
         sys.stderr.write('No new alphabet information provided.\n')
         sys.exit(1)
-    with h5py.File(args.Input, 'r+') as msf:
+    with h5py.File(args.input, 'r+') as msf:
         if new_alphabet is not None:
             sys.stderr.write('Converting alphabet from "{}" to "{}".\n'.format(
                 alphabet_info.alphabet, new_alphabet))
@@ -114,7 +115,7 @@ def main():
                 'Converting collapse alphabet from "{}" to "{}".\n'.format(
                     alphabet_info.collapse_alphabet, new_collapse_alphabet))
             msf.attrs['collapse_alphabet'] = new_collapse_alphabet
-        if new_mod_base is not None:
+        if new_mod_long_names is not None:
             sys.stderr.write((
                 'Converting modified base long names from "{}" to ' +
                 '"{}".\n').format(
