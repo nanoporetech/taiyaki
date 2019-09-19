@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # Combine mapped-read files in HDF5 format into a single file
 
-import sys
 import argparse
+import numpy as np
+import sys
 from taiyaki import alphabet, mapped_signal_files
 
 parser = argparse.ArgumentParser(
@@ -102,11 +103,12 @@ def validate_and_merge_alphabets(in_fns):
 
     all_mods = [(mod_nase, can_base, mod_long_name)
                 for mod_nase, (can_base, mod_long_name) in all_mods.items()]
-    alphabet = can_bases + ''.join(list(zip(*all_mods))[0])
-    collapse_alphabet = can_bases + ''.join(list(zip(*all_mods))[1])
-    mod_long_names = list(zip(*all_mods))[2]
+    merge_alphabet = can_bases + ''.join(list(zip(*all_mods))[0])
+    merge_collapse_alphabet = can_bases + ''.join(list(zip(*all_mods))[1])
+    merge_mod_long_names = list(zip(*all_mods))[2]
     return alphabet.AlphabetInfo(
-        alphabet, collapse_alphabet, mod_long_names, do_reorder=True)
+        merge_alphabet, merge_collapse_alphabet, merge_mod_long_names,
+        do_reorder=True)
 
 def assert_all_alphabets_equal(in_fns):
     """ Check that all alphabets are the same in order to perform simple merge.
@@ -127,7 +129,7 @@ def assert_all_alphabets_equal(in_fns):
         # assert that each alphabet equals the first one
         if not merge_alphabet_info.equals(file_alph_info):
             sys.stderr.write(
-                "Alphabet info in {} differs from that in {}".format(
+                'Alphabet info in {} differs from that in {}\n'.format(
                     in_fn, in_fns[0]))
             sys.exit(1)
 
@@ -147,11 +149,12 @@ def convert_reference(read, file_alphabet_conv):
 
 def add_file_reads(
         hin, hout, infile, allow_mod_merge, merge_alphabet_info,
-        global_limit, per_file_limit):
+        global_limit, per_file_limit, reads_written):
     file_num_reads_added = 0
     if allow_mod_merge:
         # create integer alphabet conversion array
-        create_alphabet_conversion(hin, merge_alphabet_info)
+        file_alphabet_conv = create_alphabet_conversion(
+            hin, merge_alphabet_info)
 
     for read_id in hin.get_read_ids():
         if read_id in reads_written:
@@ -178,9 +181,11 @@ def add_file_reads(
 def main():
     args = parser.parse_args()
     if args.allow_mod_merge:
-        merge_alphabet_info = validate_and_merge_alphabets(args.inputs)
+        merge_alphabet_info = validate_and_merge_alphabets(args.input)
+        sys.stderr.write('Merged alphabet contains: {}\n'.format(
+            str(merge_alphabet_info)))
     else:
-        merge_alphabet_info = assert_all_alphabets_equal(args.inputs)
+        merge_alphabet_info = assert_all_alphabets_equal(args.input)
 
     reads_written = set()
     sys.stderr.write("Writing reads to {}\n".format(args.output))
@@ -189,12 +194,15 @@ def main():
             with MAPPED_SIGNAL_READER(infile) as hin:
                 file_num_reads_added, reads_written = add_file_reads(
                     hin, hout, infile, args.allow_mod_merge,
-                    merge_alphabet_info, args.limit, args.per_file_limit)
+                    merge_alphabet_info, args.limit, args.per_file_limit,
+                    reads_written)
             sys.stderr.write("Copied {} reads from {}.\n".format(
                 file_num_reads_added, infile))
-            if len(reads_written) >= args.limit:
+            if args.limit is not None and len(reads_written) >= args.limit:
                 break
-    sys.stderr.write("Copied {} reads in total".format(len(reads_written)))
+    sys.stderr.write("Copied {} reads in total.\n".format(len(reads_written)))
+
+    return
 
 if __name__ == '__main__':
     main()
