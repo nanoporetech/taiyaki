@@ -63,21 +63,13 @@ def truncated_normal(size, sd):
     return res.astype('f4')
 
 
-def reverse(x):
-    """Reverse input on the first axis"""
-    inv_idx = torch.arange(x.size(0) - 1, -1, -1).long()
-    if x.is_cuda:
-        inv_idx = inv_idx.cuda(x.get_device())
-    return x.index_select(0, inv_idx)
-
-
 class Reverse(nn.Module):
     def __init__(self, layer):
         super().__init__()
         self.layer = layer
 
     def forward(self, x):
-        return reverse(self.layer(reverse(x)))
+        return torch.flip(self.layer(torch.flip(x, (0,))), (0,))
 
     def json(self, params=False):
         return OrderedDict([('type', "reverse"),
