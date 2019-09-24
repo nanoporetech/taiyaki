@@ -65,7 +65,8 @@ def stitch_chunks(out, chunk_starts, chunk_ends, stride, path_stitching=False):
 
 def run_model(
         normed_signal, model, chunk_size=_DEFAULT_CHUNK_SIZE,
-        overlap=_DEFAULT_OVERLAP, max_concur_chunks=None, return_numpy=True):
+        overlap=_DEFAULT_OVERLAP, max_concur_chunks=None, return_numpy=True,
+        return_tensor_on_device=True):
     """ Hook for megalodon to run network via taiyaki
     """
     device = next(model.parameters()).device
@@ -76,17 +77,19 @@ def run_model(
     chunks, chunk_starts, chunk_ends = chunk_read(
         normed_signal, chunk_size, overlap)
     device = next(model.parameters()).device
-    chunks = torch.tensor(chunks, device=device)
+    chunks = torch.tensor(chunks)
     with torch.no_grad():
         if max_concur_chunks is None:
-            out = model(chunks)
+            out = model(chunks.to(device)).cpu()
         else:
             out = []
             for some_chunks in torch.split(chunks, max_concur_chunks, 1):
-                out.append(model(some_chunks))
+                out.append(model(some_chunks.to(device)).cpu())
             out = torch.cat(out, 1)
         stitched_chunks = stitch_chunks(
             out, chunk_starts, chunk_ends, stride)
     if return_numpy:
-        return stitched_chunks.cpu().numpy()
+        return stitched_chunks.numpy()
+    if return_tensor_on_device:
+        return stitched_chunks.to(device)
     return stitched_chunks
