@@ -8,6 +8,7 @@ from scipy.stats import truncnorm
 
 from taiyaki import activation, flipflopfings
 from taiyaki.config import taiyaki_dtype
+from taiyaki.constants import LARGE_LOG_VAL
 
 
 """  Convention: inMat row major (C ordering) as (time, batch, state)
@@ -628,17 +629,27 @@ def global_norm_flipflop_step(scores_t, fwd_t, nbase):
     return factors, new_state
 
 
-def global_norm_flipflop(scores):
+def log_partition_flipflop(scores):
     T, N, C = scores.shape
     nbase = flipflopfings.nbase_flipflop(C)
 
-    fwd = torch.zeros(N, 2 * nbase, device=scores.device, dtype=scores.dtype)
+    fwd = torch.cat([torch.zeros(N, nbase, device=scores.device,
+                                 dtype=scores.dtype),
+                     torch.full((N, nbase), -LARGE_LOG_VAL, device=scores.device,
+                                dtype=scores.dtype)],
+                    1)
     logZ = fwd.logsumexp(1, keepdim=True)
     fwd = fwd - logZ
     nbase = torch.tensor(nbase, device=scores.device, dtype=torch.long)
     for scores_t in scores.unbind(0):
         factors, fwd = global_norm_flipflop_step(scores_t, fwd, nbase)
         logZ = logZ + factors
+    return logZ
+
+
+def global_norm_flipflop(scores):
+    T = scores.shape[0]
+    logZ = log_partition_flipflop(scores)
     return scores - logZ / np.float32(T)
 
 

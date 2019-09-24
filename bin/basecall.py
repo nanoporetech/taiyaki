@@ -12,7 +12,7 @@ from taiyaki import basecall_helpers, fast5utils, helpers, layers
 from taiyaki.cmdargs import AutoBool, FileAbsent, FileExists, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DEFAULT_ALPHABET
-from taiyaki.cupy_extensions.flipflop import flipflop_make_trans, flipflop_viterbi
+from taiyaki.decode import flipflop_make_trans, flipflop_viterbi
 from taiyaki.flipflopfings import extract_mod_weights, nstate_flipflop, path_to_str
 from taiyaki.helpers import (guess_model_stride, load_model, open_file_or_stdout,
                              Progress)
@@ -33,6 +33,9 @@ add_common_command_args(parser, 'alphabet device input_folder input_strand_list 
 parser.add_argument("--chunk_size", type=Positive(int),
                     default=basecall_helpers._DEFAULT_CHUNK_SIZE,
                     help="Size of signal chunks sent to GPU")
+parser.add_argument("--max_concurrent_chunks", type=Positive(int),
+                    default=128, help="Maximum number of chunks to call at "
+                    "once. Lower values will consume less (GPU) RAM.")
 parser.add_argument("--modified_base_output", action=FileAbsent, default=None,
                     help="Output filename for modified base output.")
 parser.add_argument("--overlap", type=NonNegative(int),
@@ -68,7 +71,8 @@ def get_signal(read_filename, read_id):
 
 def process_read(
         read_filename, read_id, model, chunk_size, overlap, read_params,
-        n_can_state, stride, alphabet, is_cat_mod, mods_fp):
+        n_can_state, stride, alphabet, is_cat_mod, mods_fp,
+        max_concurrent_chunks):
     signal = get_signal(read_filename, read_id)
     if signal is None:
         return None, 0
@@ -80,18 +84,22 @@ def process_read(
 
     chunks, chunk_starts, chunk_ends = basecall_helpers.chunk_read(
         normed_signal, chunk_size, overlap)
+
     with torch.no_grad():
         device = next(model.parameters()).device
-        out = model(torch.tensor(chunks, device=device))
+        chunks = torch.tensor(chunks, device=device)
+        out = []
+        for some_chunks in torch.split(chunks, max_concurrent_chunks, 1):
+            out.append(model(some_chunks))
+        out = torch.cat(out, 1)
 
         if STITCH_BEFORE_VITERBI:
             out = basecall_helpers.stitch_chunks(
                 out, chunk_starts, chunk_ends, stride)
-            trans, _, _ = flipflop_make_trans(
-                out.unsqueeze(1)[:,:,:n_can_state])
+            trans = flipflop_make_trans(out.unsqueeze(1)[:,:,:n_can_state])
             _, _, best_path = flipflop_viterbi(trans)
         else:
-            trans, _, _ = flipflop_make_trans(out[:,:,:n_can_state])
+            trans = flipflop_make_trans(out[:,:,:n_can_state])
             _, _, chunk_best_paths = flipflop_viterbi(trans)
             best_path = basecall_helpers.stitch_chunks(
                 chunk_best_paths, chunk_starts, chunk_ends, stride,
@@ -121,7 +129,6 @@ def process_read(
 def main():
     args = parser.parse_args()
 
-    assert args.device != 'cpu', "Flipflop basecalling in taiyaki requires a GPU and for cupy to be installed"
     device = helpers.set_torch_device(args.device)
     # TODO convert to logging
     sys.stderr.write("* Loading model.\n")
@@ -176,7 +183,7 @@ def main():
                 basecall, read_nsample = process_read(
                     read_filename, read_id, model, chunk_size, chunk_overlap,
                     read_params, n_can_states, stride, args.alphabet,
-                    is_cat_mod, mods_fp)
+                    is_cat_mod, mods_fp, args.max_concurrent_chunks)
                 if basecall is not None:
                     fh.write(">{}\n{}\n".format(read_id, basecall[::-1] if args.reverse else basecall))
                     nbase += len(basecall)
