@@ -21,9 +21,6 @@ from taiyaki.prepare_mapping_funcs import get_per_read_params_dict_from_tsv
 from taiyaki.signal import Signal
 
 
-STITCH_BEFORE_VITERBI = False
-
-
 parser = argparse.ArgumentParser(
     description="Basecall reads using a taiyaki model",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -93,25 +90,16 @@ def process_read(
             out.append(model(some_chunks))
         out = torch.cat(out, 1)
 
-        if STITCH_BEFORE_VITERBI:
-            out = basecall_helpers.stitch_chunks(
-                out, chunk_starts, chunk_ends, stride)
-            trans = flipflop_make_trans(out.unsqueeze(1)[:,:,:n_can_state])
-            _, _, best_path = flipflop_viterbi(trans)
-        else:
-            trans = flipflop_make_trans(out[:,:,:n_can_state])
-            _, _, chunk_best_paths = flipflop_viterbi(trans)
-            best_path = basecall_helpers.stitch_chunks(
-                chunk_best_paths, chunk_starts, chunk_ends, stride,
-                path_stitching=is_cat_mod)
+        trans = flipflop_make_trans(out[:,:,:n_can_state])
+        _, _, chunk_best_paths = flipflop_viterbi(trans)
+        best_path = basecall_helpers.stitch_chunks(
+            chunk_best_paths, chunk_starts, chunk_ends, stride,
+            path_stitching=is_cat_mod)
 
         if is_cat_mod and mods_fp is not None:
             # output modified base weights for each base call
-            if STITCH_BEFORE_VITERBI:
-                mod_weights = out[:,n_can_state:]
-            else:
-                mod_weights = basecall_helpers.stitch_chunks(
-                    out[:,:,n_can_state:], chunk_starts, chunk_ends, stride)
+            mod_weights = basecall_helpers.stitch_chunks(
+                out[:,:,n_can_state:], chunk_starts, chunk_ends, stride)
             mods_scores = extract_mod_weights(
                 mod_weights.detach().cpu().numpy(),
                 best_path.detach().cpu().numpy(),
