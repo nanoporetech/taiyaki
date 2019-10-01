@@ -138,7 +138,6 @@ if __name__ == '__main__':
 
 
     for i in range(args.niteration):
-        lr_scheduler.step()
 
         idx = np.random.randint(len(chunks), size=args.batch_size)
         indata = chunks[idx].transpose(1, 0)
@@ -185,5 +184,8 @@ if __name__ == '__main__':
             total_bases = 0
             total_samples = 0
             t0 = tn
+
+        lr_scheduler.step()
+
 
     save_model(network, args.outdir)

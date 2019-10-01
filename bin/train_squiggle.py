@@ -129,7 +129,6 @@ def main():
     total_chunks = 0
 
     for i in range(args.niteration):
-        lr_scheduler.step()
         # If the logging threshold is 0 then we log all chunks, including those rejected, so pass the log
         # object into assemble_batch
         # chunk_batch is a list of dicts.
@@ -194,6 +193,7 @@ def main():
                 log.write("  {:.1%} chunks filtered".format(n_fail / n_tot))
             log.write("\n")
 
+        lr_scheduler.step()
 
     helpers.save_model(conv_net, args.outdir)
 

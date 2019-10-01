@@ -30,21 +30,21 @@ parser = argparse.ArgumentParser(
 
 add_common_command_args(parser, 'alphabet device input_folder input_strand_list limit output quiet recursive version'.split())
 
-parser.add_argument("--chunk_size", type=Positive(int),
+parser.add_argument("--chunk_size", type=Positive(int), metavar="blocks",
                     default=basecall_helpers._DEFAULT_CHUNK_SIZE,
-                    help="Size of signal chunks sent to GPU")
+                    help="Size of signal chunks sent to GPU is chunk_size * model stride")
 parser.add_argument("--max_concurrent_chunks", type=Positive(int),
                     default=128, help="Maximum number of chunks to call at "
                     "once. Lower values will consume less (GPU) RAM.")
-parser.add_argument("--modified_base_output", action=FileAbsent, default=None,
+parser.add_argument("--modified_base_output", action=FileAbsent, default=None, metavar="mod_basecalls.hdf5",
                     help="Output filename for modified base output.")
-parser.add_argument("--overlap", type=NonNegative(int),
+parser.add_argument("--overlap", type=NonNegative(int), metavar="blocks",
                     default=basecall_helpers._DEFAULT_OVERLAP,
                     help="Overlap between signal chunks sent to GPU")
 parser.add_argument('--reverse', default=False, action=AutoBool,
                     help='Reverse sequences in output')
 parser.add_argument('--scaling', action=FileExists, default=None,
-                    help='Per-read scaling params')
+                    help='Path to TSV containing per-read scaling params')
 parser.add_argument("model", action=FileExists,
                     help="Model checkpoint file to use for basecalling")
 

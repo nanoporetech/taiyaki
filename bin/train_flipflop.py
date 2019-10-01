@@ -419,8 +419,6 @@ def main():
 
     for i in range(args.niteration):
 
-        lr_scheduler.step()
-
         # Chunk length is chosen randomly in the range given but forced to
         # be a multiple of the stride
         batch_chunk_len = (np.random.randint(
@@ -519,6 +517,9 @@ def main():
             #if args.local_rank is not None:
             #    log.write("* GPU{} params:".format(args.local_rank))
             #log.write("{}...{}\n".format(v,u))
+
+        lr_scheduler.step()
+
 
     if is_lead_process:
         helpers.save_model(network, args.outdir,
