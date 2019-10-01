@@ -31,9 +31,9 @@ expect to get your hands dirty.
 # Contents
 
 1. [Installing system prerequisites](#installing-system-prerequisites)
-2. [Installing Taiyaki](#installation)
+2. [Installing Taiyaki](#installing-taiyaki)
 3. [Tests](#tests)
-4. [Walk through](#walk-through)
+4. [Walk through](#walk-throughs-and-further-documentation)
 5. [Workflows](#workflows)<br>
         * [Using the workflow Makefile](#using-the-workflow-makefile)<br>
         * [Steps from fast5 files to basecalling](#steps-from-fast5-files-to-basecalling)<br>
@@ -86,7 +86,7 @@ Windows is not supported.
 If you intend to use Taiyaki with a GPU, make sure you have installed and set up [CUDA](#cuda) before proceeding.
 ---
 
-## Install Taiyaki in a new virtual environment
+## Install Taiyaki in a new virtual environment (RECOMMENDED)
 
 We recommend installing Taiyaki in a self-contained [virtual environment](https://docs.python.org/3/tutorial/venv.html).
 
@@ -98,6 +98,9 @@ Taiyaki will be installed in [development mode](http://setuptools.readthedocs.io
 You will need to run `source venv/bin/activate` at the start of each session when you want to use this virtual environment.
 
 ## Install Taiyaki system-wide or into activated Python environment
+
+This is not the recommended installation method: we recommend that you install taiyaki in its
+[own virtual environment](#install-taiyaki-in-a-new-virtual-environment) if possible.
 
 Taiyaki can be installed from source using either:
 
@@ -111,14 +114,13 @@ Alternatively, you can use pip with either:
 
 # Tests
 
-Tests can be run as follows:
+Tests can be run as follows, provided that the recommended `make install` installation method was used:
 
-    make workflow           #runs scripts which carry out the workflow for basecall-network training and for squiggle-predictor training
-    make acctest            #runs acceptance tests
-    make unittest           #runs unit tests
-    make multiGPU_test      #runs multi-GPU test (GPUs 0 and 1 must be available, and CUDA must be installed - see below)
-
-If Taiyaki has been installed in a virtual environment, it will have to activated before running tests: `source venv/bin/activate`.  To deactivate, run `deactivate`.
+    source venv/bin/activate   # activates taiyaki virtual environment (do this first)
+    make workflow              # runs scripts which carry out the workflow for basecall-network training and for squiggle-predictor training
+    make acctest               # runs acceptance tests
+    make unittest              # runs unit tests
+    make multiGPU_test         # runs multi-GPU test (GPUs 0 and 1 must be available, and CUDA must be installed - see below)
 
 # Walk throughs and further documentation
 For a walk-through of Taiyaki model training, including how to obtain sample training data, see [docs/walkthrough.rst](docs/walkthrough.rst).

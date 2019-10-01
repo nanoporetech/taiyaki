@@ -326,7 +326,7 @@ class GlobalNormFlipFlopTest(LayerTest, unittest.TestCase):
         # rtol before softmax = atol after softmax. Therefore I've replaced
         # the atol with the default value for rtol.
         print((abs(x1.grad - x2.grad)).max())
-        self.assertTrue(torch.allclose(x1.grad, x2.grad, atol=1e-05))
+        self.assertTrue(torch.allclose(x1.grad, x2.grad, atol=1e-04))
 
 
 class UpSampleTest(LayerTest, unittest.TestCase):

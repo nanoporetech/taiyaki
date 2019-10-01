@@ -19,7 +19,8 @@ _FORGET_BIAS = 2.0
 def init_(param, value):
     """Set parameter value (inplace) from tensor, numpy array, list or tuple"""
     value_as_tensor = torch.tensor(value, dtype=param.data.dtype)
-    param.data.detach_().set_(value_as_tensor)
+    with torch.no_grad():
+        param.set_(value_as_tensor)
 
 
 def random_orthonormal(n, m=None):
@@ -595,24 +596,8 @@ def birnn(forward, backward):
 
 
 @torch.jit.script
-def logaddexp_fwdbwd(x, y):
-    z = torch.max(x, y) + torch.log1p(torch.exp(-torch.abs(x - y)))
-    return z, (x-z).exp(), (y-z).exp()
-
-
-class LogAddExp(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, x, y):
-        z, xmz, ymz = logaddexp_fwdbwd(x, y)
-        ctx.save_for_backward(xmz, ymz)
-        return z
-
-    @staticmethod
-    def backward(ctx, outgrad):
-        xmz, ymz = ctx.saved_tensors
-        return outgrad * xmz, outgrad * ymz
-
-logaddexp = LogAddExp.apply
+def logaddexp(x, y):
+    return torch.max(x, y) + torch.log1p(torch.exp(-torch.abs(x - y)))
 
 
 @torch.jit.script
