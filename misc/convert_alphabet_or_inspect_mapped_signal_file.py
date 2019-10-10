@@ -18,6 +18,9 @@ def get_parser():
         '--print_only', action='store_true',
         help='Only print the alphabet information contained within this file.')
     parser.add_argument(
+        '--print_read_total', action='store_true',
+        help='Print the number of reads contained in this file.')
+    parser.add_argument(
         '--can_base_convert', nargs=2,
         default=[], action='append',
         help='Current and new values for conversion of single letter ' +
@@ -38,8 +41,14 @@ def main():
     args = get_parser().parse_args()
     with mapped_signal_files.HDF5Reader(args.input) as hin:
         alphabet_info = hin.get_alphabet_information()
+        if args.print_read_total:
+            n_reads = len(hin.get_read_ids())
     sys.stderr.write('File, "{}", currently contains: {}\n'.format(
         args.input, str(alphabet_info)))
+    if args.print_read_total:
+        sys.stderr.write(
+            'File, "{}", contains {} total reads\n'.format(
+                args.input, n_reads))
     if args.print_only:
         sys.exit()
 
