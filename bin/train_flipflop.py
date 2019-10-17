@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description='Train flip-flop neural network',
                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 add_common_command_args(parser, """adam device eps filter_max_dwell
-                                   filter_mean_dwell limit lr_cosine_iters
+                                   filter_mean_dwell limit
                                    niteration outdir overwrite quiet save_every
                                    sample_nreads_before_filtering version
                                    weight_decay""".split())

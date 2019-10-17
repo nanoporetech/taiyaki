@@ -19,102 +19,103 @@ def add_common_command_args(parser, arglist):
     Some args are positional and some are optional.
     The optional ones are listed first below."""
 
-    ############################################################################
-    #
-    # Optional arguments
-    #
-    ############################################################################
+    ALLOWED_ARGS = dict([
+        #  Optional arguments
+        ('adam',  lambda :
+            parser.add_argument('--adam', nargs=2, metavar=('beta1', 'beta2'),
+                                default=[0.9, 0.999], type=NonNegative(float),
+                                help='Parameters beta1, beta2 for Exponential Decay Adaptive Momentum')),
 
-    if 'adam' in arglist:
-        parser.add_argument('--adam', nargs=2, metavar=('beta1', 'beta2'),
-                            default=[0.9, 0.999], type=NonNegative(float),
-                            help='Parameters beta1, beta2 for Exponential Decay Adaptive Momentum')
+        ('alphabet', lambda :
+            parser.add_argument('--alphabet', default=DEFAULT_ALPHABET,
+                                help='Canonical base alphabet')),
 
-    if 'alphabet' in arglist:
-        parser.add_argument('--alphabet', default=DEFAULT_ALPHABET,
-                            help='Canonical base alphabet')
+        ('device', lambda :
+            parser.add_argument('--device', default='cpu', action=DeviceAction,
+                                help='Integer specifying which GPU to use, or "cpu" to use CPU only. '
+                                'Other accepted formats: "cuda" (use default GPU), "cuda:2" '
+                                'or "cuda2" (use GPU 2).')),
 
-    if 'device' in arglist:
-        parser.add_argument('--device', default='cpu', action=DeviceAction,
-                            help='Integer specifying which GPU to use, or "cpu" to use CPU only. '
-                            'Other accepted formats: "cuda" (use default GPU), "cuda:2" '
-                            'or "cuda2" (use GPU 2).')
-    if 'eps' in arglist:
-        parser.add_argument('--eps', default=1e-6, metavar='adjustment',
-                            type=Positive(float), help='Small value to stabilise optimiser')
+        ('eps', lambda :
+            parser.add_argument('--eps', default=1e-6, metavar='adjustment',
+                                type=Positive(float), help='Small value to stabilise optimiser')),
 
-    if 'filter_max_dwell' in arglist:
-        parser.add_argument('--filter_max_dwell', default=10.0, metavar='multiple',
-                            type=Maybe(Positive(float)),
-                            help='Drop chunks with max dwell more than multiple of median (over chunks)')
+        ('filter_max_dwell', lambda :
+            parser.add_argument('--filter_max_dwell', default=10.0, metavar='multiple',
+                                type=Maybe(Positive(float)),
+                                help='Drop chunks with max dwell more than multiple of median (over chunks)')),
 
-    if 'filter_mean_dwell' in arglist:
-        parser.add_argument('--filter_mean_dwell', default=3.0, metavar='radius',
-                            type=Maybe(Positive(float)),
-                            help='Drop chunks with mean dwell more than radius deviations from the median (over chunks)')
+        ('filter_mean_dwell', lambda :
+            parser.add_argument('--filter_mean_dwell', default=3.0, metavar='radius',
+                                type=Maybe(Positive(float)),
+                                help='Drop chunks with mean dwell more than radius deviations from the median (over chunks)')),
 
-    if 'input_strand_list' in arglist:
-        parser.add_argument('--input_strand_list', default=None, action=FileExists,
-                            help='Strand list TSV file with columns filename_fast5 or read_id or both')
+        ('input_strand_list', lambda :
+            parser.add_argument('--input_strand_list', default=None, action=FileExists,
+                                help='Strand list TSV file with columns filename_fast5 or read_id or both')),
 
-    if 'jobs' in arglist:
-        parser.add_argument('--jobs', default=1, metavar='n', type=Positive(int),
-                            help='Number of threads to use when processing data')
+        ('jobs', lambda :
+            parser.add_argument('--jobs', default=1, metavar='n', type=Positive(int),
+                                help='Number of threads to use when processing data')),
 
-    if 'limit' in arglist:
-        parser.add_argument('--limit', default=None, type=Maybe(Positive(int)),
-                            help='Limit number of reads to process')
+        ('limit', lambda :
+            parser.add_argument('--limit', default=None, type=Maybe(Positive(int)),
+                                help='Limit number of reads to process')),
 
-    if 'niteration' in arglist:
-        parser.add_argument('--niteration', metavar='batches', type=Positive(int),
-                            default=50000, help='Maximum number of batches to train for')
+        ('niteration', lambda :
+            parser.add_argument('--niteration', metavar='batches', type=Positive(int),
+                                default=50000, help='Maximum number of batches to train for')),
 
-    if 'outdir' in arglist:
-        parser.add_argument('--outdir', default='training',
-                            help='Output directory, created when run.')
+        ('outdir', lambda :
+            parser.add_argument('--outdir', default='training',
+                                help='Output directory, created when run.')),
 
-    if 'output' in arglist:
-        parser.add_argument('--output', default=None, metavar='filename',
-                            action=FileAbsent, help='Write output to file')
+        ('output', lambda :
+            parser.add_argument('--output', default=None, metavar='filename',
+                                action=FileAbsent, help='Write output to file')),
 
-    if 'overwrite' in arglist:
-        parser.add_argument('--overwrite', default=False, action=AutoBool,
-                            help='Whether to overwrite any output files')
+        ('overwrite', lambda :
+            parser.add_argument('--overwrite', default=False, action=AutoBool,
+                                help='Whether to overwrite any output files')),
 
-    if 'quiet' in arglist:
-        parser.add_argument('--quiet', default=False, action=AutoBool,
-                            help="Don't print progress information to stdout")
+        ('quiet', lambda :
+            parser.add_argument('--quiet', default=False, action=AutoBool,
+                                help="Don't print progress information to stdout")),
 
-    if 'recursive' in arglist:
-        parser.add_argument('--recursive', default=True, action=AutoBool,
-                            help='Search for fast5s recursively within ' +
-                            'input_folder. Otherwise only search first level.')
+        ('recursive', lambda :
+            parser.add_argument('--recursive', default=True, action=AutoBool,
+                                help='Search for fast5s recursively within ' +
+                                'input_folder. Otherwise only search first level.')),
 
-    if 'sample_nreads_before_filtering' in arglist:
-        parser.add_argument('--sample_nreads_before_filtering', metavar='n', type=NonNegative(int), default=1000,
-                            help='Sample n reads to decide on bounds for filtering before training. Set to 0 to do all.')
+        ('sample_nreads_before_filtering', lambda :
+            parser.add_argument('--sample_nreads_before_filtering', metavar='n',
+                                type=NonNegative(int), default=1000,
+                                help='Sample n reads to decide on bounds for filtering before training. Set to 0 to do all.')),
 
-    if 'save_every' in arglist:
-        parser.add_argument('--save_every', metavar='x', type=Positive(int), default=5000,
-                            help='Save model every x batches')
+        ('save_every', lambda :
+            parser.add_argument('--save_every', metavar='x', type=Positive(int), default=5000,
+                                help='Save model every x batches')),
 
-    if 'version' in arglist:
-        parser.add_argument('--version', nargs=0, action=display_version_and_exit, metavar=__version__,
-                            help='Display version information.')
+        ('version', lambda :
+            parser.add_argument('--version', nargs=0, action=display_version_and_exit, metavar=__version__,
+                                help='Display version information.')),
 
-    if 'weight_decay' in arglist:parser.add_argument('--weight_decay', default=0.0, metavar='penalty',
-                                                     type=NonNegative(float),
-                                                     help='Adam weight decay (L2 normalisation penalty)')
+        ('weight_decay', lambda :
+            parser.add_argument('--weight_decay', default=0.0, metavar='penalty',
+                                type=NonNegative(float),
+                                help='Adam weight decay (L2 normalisation penalty)')),
+
+        #  Positional arguments
+        ('input_folder', lambda :
+            parser.add_argument('input_folder', action=FileExists,
+                                help='Directory containing single or multi-read fast5 files'))
+    ])
 
 
+    args_required = frozenset(arglist)
+    args_allowed = frozenset(ALLOWED_ARGS.keys())
+    assert len(args_required - args_allowed) == 0, \
+        'Unsupported argument(s) found : {}'.format(args_required - args_allowed)
 
-
-    ############################################################################
-    #
-    # Positional arguments
-    #
-    ############################################################################
-
-    if 'input_folder' in arglist:
-        parser.add_argument('input_folder', action=FileExists,
-                            help='Directory containing single or multi-read fast5 files')
+    for arg in args_required:
+        ALLOWED_ARGS[arg]()
