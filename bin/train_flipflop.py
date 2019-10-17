@@ -15,6 +15,7 @@ from taiyaki import (alphabet, chunk_selection, constants, ctc, flipflopfings,
 from taiyaki.cmdargs import AutoBool, FileExists, Maybe, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
+from taiyaki.helpers import guess_model_stride
 
 
 # This is here, not in main to allow documentation to be built
@@ -277,19 +278,6 @@ def main():
         exit(1)
     log.write('* Loaded {} reads.\n'.format(len(read_data)))
 
-    # Get parameters for filtering by sampling a subset of the reads
-    # Result is a tuple median mean_dwell, mad mean_dwell
-    # Choose a chunk length in the middle of the range for this
-    sampling_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
-    filter_params = chunk_selection.sample_filter_parameters(
-        read_data, args.sample_nreads_before_filtering, sampling_chunk_len,
-        args.filter_mean_dwell, args.filter_max_dwell)
-
-    log.write("* Sampled {} chunks".format(args.sample_nreads_before_filtering))
-    log.write(": median(mean_dwell)={:.2f}".format(
-        filter_params.median_meandwell))
-    log.write(", mad(mean_dwell)={:.2f}\n".format(
-        filter_params.mad_meandwell))
     log.write('* Reading network from {}\n'.format(args.model))
     model_kwargs = {
         'stride': args.stride,
@@ -347,6 +335,23 @@ def main():
     else:
         network = network_save_skeleton.to(device)
         network_save_skeleton = None
+
+    stride = guess_model_stride(network)
+    # Get parameters for filtering by sampling a subset of the reads
+    # Result is a tuple median mean_dwell, mad mean_dwell
+    # Choose a chunk length in the middle of the range for this, forcing
+    # to be multiple of stride
+    sampling_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
+    sampling_chunk_len = (sampling_chunk_len // stride) * stride
+    filter_params = chunk_selection.sample_filter_parameters(
+        read_data, args.sample_nreads_before_filtering, sampling_chunk_len,
+        args.filter_mean_dwell, args.filter_max_dwell)
+
+    log.write("* Sampled {} chunks".format(args.sample_nreads_before_filtering))
+    log.write(": median(mean_dwell)={:.2f}".format(
+        filter_params.median_meandwell))
+    log.write(", mad(mean_dwell)={:.2f}\n".format(
+        filter_params.mad_meandwell))
 
     optimizer = torch.optim.Adam(network.parameters(), lr=args.lr_max,
                                  betas=args.adam,
@@ -422,8 +427,7 @@ def main():
         # Chunk length is chosen randomly in the range given but forced to
         # be a multiple of the stride
         batch_chunk_len = (np.random.randint(
-            args.chunk_len_min, args.chunk_len_max + 1) //
-                           args.stride) * args.stride
+            args.chunk_len_min, args.chunk_len_max + 1) // stride) * stride
 
         # We choose the size of a sub-batch so that the size of the data in
         # the sub-batch is about the same as args.min_sub_batch_size chunks of
