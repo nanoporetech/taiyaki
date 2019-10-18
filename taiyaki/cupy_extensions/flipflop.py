@@ -5,6 +5,7 @@ from torch.autograd import Function
 
 
 from taiyaki import flipflopfings
+from taiyaki.constants import LARGE_VAL
 
 
 _flipflop_fwd = cp.RawKernel(r'''
@@ -31,21 +32,13 @@ void flipflop_fwd(
   const float* scores = all_scores + S * blockIdx.x;
   int scores_stride = S * N;
 
-  float* fwd = all_fwd + 2 * nbase * blockIdx.x;
+  float* fwd = all_fwd + 2 * nbase * (N + blockIdx.x);
   int fwd_stride = 2 * nbase * N;
 
-  float* fact = all_fact + blockIdx.x;
+  float* fact = all_fact + N + blockIdx.x;
   int fact_stride = N;
 
   int to_base = threadIdx.x;
-
-  // t = 0
-  fwd[to_base] = -log(2.0 * nbase);
-  fwd[to_base + nbase] = -log(2.0 * nbase);
-  fwd += fwd_stride;
-  fact[0] = log(2.0 * nbase);
-  fact += N;
-  __syncthreads();
 
   float u, v;
   for (int t = 0; t < T; t++) {
@@ -92,12 +85,34 @@ void flipflop_fwd(
 
 
 def flipflop_fwd(scores):
+    """ Forward calculation for flipflop transitions from raw network output
+
+    The forward matrix entries are:
+
+        fwd[t, s] = logsumexp(scores of paths ending in state s at time t)
+
+    Paths must start in a flip state at time 0.
+
+    For numerical reasons, we calculate a row-normalised forward matrix
+    and a vector of scaling factors:
+
+        fwd'[t, s] = fwd[t, s] - logsumexp(fwd[t, s])
+        fact[t] = logsumexp(fwd[t, s]) - logsumexp(fwd[t - 1, s])
+
+    :param scores: a [T, B, S] tensor containing a batch of B scores matrices
+        each with T blocks and S flipflop transitions scores, where
+        S = 2 * nbase * (nbase + 1)
+
+    :returns: (fwd, fact) tensors of shape [T + 1, N, 2 * nbase] and [T + 1, B, 1]
+    """
     index = scores.device.index
     T, N, S = scores.shape
     nbase = flipflopfings.nbase_flipflop(S)
 
     fwd = torch.zeros(
         (T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
+    fwd[0, :, :nbase] = 0.0;
+    fwd[0, :, nbase:] = -LARGE_VAL
     fact = torch.zeros((T + 1, N, 1), dtype=scores.dtype, device=scores.device)
     with cp.cuda.Device(index):
         _flipflop_fwd(grid=(N, 1, 1), block=(nbase, 1, 1),
@@ -190,6 +205,26 @@ void flipflop_bwd(
 
 
 def flipflop_bwd(scores):
+    """ Backward calculation for flipflop transitions from raw network output
+
+    The backward matrix entries are:
+
+        bwd[t, s] = logsumexp(scores of paths starting in state s at time t)
+
+    Paths can end in any state at time T.
+
+    For numerical reasons, we calculate a row-normalised backward matrix
+    and a vector of scaling factors:
+
+        bwd'[t, s] = bwd[t, s] - logsumexp(bwd[t, s])
+        fact[t] = logsumexp(bwd[t, s]) - logsumexp(bwd[t + 1, s])
+
+    :param scores: a [T, B, S] tensor containing a batch of B scores matrices
+        each with T blocks and S flipflop transitions scores, where
+        S = 2 * nbase * (nbase + 1)
+
+    :returns: (bwd, fact) tensors of shape [T + 1, N, 2 * nbase] and [T + 1, B, 1]
+    """
     index = scores.device.index
     T, N, S = scores.shape
     nbase = flipflopfings.nbase_flipflop(S)
@@ -255,6 +290,22 @@ void flipflop_make_trans(
 
 
 def flipflop_make_trans(scores):
+    """ Calculates posterior transition probabilities from flipflop scores
+
+    The posterior transition probabilities matrix is defined as:
+
+        trans[t, uv] = probability of paths that use transition uv at time t
+
+    Paths must start in a flip state at time 0.
+
+    :param scores: a [T, B, S] tensor containing a batch of B scores matrices
+        each with T blocks and S flipflop transitions scores, where
+        S = 2 * nbase * (nbase + 1)
+
+    :returns: (trans, fwd_fact, bwd_fact) tensors of shape [T, N, S],
+        [T + 1, B] and [T + 1, B, 1]. fwd_fact and bwd_fact are the scaling
+        factors returned by flipflop_fwd and flopflop_bwd
+    """
     index = scores.device.index
     T, N, S = scores.shape
     nbase = flipflopfings.nbase_flipflop(S)
@@ -276,13 +327,14 @@ def flipflop_make_trans(scores):
 
 
 class LogZ(Function):
+    """ Calculate the log partition function for a flipflop CRF """
 
     @staticmethod
     def forward(ctx, scores):
         T, N, S = scores.shape
         trans, fwd_fact, bwd_fact = flipflop_make_trans(scores)
         ctx.save_for_backward(trans)
-        return bwd_fact.sum(0)[:, 0]
+        return fwd_fact.sum(0)[:, 0]
 
     @staticmethod
     def backward(ctx, g):
@@ -291,10 +343,28 @@ class LogZ(Function):
 
 
 def logz(scores):
+    """ Calculate the log partition function for a flipflop CRF
+
+    :param scores: a [T, B, S] tensor containing a batch of B scores matrices
+        each with T blocks and S flipflop transitions scores, where
+        S = 2 * nbase * (nbase + 1)
+
+    :returns: logZ vector of shape [N]
+    """
     return LogZ.apply(scores)
 
 
 def global_norm(scores):
+    """ Globally normalise flipflop CRF scores
+
+    The globally normed scores satisfy: logz(normed scores) = 1
+
+    :param scores: a [T, B, S] tensor containing a batch of B scores matrices
+        each with T blocks and S flipflop transitions scores, where
+        S = 2 * nbase * (nbase + 1)
+
+    :returns: normed_scores tensor of shape [T, N, S]
+    """
     return scores - logz(scores)[:, None] / len(scores)
 
 
@@ -381,12 +451,35 @@ void flipflop_viterbi(
 
 
 def flipflop_viterbi(scores):
+    """ Calculate the Viterbi path through flipflop scores matrix
+
+    The scores are assumed to be in log space, i.e. the probability
+    of a path is proportional to exp(sum of transition scores on path)
+
+    The function returns the (Viterbi) forward matrix defined as:
+
+        viterbi_fwd[t, s] = score of best path to time t and state s
+
+    and a traceback matrix:
+
+        traceback[t, s] = previous state on best path to time t and state s
+
+    and a vector encoding the sequence of states on the best path.
+
+    :param scores: a [T, B, S] tensor containing a batch of B scores matrices
+        each with T blocks and S flipflop transitions scores, where
+        S = 2 * nbase * (nbase + 1)
+
+    :returns: (fwd, traceback, best_path) tensors of shapes [T + 1, N, 2 * nbase],
+        [T + 1, N, 2 * nbase] and [T + 1, N]
+    """
     index = scores.device.index
     T, N, S = scores.shape
     nbase = flipflopfings.nbase_flipflop(S)
 
     scores = scores.contiguous()
     fwd = torch.zeros((T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
+    fwd[:1, :, nbase:] = -LARGE_VAL
     traceback = torch.zeros((T + 1, N, 2 * nbase), dtype=torch.long, device=scores.device)
     best_path = torch.zeros((T + 1, N), dtype=torch.long, device=scores.device)
     with cp.cuda.Device(index):

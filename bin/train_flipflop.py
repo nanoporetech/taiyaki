@@ -4,6 +4,7 @@ from collections import defaultdict
 import numpy as np
 import os
 from shutil import copyfile
+import sys
 import time
 
 import torch
@@ -14,86 +15,101 @@ from taiyaki import (alphabet, chunk_selection, constants, ctc, flipflopfings,
 from taiyaki.cmdargs import AutoBool, FileExists, Maybe, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
+from taiyaki.helpers import guess_model_stride
 
 
 # This is here, not in main to allow documentation to be built
 parser = argparse.ArgumentParser(description='Train flip-flop neural network',
                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, """adam device eps filter_max_dwell
-                                   filter_mean_dwell limit lr_cosine_iters
-                                   niteration outdir overwrite quiet save_every
-                                   sample_nreads_before_filtering version
-                                   weight_decay""".split())
+mdl_grp = parser.add_argument_group('Model Arguments')
+mdl_grp.add_argument('--size', default=256, metavar='neurons',
+                     type=Positive(int), help='Base layer size for model')
+mdl_grp.add_argument('--stride', default=2, metavar='samples',
+                     type=Positive(int), help='Stride for model')
+mdl_grp.add_argument('--winlen', default=19, type=Positive(int),
+                     help='Length of window over data')
 
-parser.add_argument('--chunk_len_min', default=2000, metavar='samples',
-                    type=Positive(int),
-                    help='Min length of each chunk in samples' +
-                         ' (chunk lengths are random between min and max)')
-parser.add_argument('--chunk_len_max', default=4000, metavar='samples',
-                    type=Positive(int),
-                    help='Max length of each chunk in samples ' +
-                         '(chunk lengths are random between min and max)')
-parser.add_argument('--full_filter_status', default=False, action=AutoBool,
-                    help='Output full chunk filtering statistics. ' +
-                         'Default: only proportion of filtered chunks.')
-parser.add_argument('--gradient_cap_fraction', default=0.05, metavar = 'f',
-                    type=Maybe(NonNegative(float)),
-                    help='Cap L2 norm of gradient so that a fraction f of ' +
-                         'gradients are capped. ' +
-                         'Use --gradient_cap_fraction None for no capping.')
-parser.add_argument('--input_strand_list', default=None, action=FileExists,
-                    help='Strand summary file containing column read_id. '+
-                         'Filenames in file are ignored.')
-#Argument local_rank is used only by when the script is run in multi-GPU
-#mode using torch.distributed.launch. See the README.
-parser.add_argument('--local_rank', type=int, default=None,
-                    help = argparse.SUPPRESS)
-parser.add_argument('--lr_cosine_iters', default=40000, metavar='n',
+trn_grp = parser.add_argument_group('Training Arguments')
+add_common_command_args(trn_grp, """adam eps niteration weight_decay""".split())
+trn_grp.add_argument('--gradient_cap_fraction', default=0.05, metavar = 'f',
+                     type=Maybe(NonNegative(float)),
+                     help='Cap L2 norm of gradient so that a fraction f of ' +
+                     'gradients are capped. ' +
+                     'Use --gradient_cap_fraction None for no capping.')
+trn_grp.add_argument('--lr_cosine_iters', default=40000, metavar='n',
                     type=Positive(float),
                     help='Learning rate decreases from max to min ' +
                          'like cosine function over n batches')
-parser.add_argument('--lr_frac_decay', default=None, metavar='k',
+trn_grp.add_argument('--lr_frac_decay', default=None, metavar='k',
                     type=Positive(int),
                     help='If specified, use fractional learning rate ' +
                           'schedule, rate=lr_max*k/(k+t)')
-parser.add_argument('--lr_max', default=2.0e-3, metavar='rate',
+trn_grp.add_argument('--lr_max', default=2.0e-3, metavar='rate',
                     type=Positive(float),
                     help='Max (and starting) learning rate')
-parser.add_argument('--lr_min', default=1.0e-4, metavar='rate',
+trn_grp.add_argument('--lr_min', default=1.0e-4, metavar='rate',
                     type=Positive(float), help='Min (and final) learning rate')
-parser.add_argument('--min_sub_batch_size', default=96, metavar='chunks',
-                    type=Positive(int),
-                    help='Number of chunks to run in parallel per sub-batch ' +
-                    'for chunk_len = chunk_len_max. Actual length of ' +
-                    'sub-batch used is ' +
-                    '(min_sub_batch_size * chunk_len_max / chunk_len).')
-parser.add_argument('--mod_factor', type=float, default=0.1,
-                    help='Relative modified base weight (compared to ' +
-                    'canonical transitions) in loss/gradient (only ' +
-                    'applicable for modified base models).')
-parser.add_argument('--reporting_sub_batches', default=10,
-                    metavar='sub_batches', type=Positive(int),
-                    help='Number of sub-batches to use for std loss reporting')
-parser.add_argument('--seed', default=None, metavar='integer',
-                    type=Positive(int),
-                    help='Set random number seed')
-parser.add_argument('--sharpen', default=1.0, metavar='factor',
-                    type=Positive(float), help='Sharpening factor')
-parser.add_argument('--size', default=256, metavar='neurons',
-                    type=Positive(int), help='Base layer size for model')
-parser.add_argument('--stride', default=2, metavar='samples',
-                    type=Positive(int), help='Stride for model')
-parser.add_argument('--sub_batches', default=1, metavar='sub_batches',
-                    type=Positive(int),
-                    help='Number of sub-batches per batch')
-parser.add_argument('--warmup_batches', type=int, default=200,
-                    help = 'For the first n batches, ' +
-                    'warm up at a low learning rate.')
-parser.add_argument('--lr_warmup', type=float, default=None,
-                    help = "Learning rate used for warmup. Defaults to lr_min")
-parser.add_argument('--winlen', default=19, type=Positive(int),
-                    help='Length of window over data')
+trn_grp.add_argument('--seed', default=None, metavar='integer',
+                     type=Positive(int),
+                     help='Set random number seed')
+trn_grp.add_argument('--sharpen', default=1.0, metavar='factor',
+                     type=Positive(float), help='Sharpening factor')
+trn_grp.add_argument('--warmup_batches', type=int, default=200,
+                     help = 'For the first n batches, ' +
+                     'warm up at a low learning rate.')
+trn_grp.add_argument('--lr_warmup', type=float, default=None,
+                     help = "Learning rate used for warmup. Defaults to lr_min")
+
+data_grp = parser.add_argument_group('Data Arguments')
+add_common_command_args(data_grp, """filter_max_dwell filter_mean_dwell limit
+                                     sample_nreads_before_filtering""".split())
+data_grp.add_argument('--chunk_len_min', default=2000, metavar='samples',
+                      type=Positive(int),
+                      help='Min length of each chunk in samples' +
+                      ' (chunk lengths are random between min and max)')
+data_grp.add_argument('--chunk_len_max', default=4000, metavar='samples',
+                      type=Positive(int),
+                      help='Max length of each chunk in samples ' +
+                      '(chunk lengths are random between min and max)')
+data_grp.add_argument('--input_strand_list', default=None, action=FileExists,
+                      help='Strand summary file containing column read_id. '+
+                      'Filenames in file are ignored.')
+data_grp.add_argument('--min_sub_batch_size', default=96, metavar='chunks',
+                      type=Positive(int),
+                      help='Number of chunks to run in parallel per ' +
+                      'sub-batch for chunk_len = chunk_len_max. Actual ' +
+                      'length of sub-batch used is ' +
+                      '(min_sub_batch_size * chunk_len_max / chunk_len).')
+data_grp.add_argument('--sub_batches', default=1, metavar='sub_batches',
+                      type=Positive(int),
+                      help='Number of sub-batches per batch')
+
+cmp_grp = parser.add_argument_group('Compute Arguments')
+add_common_command_args(cmp_grp, set(("device",)))
+#Argument local_rank is used only by when the script is run in multi-GPU
+#mode using torch.distributed.launch. See the README.
+cmp_grp.add_argument('--local_rank', type=int, default=None,
+                     help = argparse.SUPPRESS)
+
+out_grp = parser.add_argument_group('Output Arguments')
+add_common_command_args(out_grp, """outdir overwrite quiet
+                                    save_every""".split())
+out_grp.add_argument('--full_filter_status', default=False, action=AutoBool,
+                     help='Output full chunk filtering statistics. ' +
+                     'Default: only proportion of filtered chunks.')
+out_grp.add_argument('--reporting_sub_batches', default=10,
+                     metavar='sub_batches', type=Positive(int),
+                     help='Number of sub-batches to use for std loss reporting')
+
+mod_grp = parser.add_argument_group('Modified Base Arguments')
+mod_grp.add_argument('--mod_factor', type=float, default=0.1,
+                     help='Relative modified base weight (compared to ' +
+                     'canonical transitions) in loss/gradient (only ' +
+                     'applicable for modified base models).')
+
+misc_grp = parser.add_argument_group('Miscellaneous  Arguments')
+add_common_command_args(misc_grp, set(("version",)))
 
 parser.add_argument('model', action=FileExists,
                     help='File to read python model (or checkpoint) from')
@@ -276,19 +292,6 @@ def main():
         exit(1)
     log.write('* Loaded {} reads.\n'.format(len(read_data)))
 
-    # Get parameters for filtering by sampling a subset of the reads
-    # Result is a tuple median mean_dwell, mad mean_dwell
-    # Choose a chunk length in the middle of the range for this
-    sampling_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
-    filter_params = chunk_selection.sample_filter_parameters(
-        read_data, args.sample_nreads_before_filtering, sampling_chunk_len,
-        args.filter_mean_dwell, args.filter_max_dwell)
-
-    log.write("* Sampled {} chunks".format(args.sample_nreads_before_filtering))
-    log.write(": median(mean_dwell)={:.2f}".format(
-        filter_params.median_meandwell))
-    log.write(", mad(mean_dwell)={:.2f}\n".format(
-        filter_params.mad_meandwell))
     log.write('* Reading network from {}\n'.format(args.model))
     model_kwargs = {
         'stride': args.stride,
@@ -346,6 +349,23 @@ def main():
     else:
         network = network_save_skeleton.to(device)
         network_save_skeleton = None
+
+    stride = guess_model_stride(network)
+    # Get parameters for filtering by sampling a subset of the reads
+    # Result is a tuple median mean_dwell, mad mean_dwell
+    # Choose a chunk length in the middle of the range for this, forcing
+    # to be multiple of stride
+    sampling_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
+    sampling_chunk_len = (sampling_chunk_len // stride) * stride
+    filter_params = chunk_selection.sample_filter_parameters(
+        read_data, args.sample_nreads_before_filtering, sampling_chunk_len,
+        args.filter_mean_dwell, args.filter_max_dwell)
+
+    log.write("* Sampled {} chunks".format(args.sample_nreads_before_filtering))
+    log.write(": median(mean_dwell)={:.2f}".format(
+        filter_params.median_meandwell))
+    log.write(", mad(mean_dwell)={:.2f}\n".format(
+        filter_params.mad_meandwell))
 
     optimizer = torch.optim.Adam(network.parameters(), lr=args.lr_max,
                                  betas=args.adam,
@@ -418,13 +438,10 @@ def main():
 
     for i in range(args.niteration):
 
-        lr_scheduler.step()
-
         # Chunk length is chosen randomly in the range given but forced to
         # be a multiple of the stride
         batch_chunk_len = (np.random.randint(
-            args.chunk_len_min, args.chunk_len_max + 1) //
-                           args.stride) * args.stride
+            args.chunk_len_min, args.chunk_len_max + 1) // stride) * stride
 
         # We choose the size of a sub-batch so that the size of the data in
         # the sub-batch is about the same as args.min_sub_batch_size chunks of
@@ -518,6 +535,9 @@ def main():
             #if args.local_rank is not None:
             #    log.write("* GPU{} params:".format(args.local_rank))
             #log.write("{}...{}\n".format(v,u))
+
+        lr_scheduler.step()
+
 
     if is_lead_process:
         helpers.save_model(network, args.outdir,

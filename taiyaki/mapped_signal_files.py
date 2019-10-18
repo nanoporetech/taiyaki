@@ -606,7 +606,7 @@ class HDF5Writer(AbstractMappedSignalWriter):
         g = self.hdf5.create_group(posixpath.join('Reads', read_id))
         for k, v in read.items():
             if isinstance(v, np.ndarray):
-                g.create_dataset(k, data=v)
+                g.create_dataset(k, data=v, compression='gzip', shuffle=True)
             else:
                 g.attrs[k] = v
 

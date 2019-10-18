@@ -20,15 +20,6 @@ class CTCLoss(nn.Module):
         super().__init__()
         self.sharp = sharp
 
-    def _fwd_step(self, prev, xt, seqs):
-        # Initialise with stay score
-        score = xt[:, 4][:, None] + prev
-        # Add move score
-        move_score = torch.gather(xt, 1, seqs) + prev[:, :-1]
-        score[:, 1:] = logaddexp(move_score, score[:, 1:])
-
-        return score
-
     def forward(self, x, seqs, seqlens):
         #  x is input tensor  T x B x 5
         #  seqs is list of sequence tensors

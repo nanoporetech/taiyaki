@@ -9,21 +9,19 @@ all: install
 # autodetect CUDA version if possible
 CUDA ?= $(shell (which nvcc && nvcc --version) | grep -oP "(?<=release )[0-9.]+")
 
+PY3_MINOR = $(shell $(PYTHON) -c "import sys; print(sys.version_info.minor)")
 
 # Determine correct torch package to install
-TORCH_CUDA_8.0 = cu80
-TORCH_CUDA_9.0 = cu90
-TORCH_CUDA_10.0 = cu100
-TORCH_PLATFORM ?= $(if $(TORCH_CUDA_$(CUDA)),$(TORCH_CUDA_$(CUDA)),cpu)
-PY3_MINOR = $(shell $(PYTHON) -c "import sys; print(sys.version_info.minor)")
-TORCH_Linux = http://download.pytorch.org/whl/${TORCH_PLATFORM}/torch-1.0.0-cp3${PY3_MINOR}-cp3${PY3_MINOR}m-linux_x86_64.whl
+TORCH_CUDA_ = http://download.pytorch.org/whl/cpu/torch-1.2.0%2Bcpu-cp3${PY3_MINOR}-cp3${PY3_MINOR}m-manylinux1_x86_64.whl
+TORCH_CUDA_9.2 = http://download.pytorch.org/whl/cu92/torch-1.2.0%2Bcu92-cp3${PY3_MINOR}-cp3${PY3_MINOR}m-manylinux1_x86_64.whl
+TORCH_CUDA_10.0 =  http://download.pytorch.org/whl/cu100/torch-1.2.0-cp3${PY3_MINOR}-cp3${PY3_MINOR}m-manylinux1_x86_64.whl
+TORCH_Linux ?= $(TORCH_CUDA_$(CUDA))
 TORCH_Darwin = torch
 TORCH ?= $(TORCH_$(shell uname -s))
 
 
 # determine correct cupy package to install
-CUPY_8.0 = cupy-cuda80
-CUPY_9.0 = cupy-cuda90
+CUPY_9.2 = cupy-cuda92
 CUPY_10.0 = cupy-cuda100
 CUPY ?= $(CUPY_$(CUDA))
 

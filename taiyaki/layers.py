@@ -8,6 +8,7 @@ from scipy.stats import truncnorm
 
 from taiyaki import activation, flipflopfings
 from taiyaki.config import taiyaki_dtype
+from taiyaki.constants import LARGE_LOG_VAL
 
 
 """  Convention: inMat row major (C ordering) as (time, batch, state)
@@ -18,7 +19,8 @@ _FORGET_BIAS = 2.0
 def init_(param, value):
     """Set parameter value (inplace) from tensor, numpy array, list or tuple"""
     value_as_tensor = torch.tensor(value, dtype=param.data.dtype)
-    param.data.detach_().set_(value_as_tensor)
+    with torch.no_grad():
+        param.set_(value_as_tensor)
 
 
 def random_orthonormal(n, m=None):
@@ -63,21 +65,13 @@ def truncated_normal(size, sd):
     return res.astype('f4')
 
 
-def reverse(x):
-    """Reverse input on the first axis"""
-    inv_idx = torch.arange(x.size(0) - 1, -1, -1).long()
-    if x.is_cuda:
-        inv_idx = inv_idx.cuda(x.get_device())
-    return x.index_select(0, inv_idx)
-
-
 class Reverse(nn.Module):
     def __init__(self, layer):
         super().__init__()
         self.layer = layer
 
     def forward(self, x):
-        return reverse(self.layer(reverse(x)))
+        return torch.flip(self.layer(torch.flip(x, (0,))), (0,))
 
     def json(self, params=False):
         return OrderedDict([('type', "reverse"),
@@ -602,24 +596,8 @@ def birnn(forward, backward):
 
 
 @torch.jit.script
-def logaddexp_fwdbwd(x, y):
-    z = torch.max(x, y) + torch.log1p(torch.exp(-torch.abs(x - y)))
-    return z, (x-z).exp(), (y-z).exp()
-
-
-class LogAddExp(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, x, y):
-        z, xmz, ymz = logaddexp_fwdbwd(x, y)
-        ctx.save_for_backward(xmz, ymz)
-        return z
-
-    @staticmethod
-    def backward(ctx, outgrad):
-        xmz, ymz = ctx.saved_tensors
-        return outgrad * xmz, outgrad * ymz
-
-logaddexp = LogAddExp.apply
+def logaddexp(x, y):
+    return torch.max(x, y) + torch.log1p(torch.exp(-torch.abs(x - y)))
 
 
 @torch.jit.script
@@ -636,17 +614,27 @@ def global_norm_flipflop_step(scores_t, fwd_t, nbase):
     return factors, new_state
 
 
-def global_norm_flipflop(scores):
+def log_partition_flipflop(scores):
     T, N, C = scores.shape
     nbase = flipflopfings.nbase_flipflop(C)
 
-    fwd = torch.zeros(N, 2 * nbase, device=scores.device, dtype=scores.dtype)
+    fwd = torch.cat([torch.zeros(N, nbase, device=scores.device,
+                                 dtype=scores.dtype),
+                     torch.full((N, nbase), -LARGE_LOG_VAL, device=scores.device,
+                                dtype=scores.dtype)],
+                    1)
     logZ = fwd.logsumexp(1, keepdim=True)
     fwd = fwd - logZ
     nbase = torch.tensor(nbase, device=scores.device, dtype=torch.long)
     for scores_t in scores.unbind(0):
         factors, fwd = global_norm_flipflop_step(scores_t, fwd, nbase)
         logZ = logZ + factors
+    return logZ
+
+
+def global_norm_flipflop(scores):
+    T = scores.shape[0]
+    logZ = log_partition_flipflop(scores)
     return scores - logZ / np.float32(T)
 
 

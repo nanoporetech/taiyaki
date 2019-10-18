@@ -4,6 +4,20 @@ Version numbers: major.minor.patch
 * Minor version bump indicates a change in functionality that may affect users.
 * Patch version bump indicates bug-fixes or minor improvements not expected to affect users.
 
+## v5.0.0
+* Based on pytorch version 1.2
+* Improved training stability: gradient capping and warm-up
+* Merged mod-base and canonical entry points
+  * Custom model definitions should now take an
+    `alphabet_info` argument rather than `outsize`
+* Improved RNA support: tools can reverse references and basecalls
+* Basecaller changes:
+  * chunk size argument now matches guppy
+  * CPU calling enabled
+  * lower memory usage
+* Multi-GPU training enabled
+* Bug fixes
+
 ## v4.1.0
 * Ab initio ("bootstrap") training of models
 
@@ -15,7 +29,6 @@ Version numbers: major.minor.patch
 * Basecaller script that uses GPU
 * Training walk-through
 * Tweaks to optimisation parameters
-
 
 ## v3.0.2
 * Improved training parameters

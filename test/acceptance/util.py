@@ -103,13 +103,6 @@ def any_line_starts_with(prefix):
     return lambda lines: any(l.startswith(prefix) for l in lines)
 
 
-def assertArrayEqual(test_case, a, b):
-    test_case.assertEqual(a.shape, b.shape,
-                          msg='Array shape mismatch: {} != {}\na = {}\nb = {}'.format(a.shape, b.shape, a, b))
-    test_case.assertTrue(np.array_equal(a, b),
-                         msg='Array element mismatch: {} != {}\nshape = {}'.format(a, b, a.shape))
-
-
 if __name__ == '__main__':
     assert not zeroth_line_starts_with('a')([])
     assert zeroth_line_starts_with('a')(['a'])
