@@ -1,10 +1,11 @@
 from collections import OrderedDict
 import numpy as np
 
+from scipy import linalg
+from scipy.stats import truncnorm
 import torch
 from torch import nn
 from torch.nn import Parameter
-from scipy.stats import truncnorm
 
 from taiyaki import activation, flipflopfings
 from taiyaki.config import taiyaki_dtype
@@ -28,10 +29,13 @@ def random_orthonormal(n, m=None):
     :param n: rank of matrix to generate
     :param m: second dimension of matrix, set equal to n if None.
 
-    Distribution may not be uniform over all orthonormal matrices
-    (see scipy.stats.ortho_group) but good enough.
+    Implementation in scipy.stats.ortho_group is rather slow. We use
+    QR decomposition on a matrix of unit-variance Gaussian noise,
+    followed by a sign-flipping trick which is a version of the
+    normalisation recommended by Mezzadri for unitary matrices.
+    See https://arxiv.org/pdf/math-ph/0609050v2.pdf.
 
-    A square matrix is generated if only one parameter is givn, otherwise a
+    A square matrix is generated if only one parameter is given, otherwise a
     rectangular matrix is generated.  The number of columns must be greater than
     the number of rows.
 
@@ -39,9 +43,14 @@ def random_orthonormal(n, m=None):
     """
     m = n if m is None else m
     assert m >= n
-    x = np.random.rand(n, m)
-    _, _ , Vt = np.linalg.svd(x, full_matrices=False)
-    return Vt
+    x = np.random.rand(m, m)
+    Q, r = linalg.qr(x, mode='economic')
+    # Make diag matrix which flips first element of each row of r to positive
+    flipper = np.diag(np.sign(np.diag(r)))
+    # Make square orthog matrix
+    square_orthog = Q.dot(flipper)
+    # Drop unneeded rows
+    return square_orthog[:n,:]
 
 
 def orthonormal_matrix(nrow, ncol):
