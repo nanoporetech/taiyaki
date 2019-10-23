@@ -29,8 +29,8 @@ For the impatient, the following commands will be run.  These will be explained,
     git clone https://github.com/nanoporetech/taiyaki
     cd taiyaki && make install && cd ..
 
-    # Basecall Reads
-    guppy_basecaller -i reads -s basecalls -c /opt/ont/guppy/data/dna_r9.4.1_450bps_flipflop.cfg --device cuda:0
+    # Basecall Reads -- replace config file with one appropriate for your data (e.g. dna_r9.4.1_450bps_hac_prom.cfg)
+    guppy_basecaller -i reads -s basecalls -c /opt/ont/guppy/data/dna_r9.4.1_450bps_hac.cfg --device cuda:0
 
     # BAM of Mapped Basecalls
     minimap2 -I 16G -x map-ont -t 32 -a --secondary=no reference.fasta basecalls/*.fastq | samtools view -bST reference.fasta - > basecalls.bam
@@ -50,8 +50,8 @@ For the impatient, the following commands will be run.  These will be explained,
     # Export to Guppy
     dump_json.py training/model_final.checkpoint > model.json
 
-    # Basecall test set of reads with new model
-    guppy_basecaller -i reads -s basecalls_new -c /opt/ont/guppy/data/dna_r9.4.1_450bps_flipflop.cfg -m `pwd`/model.json --device cuda:0
+    # Basecall test set of reads with new model -- replace config file with one appropriate for your data
+    guppy_basecaller -i reads -s basecalls_new -c /opt/ont/guppy/data/dna_r9.4.1_450bps_hac.cfg -m `pwd`/model.json --device cuda:0
 
 
 Prerequisites
@@ -133,7 +133,7 @@ Guppy will read the raw reads from the directory ``reads`` and write *fastq* for
 
 .. code-block:: bash
 
-    guppy_basecaller -i reads -s basecalls -c /opt/ont/guppy/data/dna_r9.4.1_450bps_flipflop.cfg --device cuda:0
+    guppy_basecaller -i reads -s basecalls -c /opt/ont/guppy/data/dna_r9.4.1_450bps_hac.cfg --device cuda:0
 
 
 
@@ -143,7 +143,7 @@ Guppy will read the raw reads from the directory ``reads`` and write *fastq* for
 | -s basecalls                                          | Write output into ``basecalls`` directory, *fastq* format.      |
 |                                                       | Directory created when ``guppy_basecaller`` is run              |
 +-------------------------------------------------------+-----------------------------------------------------------------+
-| -c /opt/ont/guppy/data/dna_r9.4.1_450bps_flipflop.cfg | Configuration file for model.                                   |
+| -c /opt/ont/guppy/data/dna_r9.4.1_450bps_hac.cfg      | Configuration file for model.                                   |
 |                                                       | Here we use the flip-flop basecaller                            |
 +-------------------------------------------------------+-----------------------------------------------------------------+
 | --device cuda:0                                       | Run the basecalling on CUDA device ``cuda:0``.                  |
@@ -317,7 +317,7 @@ It is not recommended to use these basecalls to assess model, please use an alte
 
 .. code-block:: bash
 
-    guppy_basecaller -i reads -s basecalls_new -c /opt/ont/guppy/data/dna_r9.4.1_450bps_flipflop.cfg -m `pwd`/model.json --device cuda:0
+    guppy_basecaller -i reads -s basecalls_new -c /opt/ont/guppy/data/dna_r9.4.1_450bps_hac.cfg -m `pwd`/model.json --device cuda:0
 
 
 +----------------------+---------------------------------------------------------------------------------+
