@@ -97,10 +97,10 @@ def process_read(
             out = basecall_helpers.stitch_chunks(
                 out, chunk_starts, chunk_ends, stride)
             trans = flipflop_make_trans(out.unsqueeze(1)[:,:,:n_can_state])
-            _, _, best_path = flipflop_viterbi(trans)
+            _, _, best_path = flipflop_viterbi((trans + 1e-8).log())
         else:
             trans = flipflop_make_trans(out[:,:,:n_can_state])
-            _, _, chunk_best_paths = flipflop_viterbi(trans)
+            _, _, chunk_best_paths = flipflop_viterbi((trans + 1e-8).log())
             best_path = basecall_helpers.stitch_chunks(
                 chunk_best_paths, chunk_starts, chunk_ends, stride,
                 path_stitching=is_cat_mod)

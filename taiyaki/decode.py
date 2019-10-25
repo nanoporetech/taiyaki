@@ -16,6 +16,8 @@ except ImportError:
 def flipflop_viterbi(scores, _never_use_cupy=False):
     """ Find highest scoring flipflop paths for a batch of score matrices
 
+    The input scores should be on a log scale, i.e. the score of a path
+    is determined by summing the scores of the individual transitions.
 
     :param scores: batch of score matrices with dimensions [T, batch size, S]
          where T is the number of blocks (time axis) and S is the number of
