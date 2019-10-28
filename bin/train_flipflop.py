@@ -10,8 +10,8 @@ import time
 import torch
 
 
-from taiyaki import (alphabet, chunk_selection, constants, ctc, flipflopfings,
-                     helpers, layers, mapped_signal_files, maths, optim)
+from taiyaki import (chunk_selection, constants, ctc, flipflopfings, helpers,
+                     layers, mapped_signal_files, maths, optim)
 from taiyaki.cmdargs import AutoBool, FileExists, Maybe, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
@@ -63,7 +63,7 @@ trn_grp.add_argument('--lr_warmup', type=float, default=None,
 
 data_grp = parser.add_argument_group('Data Arguments')
 add_common_command_args(data_grp, """filter_max_dwell filter_mean_dwell limit
-                                     sample_nreads_before_filtering""".split())
+                                     reverse sample_nreads_before_filtering""".split())
 data_grp.add_argument('--chunk_len_min', default=2000, metavar='samples',
                       type=Positive(int),
                       help='Min length of each chunk in samples' +
@@ -122,9 +122,13 @@ def is_cat_mod_model(network):
 
 
 def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
-                           target_sub_batches, alphabet_info,
+                           target_sub_batches, alphabet_info, reverse,
                            filter_params, network, network_is_catmod, log):
     total_sub_batches = 0
+    if reverse:
+        revop = np.flip
+    else:
+        revop = np.array
 
     while total_sub_batches < target_sub_batches:
 
@@ -142,7 +146,7 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         #     (timesteps) x (batch size) x (input channels)
         # in this case:
         #     batch_chunk_len x sub_batch_size x 1
-        stacked_current = np.vstack([d['current'] for d in chunk_batch]).T
+        stacked_current = np.vstack([revop(d['current']) for d in chunk_batch]).T
         indata = torch.tensor( stacked_current, device=device,
                                             dtype=torch.float32 ).unsqueeze(2)
 
@@ -150,7 +154,7 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         seqs, seqlens = [], []
         mod_cats = [] if network_is_catmod else None
         for chunk in chunk_batch:
-            chunk_labels = chunk['sequence']
+            chunk_labels = revop(chunk['sequence'])
             seqlens.append(len(chunk_labels))
             if network_is_catmod:
                 chunk_mod_cats = np.ascontiguousarray(
@@ -409,7 +413,8 @@ def main():
         prepare_random_batches(device, read_data, reporting_chunk_len,
                                args.min_sub_batch_size,
                                args.reporting_sub_batches, alphabet_info,
-                               filter_params, network, network_is_catmod, log))
+                               args.reverse, filter_params, network,
+                               network_is_catmod, log))
 
     log.write( ('* Standard loss report: chunk length = {} & sub-batch size ' +
                 '= {} for {} sub-batches. \n').format(reporting_chunk_len,
@@ -454,8 +459,8 @@ def main():
         main_batch_gen = prepare_random_batches(device, read_data,
                                                 batch_chunk_len, sub_batch_size,
                                                 args.sub_batches, alphabet_info,
-                                                filter_params, network,
-                                                network_is_catmod, log)
+                                                args.reverse, filter_params,
+                                                network, network_is_catmod, log)
 
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
                             calculate_loss( network, network_is_catmod,

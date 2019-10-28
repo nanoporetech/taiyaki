@@ -87,6 +87,10 @@ def add_common_command_args(parser, arglist):
                                 help='Search for fast5s recursively within ' +
                                 'input_folder. Otherwise only search first level.')),
 
+        ('reverse', lambda :
+            parser.add_argument('--reverse', default=False, action=AutoBool,
+                                help='Reverse input sequence and current')),
+
         ('sample_nreads_before_filtering', lambda :
             parser.add_argument('--sample_nreads_before_filtering', metavar='n',
                                 type=NonNegative(int), default=1000,
