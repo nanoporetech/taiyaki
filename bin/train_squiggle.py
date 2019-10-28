@@ -19,8 +19,10 @@ parser = argparse.ArgumentParser(description='Train a model to predict ionic cur
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 add_common_command_args(parser, """adam device eps filter_max_dwell filter_mean_dwell
-                                   limit niteration outdir overwrite quiet save_every
-                                   sample_nreads_before_filtering version weight_decay""".split())
+                                   limit niteration outdir overwrite quiet
+                                   reverse save_every
+                                   sample_nreads_before_filtering version
+                                   weight_decay""".split())
 
 parser.add_argument('--batch_size', default=100, metavar='chunks', type=Positive(int),
                     help='Number of chunks to run in parallel')
@@ -128,6 +130,11 @@ def main():
     score_smoothed = helpers.WindowedExpSmoother()
     total_chunks = 0
 
+    if args.reverse:
+        revop = np.flip
+    else:
+        revop = np.array
+
     for i in range(args.niteration):
         # If the logging threshold is 0 then we log all chunks, including those rejected, so pass the log
         # object into assemble_batch
@@ -144,10 +151,10 @@ def main():
             rejection_dict[k] += v
 
         # Shape of input needs to be seqlen x batchsize x embedding_dimension
-        embedded_matrix = [embed_sequence(d['sequence'], alphabet=None) for d in chunk_batch]
+        embedded_matrix = [embed_sequence(revop(d['sequence']), alphabet=None) for d in chunk_batch]
         seq_embed = torch.tensor(embedded_matrix).permute(1,0,2).to(device)
         # Shape of labels is a flat vector
-        batch_signal = torch.tensor(np.concatenate([d['current'] for d in chunk_batch])).to(device)
+        batch_signal = torch.tensor(np.concatenate([revop(d['current']) for d in chunk_batch])).to(device)
         # Shape of lens is also a flat vector
         batch_siglen = torch.tensor([len(d['current']) for d in chunk_batch]).to(device)
 
