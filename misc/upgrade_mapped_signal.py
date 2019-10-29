@@ -2,9 +2,10 @@
 import argparse
 import h5py
 import logging
+from shutil import copyfile
 
 from taiyaki.common_cmdargs import add_common_command_args
-from taiyaki.cmdargs import FileExists
+from taiyaki.cmdargs import FileAbsent, FileExists
 
 
 parser = argparse.ArgumentParser(description='Upgrade mapped signal HDF5 file',
@@ -13,6 +14,8 @@ parser = argparse.ArgumentParser(description='Upgrade mapped signal HDF5 file',
 add_common_command_args(parser, ['version'])
 parser.add_argument('input', action=FileExists,
                     help='Mapped signal to read from')
+parser.add_argument('output', action=FileAbsent,
+                    help='Name for output upgraded mapped signal file')
 
 
 def convert_7_to_8(h5):
@@ -28,7 +31,7 @@ def convert_7_to_8(h5):
         return
 
     print('Upgrading to version 8')
-    first_read = list(h5['Reads'].keys())[0]
+    first_read = iter(h5['Reads']).__next__()
     h5read0 = h5['Reads'][first_read]
     alphabet = h5read0.attrs['alphabet']
     collapse_alphabet = h5read0.attrs['collapse_alphabet']
@@ -51,7 +54,9 @@ def convert_7_to_8(h5):
 def main():
     args = parser.parse_args()
 
-    with h5py.File(args.input, 'r+') as h5:
+    copyfile(args.input, args.output)
+
+    with h5py.File(args.output, 'r+') as h5:
         convert_7_to_8(h5)
 
 
