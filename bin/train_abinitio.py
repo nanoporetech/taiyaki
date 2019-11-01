@@ -113,8 +113,7 @@ if __name__ == '__main__':
         'size' : args.size,
         'stride': args.stride,
         'winlen': args.winlen,
-        'insize': 1,  # Number of input features to model e.g. was >1 for event-based models (level, std, dwell)
-        'outsize': flipflopfings.nstate_flipflop(nbase)
+        'insize': 1  # Number of input features to model e.g. was >1 for event-based models (level, std, dwell)
     }
     network = helpers.load_model(args.model, **model_kwargs).to(device)
     log.write('* Network has {} parameters.\n'.format(sum([p.nelement()
