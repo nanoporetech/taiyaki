@@ -120,9 +120,10 @@ def readtsv(fname, fields=None, **kwargs):
     if not file_has_fields(fname, fields):
         raise KeyError('File {} does not contain requested required fields {}'.format(fname, fields))
 
-    for k in ['names', 'delimiter', 'dtype']:
-        kwargs.pop(k, None)
-    table = np.genfromtxt(fname, names=True, delimiter='\t', dtype=None, encoding=None, **kwargs)
+    for k,v in {'names':True, 'delimiter':'\t', 'dtype':None, 'encoding':None}.items():
+        if not (k in kwargs):
+            kwargs[k] = v
+    table = np.genfromtxt(fname, **kwargs)
     #  Numpy tricks to force single element to be array of one row
     return table.reshape(-1)
 
