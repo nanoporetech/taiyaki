@@ -36,7 +36,7 @@ def flipflop_viterbi(scores, _never_use_cupy=False):
 
 
 def flipflop_make_trans(scores, _never_use_cupy=False):
-    """ Calculates posterior probabilities from raw model output
+    """ Calculates posterior probabilities (not logs!) from raw model output
 
     The input consists of globally normalised transition scores
     for a flipflop CRF. The output consists of posterior
@@ -51,6 +51,9 @@ def flipflop_make_trans(scores, _never_use_cupy=False):
          S = 2 * nbase * (nbase + 1)
     :param _never_use_cupy: this method delegates to cupy implementation if
          possible, unless _never_use_cupy=True, defaults to False
+
+    :return: pytorch float tensor of shape (T x batch size x S) containing
+             posterior transition probabilities (not logs!)
     """
     use_cupy = all([
         _cupy_is_available,

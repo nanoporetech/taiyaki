@@ -20,6 +20,7 @@ install_requires = [
     "matplotlib >= 2.0.0",
     "pysam >= 0.15.0",
     "scipy >= 1",
+    "statsmodels >= 0.10.1",
     "torch == 1.2"
 ]
 
