@@ -8,10 +8,9 @@ import torch
 
 from ont_fast5_api import fast5_interface
 
-from taiyaki import basecall_helpers, fast5utils, helpers, layers
+from taiyaki import basecall_helpers, fast5utils, helpers, layers, qscores
 from taiyaki.cmdargs import AutoBool, FileAbsent, FileExists, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
-from taiyaki.constants import DEFAULT_ALPHABET
 from taiyaki.decode import flipflop_make_trans, flipflop_viterbi
 from taiyaki.flipflopfings import extract_mod_weights, nstate_flipflop, path_to_str
 from taiyaki.helpers import (guess_model_stride, load_model, open_file_or_stdout,
@@ -28,11 +27,15 @@ parser = argparse.ArgumentParser(
     description="Basecall reads using a taiyaki model",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, 'alphabet device input_folder input_strand_list limit output quiet recursive version'.split())
+add_common_command_args(parser, """alphabet device input_folder
+                        input_strand_list limit output quiet
+                        recursive version""".split())
 
 parser.add_argument("--chunk_size", type=Positive(int), metavar="blocks",
                     default=basecall_helpers._DEFAULT_CHUNK_SIZE,
                     help="Size of signal chunks sent to GPU is chunk_size * model stride")
+parser.add_argument('--fastq', default=False, action=AutoBool,
+                     help='Write output in fastq format (default is fasta)')
 parser.add_argument("--max_concurrent_chunks", type=Positive(int),
                     default=128, help="Maximum number of chunks to call at "
                     "once. Lower values will consume less (GPU) RAM.")
@@ -41,12 +44,20 @@ parser.add_argument("--modified_base_output", action=FileAbsent, default=None, m
 parser.add_argument("--overlap", type=NonNegative(int), metavar="blocks",
                     default=basecall_helpers._DEFAULT_OVERLAP,
                     help="Overlap between signal chunks sent to GPU")
+parser.add_argument("--qscore_offset", type=float,
+                    default=0.0,
+                    help="Offset to apply to q scores in fastq (after scale)")
+parser.add_argument("--qscore_scale", type=float,
+                    default=1.0,
+                    help="Scaling factor to apply to q scores in fastq")
 parser.add_argument('--reverse', default=False, action=AutoBool,
                     help='Reverse sequences in output')
 parser.add_argument('--scaling', action=FileExists, default=None,
                     help='Path to TSV containing per-read scaling params')
 parser.add_argument("model", action=FileExists,
                     help="Model checkpoint file to use for basecalling")
+
+
 
 
 def med_mad_norm(x, dtype='f4'):
@@ -72,7 +83,39 @@ def get_signal(read_filename, read_id):
 def process_read(
         read_filename, read_id, model, chunk_size, overlap, read_params,
         n_can_state, stride, alphabet, is_cat_mod, mods_fp,
-        max_concurrent_chunks):
+        max_concurrent_chunks, fastq = False, qscore_scale=1.0,
+        qscore_offset=0.0):
+    """Basecall a read, dividing the samples into chunks before applying the
+    basecalling network and then stitching them back together.
+
+    :param read_filename: filename to load data from
+    :param read_id: id used in comment line in fasta or fastq output
+    :param model: pytorch basecalling network
+    :param chunk_size: chunk size, measured in samples
+    :param overlap: overlap between chunks, measured in samples
+    :param read_params: dict of read params including 'shift' and 'scale'
+    :param n_can_state: number of canonical flip-flop transitions (40 for ACGT)
+    :param stride: stride of basecalling network (measured in samples)
+    :param alphabet: python str containing alphabet (e.g. 'ACGT')
+    :param is_cat_mod: bool. True for multi-level categorical mod-base model.
+    :param mods_fp: h5py handle to hdf5 file prepared to accept mod base output
+                    (not used unless is_cat_mod)
+    :param max_concurrent_chunks: max number of chunks to basecall at same time
+              (having this limit prevents running out of memory for long reads)
+    :param fastq: generate fastq file with q scores if this is True. Otherwise
+                  generate fasta.
+    :param qscore_scale: qscore <-- qscore * qscore_scale + qscore_offset
+                         before coding as fastq
+    :param qscore_offset: see qscore_scale above
+    :returns: tuple (basecall, qstring, len(signal))
+              where basecall and qstring are python strings, except when
+              fastq is False: in this case qstring is None.
+
+    :note: fastq output implemented only for the case is_cat_mod=False
+    """
+    if is_cat_mod and fastq:
+        raise Exception("fastq output not implemented for mod bases")
+
     signal = get_signal(read_filename, read_id)
     if signal is None:
         return None, 0
@@ -85,6 +128,7 @@ def process_read(
     chunks, chunk_starts, chunk_ends = basecall_helpers.chunk_read(
         normed_signal, chunk_size, overlap)
 
+    qstring = None
     with torch.no_grad():
         device = next(model.parameters()).device
         chunks = torch.tensor(chunks, device=device)
@@ -104,6 +148,15 @@ def process_read(
             best_path = basecall_helpers.stitch_chunks(
                 chunk_best_paths, chunk_starts, chunk_ends, stride,
                 path_stitching=is_cat_mod)
+            if fastq:
+                chunk_errprobs = qscores.errprobs_from_trans(trans,
+                                                         chunk_best_paths)
+                errprobs = basecall_helpers.stitch_chunks(
+                        chunk_errprobs, chunk_starts, chunk_ends, stride,
+                        path_stitching=is_cat_mod)
+                qstring = qscores.path_errprobs_to_qstring(errprobs, best_path,
+                                                      qscore_scale,
+                                                      qscore_offset)
 
         if is_cat_mod and mods_fp is not None:
             # output modified base weights for each base call
@@ -120,10 +173,14 @@ def process_read(
                 'Reads/' + read_id, data=mods_scores,
                 compression="gzip")
 
-        basecall = path_to_str(
-            best_path.cpu().numpy(), alphabet=alphabet)
+        #Don't include first source state from the path in the basecall.
+        #This makes our basecalls agree with Guppy's, and removes the
+        #problem that there is no entry transition for the first path
+        #element, so we don't know what the q score is.
+        basecall = path_to_str(best_path.cpu().numpy(), alphabet=alphabet,
+                               include_first_source=False)
 
-    return basecall, len(signal)
+    return basecall, qstring, len(signal)
 
 
 def main():
@@ -176,18 +233,25 @@ def main():
     nbase, ncalled, nread, nsample = 0, 0, 0, 0
     t0 = time.time()
     progress = Progress(quiet=args.quiet)
+    startcharacter = '@' if args.fastq else '>'
     try:
         with open_file_or_stdout(args.output) as fh:
             for read_filename, read_id in fast5_reads:
                 read_params = all_read_params[read_id] if read_id in all_read_params else None
-                basecall, read_nsample = process_read(
+                basecall, qstring, read_nsample = process_read(
                     read_filename, read_id, model, chunk_size, chunk_overlap,
                     read_params, n_can_states, stride, args.alphabet,
-                    is_cat_mod, mods_fp, args.max_concurrent_chunks)
+                    is_cat_mod, mods_fp, args.max_concurrent_chunks,
+                    args.fastq, args.qscore_scale, args.qscore_offset)
                 if basecall is not None:
-                    fh.write(">{}\n{}\n".format(read_id, basecall[::-1] if args.reverse else basecall))
+                    fh.write("{}{}\n{}\n".format(startcharacter,
+                             read_id,
+                             basecall[::-1] if args.reverse else basecall))
                     nbase += len(basecall)
                     ncalled += 1
+                    if args.fastq:
+                        fh.write("+\n{}\n".format(
+                                qstring[::-1] if args.reverse else qstring))
                 nread += 1
                 nsample += read_nsample
                 progress.step()
