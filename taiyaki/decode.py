@@ -65,12 +65,10 @@ def flipflop_make_trans(scores, _never_use_cupy=False):
     if use_cupy:
         return cuff.flipflop_make_trans(scores)[0].softmax(2)
     else:
-        scores_requires_grad = scores.requires_grad
-        scores.requires_grad_()
+        scores = scores.detach().requires_grad_()
         with torch.enable_grad():
             logZ = log_partition_flipflop(scores).sum()
         trans = torch.autograd.grad(logZ, scores, create_graph=True)[0]
-        scores.requires_grad = scores_requires_grad
         return trans.detach()
 
 
