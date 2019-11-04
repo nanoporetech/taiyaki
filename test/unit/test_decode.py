@@ -51,6 +51,27 @@ class TestFlipFlopDecode(unittest.TestCase):
         path = path.cpu().numpy()
         self.assertArrayEqual(path, self.expected_path)
 
+    def test_cpu_make_trans_no_grad(self):
+        scores = torch.tensor(self.scores, requires_grad=False)
+        trans = decode.flipflop_make_trans(scores)
+
+    def test_cpu_make_trans_no_grad_non_leaf(self):
+        scores = torch.tensor(self.scores, requires_grad=False)
+        trans = decode.flipflop_make_trans(1.0 * scores)
+
+    def test_cpu_make_trans_with_grad(self):
+        scores = torch.tensor(self.scores, requires_grad=True)
+        trans = decode.flipflop_make_trans(scores)
+
+    def test_cpu_make_trans_with_grad_non_leaf(self):
+        scores = torch.tensor(self.scores, requires_grad=True)
+        trans = decode.flipflop_make_trans(1.0 * scores)
+
+    def test_cpu_make_trans_with_grad_non_leaf_no_grad(self):
+        scores = torch.tensor(self.scores, requires_grad=True)
+        with torch.no_grad():
+            trans = decode.flipflop_make_trans(1.0 * scores)
+
     @unittest.skipIf(not _cupy_is_available, "Cupy is not installed")
     def test_cupy_equals_torch_make_trans(self):
         trans_torch = decode.flipflop_make_trans(torch.tensor(self.scores, device=0),
