@@ -14,12 +14,13 @@ from taiyaki.cmdargs import FileExists
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.flipflopfings import nbase_flipflop
 from taiyaki.layers import (
-    Convolution, GruMod, Reverse, Serial, GlobalNormFlipFlop,
+    Convolution, Lstm, GruMod, Reverse, Serial, GlobalNormFlipFlop,
     GlobalNormFlipFlopCatMod)
 
 
 COMPATIBLE_LAYERS = set((
     'convolution',
+    'LSTM',
     'GruMod',
     'reverse',
     'GlobalNormTwoState',
@@ -36,22 +37,57 @@ add_common_command_args(
 parser.add_argument(
     'json_model', action=FileExists, help='JSON model with params')
 
-def set_params(layer, jsn_params):
+def set_params(layer, jsn_params, layer_type):
     params_od = OrderedDict()
     for layer_name, layer_params in layer.state_dict().items():
         # match layer names (see taiyaki.layer.[layer_type].json functions)
         if re.search('weight_ih', layer_name) and 'iW' in jsn_params:
-            # For gru layers convert from guppy format back to pytorch format
-            jsn_layer_params = torch.Tensor(np.concatenate([
-                jsn_params['iW'][1], jsn_params['iW'][0], jsn_params['iW'][2]]))
+            if layer_type == 'GruMod':
+                # For gru layers convert from guppy format
+                # back to pytorch format
+                jsn_layer_params = torch.Tensor(np.concatenate([
+                    jsn_params['iW'][1], jsn_params['iW'][0],
+                    jsn_params['iW'][2]]))
+            elif layer_type == 'LSTM':
+                jsn_layer_params = torch.Tensor(
+                    np.array(jsn_params['iW']).reshape((
+                        -1, len(jsn_params['iW'][0][0]))))
+            else:
+                sys.stderr.write(
+                    'Encountered invalid iW param layer type ({}).\n'.format(
+                        layer_type))
+                sys.exit(1)
         elif re.search('weight_hh', layer_name) and 'sW' in jsn_params:
-            # For gru layers convert from guppy format back to pytorch format
-            jsn_layer_params = torch.Tensor(np.concatenate([
-                jsn_params['sW'][1], jsn_params['sW'][0], jsn_params['sW'][2]]))
+            if layer_type == 'GruMod':
+                # For gru layers convert from guppy format
+                # back to pytorch format
+                jsn_layer_params = torch.Tensor(np.concatenate([
+                    jsn_params['sW'][1], jsn_params['sW'][0],
+                    jsn_params['sW'][2]]))
+            elif layer_type == 'LSTM':
+                jsn_layer_params = torch.Tensor(np.array(
+                    jsn_params['sW']).reshape((
+                        -1, len(jsn_params['iW'][0][0]))))
+            else:
+                sys.stderr.write(
+                    'Encountered invalid sW param layer type ({}).\n'.format(
+                        layer_type))
+                sys.exit(1)
         elif re.search('bias_ih', layer_name) and 'b' in jsn_params:
-            # For gru layers convert from guppy format back to pytorch format
-            jsn_layer_params = torch.Tensor(np.concatenate([
-                jsn_params['b'][1], jsn_params['b'][0], jsn_params['b'][2]]))
+            if layer_type == 'GruMod':
+                # For gru layers convert from guppy format
+                # back to pytorch format
+                jsn_layer_params = torch.Tensor(np.concatenate([
+                    jsn_params['b'][1], jsn_params['b'][0],
+                    jsn_params['b'][2]]))
+            elif layer_type == 'LSTM':
+                jsn_layer_params = torch.Tensor(np.array(
+                    jsn_params['b']).reshape((-1)))
+            else:
+                sys.stderr.write(
+                    'Encountered invalid bias param layer type ({}).\n'.format(
+                        layer_type))
+                sys.exit(1)
         elif re.search('bias_hh', layer_name):
             # bias_hh layer not actually used
             jsn_layer_params = torch.zeros_like(layer_params)
@@ -92,6 +128,12 @@ def parse_sublayer(sublayer):
         layer = Convolution(
             sublayer['insize'], sublayer['size'], sublayer['winlen'],
             stride=sublayer['stride'], fun=tanh)
+    elif sublayer['type'] == 'LSTM':
+        sys.stderr.write((
+            'Loading LSTM layer with attributes:\n\tin size: {}\n' +
+            '\tout size: {}\n').format(
+                sublayer['insize'], sublayer['size']))
+        layer = Lstm(sublayer['insize'], sublayer['size'])
     elif sublayer['type'] == 'GruMod':
         sys.stderr.write((
             'Loading GRU layer with attributes:\n\tin size: {}\n' +
@@ -100,11 +142,22 @@ def parse_sublayer(sublayer):
         layer = GruMod(sublayer['insize'], sublayer['size'])
     elif sublayer['type'] == 'reverse':
         sublayer = sublayer['sublayers']
-        sys.stderr.write((
-            'Loading Reverse GRU layer with attributes:\n\tin size: {}\n' +
-            '\tout size: {}\n').format(
-                sublayer['insize'], sublayer['size']))
-        layer = Reverse(GruMod(sublayer['insize'], sublayer['size']))
+        if sublayer['type'] == 'GruMod':
+            sys.stderr.write((
+                'Loading Reverse GRU layer with attributes:\n\tin size: {}\n' +
+                '\tout size: {}\n').format(
+                    sublayer['insize'], sublayer['size']))
+            layer = Reverse(GruMod(sublayer['insize'], sublayer['size']))
+        elif sublayer['type'] == 'LSTM':
+            sys.stderr.write((
+                'Loading Reverse LSTM layer with attributes:\n\tin size: {}\n' +
+                '\tout size: {}\n').format(
+                    sublayer['insize'], sublayer['size']))
+            layer = Reverse(Lstm(sublayer['insize'], sublayer['size']))
+        else:
+            sys.stderr.write(('Invalid reversed-time layer type ({})\n').format(
+                sublayer['type']))
+            sys.exit(1)
     elif sublayer['type'] == 'GlobalNormTwoState':
         nbase = nbase_flipflop(sublayer['size'])
         sys.stderr.write((
@@ -128,11 +181,11 @@ def parse_sublayer(sublayer):
                 sublayer['insize'], alphabet_info.mod_long_names))
         layer = GlobalNormFlipFlopCatMod(sublayer['insize'], alphabet_info)
     else:
-        sys.stderr.write('Encountered invalid layer type ({}).'.format(
+        sys.stderr.write('Encountered invalid layer type ({}).\n'.format(
             sublayer['type']))
         sys.exit(1)
 
-    layer = set_params(layer, sublayer['params'])
+    layer = set_params(layer, sublayer['params'], sublayer['type'])
 
     return layer
 
