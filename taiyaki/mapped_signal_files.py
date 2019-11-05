@@ -184,7 +184,6 @@ class Read(dict):
 
         if isinstance(signal_location_vector, tuple):
             signal_location_vector = np.array(signal_location_vector)
-        reflen = len(self['Reference'])
 
         mapped_dacs_start, mapped_dacs_end = self.get_mapped_dacs_region()
         result = np.searchsorted(self['Ref_to_signal'], signal_location_vector)
@@ -195,19 +194,35 @@ class Read(dict):
 
         return result
 
-    def get_standardised_current(self, region=None):
-        """Get standardised current vector. If region is not None, then
-        treat region as a tuple: region = (start_inclusive, end_exclusive)
-        returning current[start_inclusive:end_exclusive].
+
+    def get_dacs(self, region=None):
+        """Get vector of DAC levels
+        If region is not None, then treat region as a tuple:
+            region = (start_inclusive, end_exclusive)
+
+        :returns: current[start_inclusive:end_exclusive].
         """
         if region is None:
             dacs = self['Dacs']
         else:
             a, b = region
             dacs = self['Dacs'][a:b]
+        return dacs
+
+
+    def get_current(self, region=None, standardize=True):
+        """Get current vector and, optionally apply standardization factors.
+        If region is not None, then treat region as a tuple:
+            region = (start_inclusive, end_exclusive)
+
+        :returns: current[start_inclusive:end_exclusive].
+        """
+        dacs = self.get_dacs(region)
 
         current = (dacs + self['offset']) * self['range'] / self['digitisation']
-        return (current - self['shift_frompA']) / self['scale_frompA']
+        if standardize:
+            current = (current - self['shift_frompA']) / self['scale_frompA']
+        return current
 
     def check_for_slip_at_refloc(self, refloc):
         """Return True if there is a slip at reference location refloc.
@@ -256,7 +271,7 @@ class Read(dict):
                 print("Rejecting read because of zero-length signal chunk")
             returndict = {'rejected': 'emptysignal'}
         else:
-            current = self.get_standardised_current(dacs_region)
+            current = self.get_current(dacs_region, True)
             reference = self['Reference'][ref_region[0]:ref_region[1]]
             dwells = np.diff(self['Ref_to_signal'][ref_region[0]:ref_region[1]])
             # If the ref_region has length 1, then the diff has length zero and the
