@@ -29,6 +29,15 @@ parser.add_argument('--xmin', default = None, type = float,
                     help='Minimum x for plot')
 parser.add_argument('--xmax', default = None, type = float,
                     help='Maximum x for plot')
+parser.add_argument('--ymin', default = None, type = float,
+                    help='Minimum x for plot')
+parser.add_argument('--ymax', default = None, type = float,
+                    help='Maximum x for plot')
+parser.add_argument('--line_transparency', type = float, default = 1.0,
+                    help='Transparency value for lines. Default: %(default)f')
+parser.add_argument('--zero_signal_start', action = 'store_true',
+                    help='Start signal locations at zero. Default: start at ' +
+                    'assigned position within entire read.')
 
 
 def main():
@@ -50,6 +59,8 @@ def main():
                 r = h5.get_read(read_id)
                 mapping = r['Ref_to_signal']
                 f = mapping >= 0
+                if args.zero_signal_start:
+                    mapping[f] -= mapping[f][0]
                 maplen = len(mapping)
                 read_info_text = (
                     'file {} read {}:{} reflen:{}, daclen:{}').format(
@@ -58,7 +69,7 @@ def main():
 
                 if args.output is not None:
                     label = (read_info_text
-                             if reads_sofar <= args.maxlegendsize
+                             if reads_sofar < args.maxlegendsize
                              else None)
                     x, y = np.arange(maplen)[f], mapping[f]
                     if args.xmin is not None:
@@ -67,8 +78,16 @@ def main():
                     if args.xmax is not None:
                         xf = x <= args.xmax
                         x, y = x[xf], y[xf]
+                    if args.ymin is not None:
+                        yf = y >= args.ymin
+                        x, y = x[yf], y[yf]
+                    if args.ymax is not None:
+                        yf = y <= args.ymax
+                        x, y = x[yf], y[yf]
                     plt.plot(x, y, label=label,
-                             linestyle = 'dashed' if nfile == 1 else 'solid')
+                             linestyle = 'dashed' if nfile == 1 else 'solid',
+                             alpha=args.line_transparency)
+                reads_sofar += 1
 
     if args.output is not None:
         plt.grid()
