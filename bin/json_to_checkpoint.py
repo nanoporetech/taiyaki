@@ -14,8 +14,8 @@ from taiyaki.cmdargs import FileExists
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.flipflopfings import nbase_flipflop
 from taiyaki.layers import (
-    Convolution, Lstm, GruMod, Reverse, Serial, GlobalNormFlipFlop,
-    GlobalNormFlipFlopCatMod)
+    Convolution, GlobalNormFlipFlop, GlobalNormFlipFlopCatMod, GruMod, Lstm,
+    Reverse, Serial)
 
 
 COMPATIBLE_LAYERS = set((
