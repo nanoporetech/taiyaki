@@ -524,12 +524,21 @@ def _reshape(x, shape):
 
 
 class Identity(nn.Module):
-    """The identity transform"""
+    """  Apply activation function elementwise
+
+    :param fun:  Elementwise activation function
+
+    """
+    def __init__(self, fun=activation.linear):
+        super().__init__()
+        self.fun = fun
+
     def json(self, params=False):
-        return OrderedDict([('type', 'Identity')])
+        return OrderedDict([('type', 'Identity'),
+                            ('activation', self.activation.__name__)])
 
     def forward(self, x):
-        return x
+        return self.fun(x)
 
 
 class Studentise(nn.Module):
