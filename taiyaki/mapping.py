@@ -6,6 +6,8 @@ import numpy as np
 import sys
 from taiyaki import mapped_signal_files
 
+DEBUG = False
+
 
 class Mapping:
     """
@@ -233,15 +235,19 @@ class Mapping:
             readObject = mapped_signal_files.Read(readDict)
             checkstring = readObject.check()
             if checkstring != "pass":
-                print("Channel info:")
-                for k, v in self.signal.channel_info.items():
-                    print("   ", k, v)
-                print("Read attributes:")
-                for k, v in self.signal.read_attributes.items():
-                    print("   ", k, v)
-                sys.stderr.write(
-                    "Read object for {} to place in file doesn't pass tests:\n {}\n".format(read_id, checkstring))
-                raise Exception("Read object failed error checking in mapping.get_read_dictionary()")
+                if DEBUG:
+                    sys.stderr.write("Channel info:\n")
+                    for k, v in self.signal.channel_info.items():
+                        sys.stderr.write("   ", k, v, '\n')
+                    sys.stderr.write("Read attributes:\n")
+                    for k, v in self.signal.read_attributes.items():
+                        sys.stderr.write("   ", k, v, '\n')
+                    sys.stderr.write((
+                        "Read object for {} to place in file doesn't pass " +
+                        "tests:\n {}\n").format(read_id, checkstring))
+                raise RuntimeError(
+                    "Mapped signal failed error checking: {}".format(
+                        checkstring))
         return readDict
 
     def to_ssv(self, filename, appendRef=True):
