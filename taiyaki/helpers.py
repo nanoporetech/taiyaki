@@ -265,7 +265,12 @@ class Progress(object):
         if not self.quiet:
             if self.count % self.every == 0:
                 dotcount = self.count // self.every
-                self.fh.write('\033[1;{}m.\033[m'.format(COLOURS[dotcount % len(COLOURS)]))
+                if self.fh.isatty():
+                    #  If attached to tty, do colours
+                    self.fh.write('\033[1;{}m.\033[m'.format(COLOURS[dotcount % len(COLOURS)]))
+                else:
+                    #  otherwise don't
+                    self.fh.write('.')
                 if dotcount % self.line_len == 0:
                     self.fh.write('{:8d}\n'.format(self.count))
                 self.fh.flush()
