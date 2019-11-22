@@ -75,10 +75,10 @@ data_grp.add_argument('--reporting_strand_list', action=FileExists,
                       help='Strand summary file containing column read_id. ' +
                       'All other fields are ignored. If not provided ' +
                       'reporting strands will be randomly selected.')
-data_grp.add_argument('--include_reporting_data',
+data_grp.add_argument('--include_reporting_strands',
                       default=False, action=AutoBool,
-                      help='Include reporting data in training. Default: ' +
-                      'Hold training data out of training.')
+                      help='Include reporting strands in training. Default: ' +
+                      'Hold training strands out of training.')
 data_grp.add_argument('--input_strand_list', default=None, action=FileExists,
                       help='Strand summary file containing column read_id. '+
                       'Filenames in file are ignored.')
@@ -421,7 +421,7 @@ def main():
             helpers.get_read_ids(args.reporting_strand_list))
         report_read_data = [read for read in read_data
                             if read['read_id'] in reporting_read_ids]
-        if not args.include_reporting_data:
+        if not args.include_reporting_strands:
             read_data = [read for read in read_data
                          if read['read_id'] not in reporting_read_ids]
     else:
@@ -430,9 +430,9 @@ def main():
             len(read_data) // 2)
         np.random.shuffle(read_data)
         report_read_data = read_data[:num_report_reads]
-        if not args.include_reporting_data:
+        if not args.include_reporting_strands:
             read_data = read_data[num_report_reads:]
-    if not args.include_reporting_data:
+    if not args.include_reporting_strands:
         log.write(('* Standard loss reporting from {} validation reads ' +
                    'held out of training. \n').format(len(report_read_data)))
     reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
