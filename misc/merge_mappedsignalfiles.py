@@ -160,7 +160,7 @@ def add_file_reads(
         if read_id in reads_written:
             sys.stderr.write((
                 "* Read {} already present: not copying from " +
-                "{}.\n".format(read_id, infile)))
+                "{}.\n").format(read_id, infile))
             continue
 
         read = hin.get_read(read_id)
