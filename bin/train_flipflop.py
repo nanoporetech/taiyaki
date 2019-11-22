@@ -71,12 +71,14 @@ data_grp.add_argument('--chunk_len_max', default=4000, metavar='samples',
                       type=Positive(int),
                       help='Max length of each chunk in samples ' +
                       '(chunk lengths are random between min and max)')
-data_grp.add_argument('--reporting_input_data', action=FileExists,
-                    help='File containing mapped signal reads for validation ' +
-                      'reporting. If not provided chunks wil be sampled ' +
-                      'from training data.')
-data_grp.add_argument('--hold_out_reporting_data', action='store_true',
-                    help='Hold reporting data out of training')
+data_grp.add_argument('--reporting_strand_list', action=FileExists,
+                      help='Strand summary file containing column read_id. ' +
+                      'All other fields are ignored. If not provided ' +
+                      'reporting strands will be randomly selected.')
+data_grp.add_argument('--include_reporting_data',
+                      default=False, action=AutoBool,
+                      help='Include reporting data in training. Default: ' +
+                      'Hold training data out of training.')
 data_grp.add_argument('--input_strand_list', default=None, action=FileExists,
                       help='Strand summary file containing column read_id. '+
                       'Filenames in file are ignored.')
@@ -139,9 +141,9 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
     while total_sub_batches < target_sub_batches:
 
         # Chunk_batch is a list of dicts
-        chunk_batch, batch_rejections = \
-            chunk_selection.assemble_batch(read_data, sub_batch_size,
-                                           batch_chunk_len, filter_params)
+        chunk_batch, batch_rejections = chunk_selection.assemble_batch(
+            read_data, sub_batch_size, batch_chunk_len, filter_params,
+            select_chunks_iteratively=select_chunks_iteratively)
         if len(chunk_batch) < sub_batch_size:
             log.write('* Warning: only {} chunks passed filters (asked for {}).\n'.format(len(chunk_batch), sub_batch_size))
 
@@ -414,37 +416,31 @@ def main():
     mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
 
     # Generate list of batches for standard loss reporting
-    select_chunks_iteratively = True
-    if args.reporting_input_data is not None:
-        with mapped_signal_files.HDF5Reader(
-                args.reporting_input_data) as per_read_file:
-            report_read_data = per_read_file.get_multiple_reads('all')
-            report_alphabet_info = per_read_file.get_alphabet_information()
-            assert report_alphabet_info.equals(alphabet_info), (
-                'Reporting chunks alphabet does not equal training ' +
-                'data alphabet.')
-        log.write( ('* Standard loss reporting from independent validation ' +
-                    'data ({}). \n').format(args.reporting_input_data))
-    elif args.hold_out_reporting_data:
-        # this gives the exact number of reads as the number of required chunks
-        # though some reads may be used twice or more due to chunk rejection
-        # criteria
+    if args.reporting_strand_list is not None:
+        reporting_read_ids = set(
+            helpers.get_read_ids(args.reporting_strand_list))
+        report_read_data = [read for read in read_data
+                            if read['read_id'] in reporting_read_ids]
+        if not args.include_reporting_data:
+            read_data = [read for read in read_data
+                         if read['read_id'] not in reporting_read_ids]
+    else:
         num_report_reads = min(
             args.min_sub_batch_size * args.reporting_sub_batches,
             len(read_data) // 2)
         np.random.shuffle(read_data)
         report_read_data = read_data[:num_report_reads]
-        read_data = read_data[num_report_reads:]
-        log.write('* Standard loss reporting from selection of input data.\n')
-    else:
-        report_read_data = read_data
-        select_chunks_iteratively = False
+        if not args.include_reporting_data:
+            read_data = read_data[num_report_reads:]
+    if not args.include_reporting_data:
+        log.write(('* Standard loss reporting from {} validation reads ' +
+                   'held out of training. \n').format(len(report_read_data)))
     reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
     reporting_batch_list = list(prepare_random_batches(
         device, report_read_data, reporting_chunk_len, args.min_sub_batch_size,
         args.reporting_sub_batches, alphabet_info, args.reverse,
         filter_params, network, network_is_catmod, log,
-        select_chunks_iteratively=select_chunks_iteratively))
+        select_chunks_iteratively=True))
     log.write( ('* Standard loss report: chunk length = {} & sub-batch size ' +
                 '= {} for {} sub-batches. \n').format(reporting_chunk_len,
                 args.min_sub_batch_size, args.reporting_sub_batches) )
