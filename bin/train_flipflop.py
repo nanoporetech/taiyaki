@@ -17,7 +17,6 @@ from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
 from taiyaki.helpers import guess_model_stride
 
-
 # This is here, not in main to allow documentation to be built
 parser = argparse.ArgumentParser(description='Train flip-flop neural network',
                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -72,6 +71,12 @@ data_grp.add_argument('--chunk_len_max', default=4000, metavar='samples',
                       type=Positive(int),
                       help='Max length of each chunk in samples ' +
                       '(chunk lengths are random between min and max)')
+data_grp.add_argument('--reporting_input_data', action=FileExists,
+                    help='File containing mapped signal reads for validation ' +
+                      'reporting. If not provided chunks wil be sampled ' +
+                      'from training data.')
+data_grp.add_argument('--hold_out_reporting_data', action='store_true',
+                    help='Hold reporting data out of training')
 data_grp.add_argument('--input_strand_list', default=None, action=FileExists,
                       help='Strand summary file containing column read_id. '+
                       'Filenames in file are ignored.')
@@ -123,7 +128,8 @@ def is_cat_mod_model(network):
 
 def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
                            target_sub_batches, alphabet_info, reverse,
-                           filter_params, network, network_is_catmod, log):
+                           filter_params, network, network_is_catmod, log,
+                           select_chunks_iteratively=False):
     total_sub_batches = 0
     if reverse:
         revop = np.flip
@@ -407,15 +413,38 @@ def main():
     # value to enable mod cat weighting
     mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
 
-    #Generating list of batches for standard loss reporting
+    # Generate list of batches for standard loss reporting
+    select_chunks_iteratively = True
+    if args.reporting_input_data is not None:
+        with mapped_signal_files.HDF5Reader(
+                args.reporting_input_data) as per_read_file:
+            report_read_data = per_read_file.get_multiple_reads('all')
+            report_alphabet_info = per_read_file.get_alphabet_information()
+            assert report_alphabet_info.equals(alphabet_info), (
+                'Reporting chunks alphabet does not equal training ' +
+                'data alphabet.')
+        log.write( ('* Standard loss reporting from independent validation ' +
+                    'data ({}). \n').format(args.reporting_input_data))
+    elif args.hold_out_reporting_data:
+        # this gives the exact number of reads as the number of required chunks
+        # though some reads may be used twice or more due to chunk rejection
+        # criteria
+        num_report_reads = min(
+            args.min_sub_batch_size * args.reporting_sub_batches,
+            len(read_data) // 2)
+        np.random.shuffle(read_data)
+        report_read_data = read_data[:num_report_reads]
+        read_data = read_data[num_report_reads:]
+        log.write('* Standard loss reporting from selection of input data.\n')
+    else:
+        report_read_data = read_data
+        select_chunks_iteratively = False
     reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
-    reporting_batch_list=list(
-        prepare_random_batches(device, read_data, reporting_chunk_len,
-                               args.min_sub_batch_size,
-                               args.reporting_sub_batches, alphabet_info,
-                               args.reverse, filter_params, network,
-                               network_is_catmod, log))
-
+    reporting_batch_list = list(prepare_random_batches(
+        device, report_read_data, reporting_chunk_len, args.min_sub_batch_size,
+        args.reporting_sub_batches, alphabet_info, args.reverse,
+        filter_params, network, network_is_catmod, log,
+        select_chunks_iteratively=select_chunks_iteratively))
     log.write( ('* Standard loss report: chunk length = {} & sub-batch size ' +
                 '= {} for {} sub-batches. \n').format(reporting_chunk_len,
                 args.min_sub_batch_size, args.reporting_sub_batches) )
