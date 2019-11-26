@@ -340,12 +340,14 @@ def main():
         saved_startmodel_path = os.path.join(args.outdir,
                                      'model_checkpoint_00000.checkpoint')
         network = helpers.load_model(saved_startmodel_path).to(device)
+        network_is_catmod = is_cat_mod_model(network)
         # Wrap network for training in the DistributedDataParallel structure
         network = torch.nn.parallel.DistributedDataParallel(network,
                                             device_ids=[args.local_rank],
                                             output_device=args.local_rank)
     else:
         network = network_save_skeleton.to(device)
+        network_is_catmod = is_cat_mod_model(network)
         network_save_skeleton = None
 
     optimizer = torch.optim.Adam(network.parameters(), lr=args.lr_max,
@@ -376,7 +378,6 @@ def main():
     score_smoothed = helpers.WindowedExpSmoother()
 
     # prepare modified base paramter tensors
-    network_is_catmod = is_cat_mod_model(network)
     mod_factor_t = torch.tensor(args.mod_factor, dtype=torch.float32).to(device)
     can_mods_offsets = (network.sublayers[-1].can_mods_offsets
                         if network_is_catmod else None)
