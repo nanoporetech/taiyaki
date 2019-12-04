@@ -71,10 +71,6 @@ data_grp.add_argument('--chunk_len_max', default=4000, metavar='samples',
                       type=Positive(int),
                       help='Max length of each chunk in samples ' +
                       '(chunk lengths are random between min and max)')
-data_grp.add_argument('--reporting_strand_list', action=FileExists,
-                      help='Strand summary file containing column read_id. ' +
-                      'All other fields are ignored. If not provided ' +
-                      'reporting strands will be randomly selected.')
 data_grp.add_argument('--include_reporting_strands',
                       default=False, action=AutoBool,
                       help='Include reporting strands in training. Default: ' +
@@ -88,6 +84,16 @@ data_grp.add_argument('--min_sub_batch_size', default=96, metavar='chunks',
                       'sub-batch for chunk_len = chunk_len_max. Actual ' +
                       'length of sub-batch used is ' +
                       '(min_sub_batch_size * chunk_len_max / chunk_len).')
+data_grp.add_argument('--reporting_percent_reads', default=1,
+                     metavar='sub_batches', type=Positive(float),
+                     help='Percent of reads to use for std loss reporting')
+data_grp.add_argument('--reporting_strand_list', action=FileExists,
+                      help='Strand summary file containing column read_id. ' +
+                      'All other fields are ignored. If not provided ' +
+                      'reporting strands will be randomly selected.')
+data_grp.add_argument('--reporting_sub_batches', default=10,
+                     metavar='sub_batches', type=Positive(int),
+                     help='Number of sub-batches to use for std loss reporting')
 data_grp.add_argument('--sub_batches', default=1, metavar='sub_batches',
                       type=Positive(int),
                       help='Number of sub-batches per batch')
@@ -105,9 +111,6 @@ add_common_command_args(out_grp, """outdir overwrite quiet
 out_grp.add_argument('--full_filter_status', default=False, action=AutoBool,
                      help='Output full chunk filtering statistics. ' +
                      'Default: only proportion of filtered chunks.')
-out_grp.add_argument('--reporting_sub_batches', default=10,
-                     metavar='sub_batches', type=Positive(int),
-                     help='Number of sub-batches to use for std loss reporting')
 
 mod_grp = parser.add_argument_group('Modified Base Arguments')
 mod_grp.add_argument('--mod_factor', type=float, default=0.1,
@@ -425,9 +428,8 @@ def main():
             read_data = [read for read in read_data
                          if read['read_id'] not in reporting_read_ids]
     else:
-        num_report_reads = min(
-            args.min_sub_batch_size * args.reporting_sub_batches,
-            len(read_data) // 2)
+        num_report_reads = max(
+            1, int(len(read_data) * args.reporting_percent_reads / 100))
         np.random.shuffle(read_data)
         report_read_data = read_data[:num_report_reads]
         if not args.include_reporting_strands:
