@@ -62,6 +62,22 @@ def selu(x, alpha=1.6733, lam=1.0507):
     return lam * torch.where(x > 0, x, alpha * torch.expm1(x))
 
 
+def gelu(x):
+    """  Gaussian Error Linear Unit
+
+         https://arxiv.org/pdf/1606.08415.pdf
+
+         Using approximation from paper above.
+
+         NB:  Why isn't this approximation x \sigma(x * 1.813799), which would
+         be the result of replacing the Gaussian distribution function with
+         a Logistic distribution with unit variance.
+
+    """
+    #return 0.5 * (1.0 + torch.tanh(x * 0.7978846 * (1.0 + 0.044715 * x * x)))
+    return x * torch.sigmoid(1.702 * x)
+
+
 def exp(x):
     return torch.exp(x)
 
