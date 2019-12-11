@@ -103,7 +103,7 @@ out_grp.add_argument('--reporting_sub_batches', default=10,
                      help='Number of sub-batches to use for std loss reporting')
 
 mod_grp = parser.add_argument_group('Modified Base Arguments')
-mod_grp.add_argument('--mod_factor', type=float, default=0.1,
+mod_grp.add_argument('--mod_factor', type=float, default=1.0,
                      help='Relative modified base weight (compared to ' +
                      'canonical transitions) in loss/gradient (only ' +
                      'applicable for modified base models).')
