@@ -11,8 +11,8 @@ import time
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from taiyaki import ctc, flipflopfings, helpers
-from taiyaki.cmdargs import FileExists, Positive
+from taiyaki import alphabet, constants, ctc, flipflopfings, helpers, maths
+from taiyaki.cmdargs import FileExists, Maybe, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 
 
@@ -26,6 +26,11 @@ add_common_command_args(parser, """adam alphabet device eps limit niteration
 
 parser.add_argument('--batch_size', default=128, metavar='chunks',
                     type=Positive(int), help='Number of chunks to run in parallel')
+parser.add_argument('--gradient_cap_fraction', default=0.05, metavar = 'f',
+                    type=Maybe(NonNegative(float)),
+                    help='Cap L2 norm of gradient so that a fraction f of ' +
+                         'gradients are capped. ' +
+                         'Use --gradient_cap_fraction None for no capping.')
 parser.add_argument( '--lr_max', default=4.0e-3, metavar='rate',
                     type=Positive(float), help='Initial learning rate')
 parser.add_argument('--size', default=96, metavar='neurons',
@@ -108,12 +113,14 @@ if __name__ == '__main__':
 
 
     log.write('* Reading network from {}\n'.format(args.model))
-    nbase = len(args.alphabet)
+    alphabet_info = alphabet.AlphabetInfo(args.alphabet, args.alphabet)
+
     model_kwargs = {
         'size' : args.size,
         'stride': args.stride,
         'winlen': args.winlen,
-        'insize': 1  # Number of input features to model e.g. was >1 for event-based models (level, std, dwell)
+        'insize': 1,  # Number of input features to model e.g. was >1 for event-based models (level, std, dwell)
+        'alphabet_info': alphabet_info
     }
     network = helpers.load_model(args.model, **model_kwargs).to(device)
     log.write('* Network has {} parameters.\n'.format(sum([p.nelement()
@@ -135,10 +142,19 @@ if __name__ == '__main__':
     t0 = time.time()
     log.write('* Training\n')
 
+    #Set cap at very large value (before we have any gradient stats).
+    gradient_cap = constants.LARGE_VAL
+    if args.gradient_cap_fraction is None:
+        log.write('* No gradient capping\n')
+    else:
+        rolling_quantile = maths.RollingQuantile(args.gradient_cap_fraction)
+        log.write('* Gradient L2 norm cap will be upper' +
+                  ' {:3.2f} quantile of the last {} norms.\n'.format(
+                      args.gradient_cap_fraction, rolling_quantile.window))
 
     for i in range(args.niteration):
 
-        idx = np.random.randint(len(chunks), size=args.batch_size)
+        idx = np.random.choice(len(chunks), size=args.batch_size, replace=False)
         indata = chunks[idx].transpose(1, 0)
         indata = torch.tensor(indata[...,np.newaxis], device=device, dtype=torch.float32)
         seqs = [seq_dict[i] for i in idx]
@@ -151,6 +167,11 @@ if __name__ == '__main__':
         lossvector = ctc.crf_flipflop_loss(outputs, seqs, seqlens, 1.0)
         loss = lossvector.sum() / (seqlens > 0.0).float().sum()
         loss.backward()
+
+        gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(network.parameters(),
+                                                           gradient_cap)
+        if args.gradient_cap_fraction is not None:
+            gradient_cap = rolling_quantile.update(gradnorm_uncapped)
         optimizer.step()
 
         fval = float(loss)
