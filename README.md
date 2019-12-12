@@ -356,7 +356,8 @@ As a starting point, we recommend:
 
 In order to use a GPU to accelerate model training, you will need to ensure that CUDA is installed (specifically nvcc) and that CUDA-related environment variables are set.
 This should be done before running `make install` described above. If you forgot to do this, just run `make install` again once everything is set up.
-The Makefile will try to detect which version of CUDA is present on your system, and install matching versions of pytorch and cupy. 
+The Makefile will try to detect which version of CUDA is present on your system, and install matching versions of pytorch and cupy.
+Taiyaki depends on pytorch version 1.2, which supports CUDA versions 9.2 and 10.0.
 
 To see what version of CUDA will be detected and which torch and cupy packages will be installed you can run:
 
@@ -364,8 +365,8 @@ To see what version of CUDA will be detected and which torch and cupy packages w
 
 Expert users can override the detected versions on the command line. For example, you might want to do this if you are building Taiyaki on one machine to run on another.
 
-    # Force CUDA version 8.0
-    CUDA=8.0 make install
+    # Force CUDA version 9.2
+    CUDA=9.2 make install
 
     # Override torch package, and don't install cupy at all
     TORCH=my-special-torch-package CUPY= make install
@@ -473,7 +474,7 @@ as the execution node, and then install using that machine:
 
 ...or you can tell Taiyaki at the installation stage which version of CUDA to use. For example
 
-    CUDA=8.0 make install
+    CUDA=9.2 make install
 
 ## Execution
 When **executing** on an SGE cluster you need to make sure you run on a node which has GPUs available, and then tell Taiyaki to use the correct GPU.
