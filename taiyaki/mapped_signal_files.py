@@ -573,6 +573,10 @@ class HDF5Reader(AbstractMappedSignalReader):
     def get_read_ids(self):
         """Return list of read ids, or empty list if none present"""
         try:
+            return self.hdf5['read_ids'][()].tolist()
+        except KeyError:
+            pass
+        try:
             return list(self.hdf5['Reads'].keys())
         except:
             return []
@@ -610,14 +614,28 @@ class HDF5Writer(AbstractMappedSignalWriter):
         self.hdf5 = h5py.File(filename, 'w')
         self._write_version()
         self._write_alphabet_info(alphabet_info)
+        # collect read_ids for storage since listing HDF5 keys can be very slow
+        # for large numbers of groups. These will be dumped to a dataset when
+        # the file is closed.
+        self.read_ids = []
 
     def close(self):
+        if len(self.read_ids) > 0:
+            # special variable length string h5py data type
+            dt = h5py.special_dtype(vlen=str)
+            read_ids = np.array(self.read_ids, dtype=dt)
+            # store read ids dataset in root so it isn't confused for a read
+            read_ids_ds = self.hdf5.create_dataset(
+                'read_ids', read_ids.shape, dtype=dt, compression="gzip")
+            read_ids_ds[...] = read_ids
+
         self.hdf5.close()
 
     def write_read(self, readdict):
         """Write a read to the appropriate place in the file, starting from a read object"""
         read = Read(readdict)
         read_id = readdict['read_id']
+        self.read_ids.append(read_id)
         g = self.hdf5.create_group(posixpath.join('Reads', read_id))
         for k, v in read.items():
             if isinstance(v, np.ndarray):
