@@ -420,22 +420,24 @@ def main():
     mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
 
     # Generate list of batches for standard loss reporting
+    all_read_ids = [read['read_id'] for read in read_data]
     if args.reporting_strand_list is not None:
-        reporting_read_ids = set(
-            helpers.get_read_ids(args.reporting_strand_list))
-        report_read_data = [read for read in read_data
-                            if read['read_id'] in reporting_read_ids]
-        if not args.include_reporting_strands:
-            read_data = [read for read in read_data
-                         if read['read_id'] not in reporting_read_ids]
+        # get reporting read ids in from strand list
+        reporting_read_ids = set(helpers.get_read_ids(
+            args.reporting_strand_list)).intersection(all_read_ids)
     else:
+        # randomly select reporting read ids (at least one for tiny test runs)
         num_report_reads = max(
             1, int(len(read_data) * args.reporting_percent_reads / 100))
-        np.random.shuffle(read_data)
-        report_read_data = read_data[:num_report_reads]
-        if not args.include_reporting_strands:
-            read_data = read_data[num_report_reads:]
+        reporting_read_ids = set(np.random.choice(
+            all_read_ids, size=num_report_reads, replace=False))
+    # generate reporting reads list
+    report_read_data = [read for read in read_data
+                        if read['read_id'] in reporting_read_ids]
     if not args.include_reporting_strands:
+        # if holding strands out remove these reads from read_data
+        read_data = [read for read in read_data
+                     if read['read_id'] not in reporting_read_ids]
         log.write(('* Standard loss reporting from {} validation reads ' +
                    'held out of training. \n').format(len(report_read_data)))
     reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
