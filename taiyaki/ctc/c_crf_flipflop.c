@@ -31,6 +31,17 @@ void crf_flipflop_forward_step(float const * logprob, float const * fwdprev,
                                int32_t const * seq, size_t nseqpos,
                                float * fwdcurr, float sharpfact,
                                size_t nbase){
+   /*
+	Calculate fwdcurr, a forward matrix column (block t), from fwdprev, the previous forward matrix column (at block (t-1)).
+				       
+	logprob is a pointer to  a single row of the weight matrix (i.e. (nbase + 1) * 2*nbase  elements; one block).
+	fwdprev is a (nseqpos) vector of forward probs (from previous block)
+	seq is (nseqpos) vector containing the ref seq
+	nseqpos is the length of the ref
+	fwdcurr is pointer to destination vector (len nseqpos), already allocated
+	sharpfact is sharpening factor, default 1
+	nbase is number of bases, 4 for ACGT
+   */
     assert(nseqpos > 0);
     assert(NULL != logprob);
     assert(NULL != fwdprev);
@@ -38,17 +49,17 @@ void crf_flipflop_forward_step(float const * logprob, float const * fwdprev,
     assert(NULL != fwdcurr);
 
     assert(nbase > 0);
-    const size_t offset_stay = nbase * (nbase + nbase);
+    const size_t offset_stay = nbase * (nbase + nbase); // transitions into flops start here in the table
 
-    for(size_t pos=0 ; pos < nseqpos ; pos++){
+    for(size_t pos=0 ; pos < nseqpos ; pos++){       //loop through sequence
         // Stay in current position
-        const size_t base = seq[pos];
-        fwdcurr[pos] = (base < nbase) ?
-          logprob[base * (nbase + nbase) + base]:
-          logprob[offset_stay + base];
-        fwdcurr[pos] += fwdprev[pos];
+        const size_t base = seq[pos];                        //base in this position in seq
+        fwdcurr[pos] = (base < nbase) ?                    //if it's a flip...
+          logprob[base * (nbase + nbase) + base]:     //make fwdcurr[pos]=prob(flip-flip), a stay
+          logprob[offset_stay + base];                         //else   fwdcurr[pos]=prob(flop-flop), a stay
+        fwdcurr[pos] += fwdprev[pos];                      // in non-log space, we now have fwdcurr[s] = fwdprev[s] * stayprob
     }
-    for(size_t pos=1 ; pos < nseqpos ; pos++){
+    for(size_t pos=1 ; pos < nseqpos ; pos++){      //loop through sequence positions we can step into
         // Move to new position
         const size_t base_to = seq[pos];
         const size_t base_from = seq[pos - 1];
@@ -60,7 +71,7 @@ void crf_flipflop_forward_step(float const * logprob, float const * fwdprev,
             logprob[offset_stay + base_from];
         fwdcurr[pos] = logsumexpf(fwdcurr[pos],
                                   fwdprev[pos - 1] + score,
-                                  sharpfact);
+                                  sharpfact);                       //in non-log space, we now have fwdcurr[s] = fwdprev[s] * stayprob + fwdprev[s-1] * stepprob
     }
 }
 
@@ -68,6 +79,18 @@ void crf_flipflop_forward_step(float const * logprob, float const * fwdprev,
 float crf_flipflop_forward(float const * logprob, size_t nblk, size_t ldp,
                            int32_t const * seq, size_t nseqpos,
                            float sharpfact, float * fwd, size_t nbase){
+   /*
+	Calculate fwd, the final forward matrix column, and return the forward score.
+				       
+	logprob is a pointer to  the weight matrix (i.e. nblk x ((nbase + 1) *2*nbase ) elements; nblk blocks).
+	nblk is number of blocks = length of path
+	ldp is (length of one row of the weight matrix) * batchsize
+	seq is (nseqpos) vector containing the ref seq
+        nseqpos is the length of the ref
+        sharpfact is sharpening factor, default 1
+	fwd is pointer to space for the forward matrix (nblk * nseqpos), already allocated
+	nbase is number of bases, 4 for ACGT
+   */
     assert(nseqpos > 0);
     assert(NULL != logprob);
     assert(NULL != seq);
@@ -98,6 +121,17 @@ void crf_flipflop_backward_step(float const * logprob, float const * bwdprev,
                                 int32_t const * seq, size_t nseqpos,
                                 float * bwdcurr, float sharpfact,
                                 size_t nbase){
+   /*
+	Calculate bwdcurr, a backward matrix column (at block t), from bwdprev, the next (block t+1) backward matrix column.
+				       
+	logprob is a pointer to  a single row of the weight matrix (i.e. 2*nbase * (nbase + 1) elements; one block).
+	bwdprev is a (nseqpos) vector of backward probs (from next block)
+	seq is (nseqpos) vector containing the ref seq
+	nseqpos is the length of the ref
+	bwdcurr is pointer to destination vector (len nseqpos), already allocated
+	sharpfact is sharpening factor, default 1
+	nbase is number of bases, 4 for ACGT
+   */
     assert(nseqpos > 0);
     assert(NULL != logprob);
     assert(NULL != bwdprev);
@@ -134,6 +168,18 @@ void crf_flipflop_backward_step(float const * logprob, float const * bwdprev,
 float crf_flipflop_backward(float const * logprob, size_t nblk, size_t ldp,
                             int32_t const * seq, size_t nseqpos,
                             float sharpfact, float * bwd, size_t nbase){
+   /*
+	Calculate bwd, the first backward matrix column, and return the backward score.
+				       
+	logprob is a pointer to  the weight matrix (i.e. nblk x (nbase + 1)*(2*nbase) elements; nblk blocks).
+	nblk is number of blocks = length of path
+	ldp is (length of one row of the weight matrix) * batchsize
+	seq is (nseqpos) vector containing the ref seq
+        nseqpos is the length of the ref
+        sharpfact is sharpening factor, default 1
+	bwd is pointer to space for the backward matrix (nblk * nseqpos), already allocated
+	nbase is number of bases, 4 for ACGT
+   */
     assert(nseqpos > 0);
     assert(NULL != logprob);
     assert(NULL != seq);
@@ -162,6 +208,20 @@ float crf_flipflop_backward(float const * logprob, size_t nblk, size_t ldp,
 void crf_flipflop_cost(float const * logprob, size_t ntrans_state, size_t nblk,
                        size_t nbatch, int32_t const * seqs,
                        int32_t const * seqlen, float sharpfact, float * score){
+   /*
+	Calculate ctc cost for each batch element, place result in score
+				       
+	logprob is a pointer to  the weight matrix (i.e. nblk x (nbase + 1)(2*nbase ) elements; nblk blocks).
+	ntrans_state is length of one row of the weight matrix (nbase + 1)(2*nbase)
+	nblk is number of blocks = length of path
+	nbatch is number of batch elements = batch size
+	seqs is size-(sum seqlen) vector containing the ref seqs
+        seqlen is a (nbatch) vector of ints giving the sequence lengths of the ref
+        sharpfact is sharpening factor, default 1
+	score is space for the scores for each batch element: size nbatch.
+			       
+	Uses crf_flipflop_forward()
+   */
     const size_t nbase = nstate_to_nbase(ntrans_state);
     const size_t ldp = nbatch * ntrans_state;
     size_t seqidx[nbatch];
@@ -197,6 +257,9 @@ void crf_flipflop_scores_fwd(float const * logprob, size_t ntrans_state,
                              size_t nblk, size_t nbatch, int32_t const * seqs,
                              int32_t const * seqlen, float sharpfact,
                              float * score){
+    /*
+    Forward calculation of scores. Wrapper for crf_flipflop_cost()
+    */
     crf_flipflop_cost(logprob, ntrans_state, nblk, nbatch, seqs, seqlen,
                       sharpfact, score);
 }
@@ -206,6 +269,9 @@ void crf_flipflop_scores_bwd(float const * logprob, size_t ntrans_state,
                              size_t nblk, size_t nbatch, int32_t const * seqs,
                              int32_t const * seqlen, float sharpfact,
                              float * score){
+    /*
+    Backward calculation of scores. For comparison with crf_flipflop_scores_fwd() in debugging.
+    */
     const size_t nbase = nstate_to_nbase(ntrans_state);
     const size_t ldp = nbatch * ntrans_state;
     size_t seqidx[nbatch];
@@ -240,6 +306,20 @@ void crf_flipflop_grad_step(float const * fwdcurr, float const * bwdnext,
                             float const * logprob, int32_t const * seq,
                             size_t nseqpos, float * grad, size_t ntrans_state,
                             float fact, float sharpfact){
+   /*
+	Calculate ctc cost gradient for a single batch element and single block, place result in appropriate row of grad matrix
+				       
+	fwdcurr is a (nseqpos) vector of forward probs (from one batch element and block t)
+	bwdnext is a (nseqpos) vector of backward probs (from the same batch element and block t+1)
+	logprob is a pointer to  the weight matrix (i.e. nblk x nbatch x  ntrans_state elements)
+	seq is (nseqpos) vector containing the ref seq for this batch element
+	nseqpos is length of the ref seq for this batch element
+	grad is space for the gradients for this batch element and this block: size (ntrans_state)
+	ntrans_state is length of one row of the weight matrix -  (2*nbase * (nbase + 1))
+	fact is the sum of this column of the FB matrix
+        sharpfact is sharpening factor, default 1
+	
+   */
     const size_t nbase = nstate_to_nbase(ntrans_state);
     const size_t offset_stay = nbase * (nbase + nbase);
 
@@ -274,6 +354,18 @@ void crf_flipflop_grad(float const * logprob, size_t ntrans_state, size_t nblk,
                        size_t nbatch, int32_t const * seqs,
                        int32_t const * seqlen, float sharpfact, float * score,
                        float * grad){
+   /*
+	Calculate ctc cost gradients for a batch of data, place result in grad
+				       
+	logprob is a pointer to  the weight matrix (i.e. nblk x nbatch x  ntrans_state elements)
+	ntrans_state is length of one row of the weight matrix -  (2*nbase * (nbase + 1))
+	nblk is number of blocks = length of path
+	nbatch is number of batch elements = batch size
+	seqs is size-(sum seqlen) vector containing the ref seqs
+        seqlen is a (nbatch) vector of ints giving the sequence lengths of the ref
+        sharpfact is sharpening factor, default 1
+	grad is space for the gradients: size (ntrans_state * nblk * nbatch)
+   */
     const size_t ldp = nbatch * ntrans_state;
     const size_t nbase = nstate_to_nbase(ntrans_state);
     size_t seqidx[nbatch];
@@ -283,9 +375,9 @@ void crf_flipflop_grad(float const * logprob, size_t ntrans_state, size_t nblk,
     }
 
 #pragma omp parallel for
-    for(size_t batch=0 ; batch < nbatch ; batch++){
+    for(size_t batch=0 ; batch < nbatch ; batch++){            //Loop over batch elements
         const size_t batch_offset = batch * ntrans_state;
-        if(0 == seqlen[batch]){
+        if(0 == seqlen[batch]){                                               //No sequence for this batch element
             for(size_t blk=0 ; blk < nblk ; blk++){
                 memset(grad + batch_offset + blk * ldp, 0,
                        ntrans_state * sizeof(float));
@@ -294,38 +386,38 @@ void crf_flipflop_grad(float const * logprob, size_t ntrans_state, size_t nblk,
         }
         const size_t nseqpos = seqlen[batch];
         int32_t const * seq = seqs + seqidx[batch];
-        float * fwd = calloc((nblk + 1) * nseqpos, sizeof(float));
-        float * bwd = calloc((nblk + 1) * nseqpos, sizeof(float));
+        float * fwd = calloc((nblk + 1) * nseqpos, sizeof(float));      //space for a forward matrix
+        float * bwd = calloc((nblk + 1) * nseqpos, sizeof(float));     //...and a backward matrix
         if(NULL == fwd || NULL == bwd){
             free(fwd);
             free(bwd);
             // TODO set grad values to NAN in order to propogate memory error
             continue;
         }
-        score[batch] =
+        score[batch] =                                                                    //Calculate forward score and forward matrix for one batch element
             crf_flipflop_forward(logprob + batch_offset, nblk, ldp, seq,
                                  nseqpos, sharpfact, fwd, nbase);
         // TODO compute backwards while computing gradient to reduce memory
         // footprint
         crf_flipflop_backward(logprob + batch_offset, nblk, ldp, seq,
-                              nseqpos, sharpfact, bwd, nbase);
+                              nseqpos, sharpfact, bwd, nbase);                 //backward matrix for one batch element
 
         // Normalised transition matrix
-        for(size_t blk=0 ; blk < nblk ; blk++){
-            float const * fwdcurr = fwd + blk * nseqpos;
+        for(size_t blk=0 ; blk < nblk ; blk++){                               //loop over blocks
+            float const * fwdcurr = fwd + blk * nseqpos;                //forward matrix column for this batch element and block
             float const * bwdcurr = bwd + blk * nseqpos;
             float const * bwdnext = bwd + blk * nseqpos + nseqpos;
             float const * logprobcurr = logprob + batch_offset + blk * ldp;
-            float * gradcurr = grad + batch_offset + blk * ldp;
+            float * gradcurr = grad + batch_offset + blk * ldp;        //pointer to part of grad matrix referring to this batch element and this block
 
             //  Recalculate close to position to reduce numerical error
             float fact = fwdcurr[0] + bwdcurr[0];
             for(size_t pos=1; pos < nseqpos ; pos++){
                 fact = logsumexpf(fact, fwdcurr[pos] + bwdcurr[pos], sharpfact);
-            }
+            }                                                                                  // in non-log space this would be fact = sum_s (f^s_t b^s_t)     for block t  (when sharpfact=1)
 
             crf_flipflop_grad_step(fwdcurr, bwdnext, logprobcurr, seq, nseqpos,
-                                   gradcurr, ntrans_state, fact, sharpfact);
+                                   gradcurr, ntrans_state, fact, sharpfact); // put gradients into gradcurr
         }
 
         free(bwd);
