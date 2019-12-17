@@ -22,7 +22,8 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 add_common_command_args(parser, """adam alphabet device eps limit niteration
-                                   outdir overwrite quiet save_every version""".split())
+                                   outdir overwrite quiet save_every version
+                                   weight_decay""".split())
 
 parser.add_argument('--batch_size', default=128, metavar='chunks',
                     type=Positive(int), help='Number of chunks to run in parallel')
@@ -126,8 +127,9 @@ if __name__ == '__main__':
     log.write('* Network has {} parameters.\n'.format(sum([p.nelement()
                                                            for p in network.parameters()])))
 
-    optimizer = torch.optim.Adam(network.parameters(), lr=args.lr_max,
-                                 betas=args.adam, eps=args.eps)
+    optimizer = torch.optim.AdamW(network.parameters(), lr=args.lr_max,
+                                  betas=args.adam, eps=args.eps,
+                                  weight_decay=args.weight_decay)
     lr_scheduler = CosineAnnealingLR(optimizer, args.niteration)
 
     score_smoothed = helpers.WindowedExpSmoother()

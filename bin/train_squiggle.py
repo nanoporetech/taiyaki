@@ -119,9 +119,9 @@ def main():
 
     conv_net = conv_net.to(device)
 
-    optimizer = torch.optim.Adam(conv_net.parameters(), lr=args.lr_max,
-                                 betas=args.adam, weight_decay=args.weight_decay,
-                                 eps=args.eps)
+    optimizer = torch.optim.AdamW(conv_net.parameters(), lr=args.lr_max,
+                                  betas=args.adam, weight_decay=args.weight_decay,
+                                  eps=args.eps)
 
     lr_scheduler = optim.ReciprocalLR(optimizer, args.lr_decay)
 
