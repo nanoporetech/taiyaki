@@ -93,7 +93,7 @@ def add_common_command_args(parser, arglist):
 
         ('sample_nreads_before_filtering', lambda :
             parser.add_argument('--sample_nreads_before_filtering', metavar='n',
-                                type=NonNegative(int), default=1000,
+                                type=NonNegative(int), default=100000,
                                 help='Sample n reads to decide on bounds for filtering before training. Set to 0 to do all.')),
 
         ('save_every', lambda :
