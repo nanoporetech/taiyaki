@@ -373,10 +373,10 @@ def main():
     log.write(", mad(mean_dwell)={:.2f}\n".format(
         filter_params.mad_meandwell))
 
-    optimizer = torch.optim.Adam(network.parameters(), lr=args.lr_max,
-                                 betas=args.adam,
-                                 weight_decay=args.weight_decay,
-                                 eps=args.eps)
+    optimizer = torch.optim.AdamW(network.parameters(), lr=args.lr_max,
+                                  betas=args.adam,
+                                  weight_decay=args.weight_decay,
+                                  eps=args.eps)
 
     if args.lr_warmup is None:
         lr_warmup = args.lr_min
