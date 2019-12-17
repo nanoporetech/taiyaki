@@ -406,6 +406,7 @@ class Convolution(nn.Module):
     """
     def __init__(self, insize, size, winlen, stride=1, pad=None, fun=activation.tanh, has_bias=True):
         super().__init__()
+        self.has_bias = has_bias
         self.insize = insize
         self.size = size
         self.stride = stride
@@ -414,15 +415,18 @@ class Convolution(nn.Module):
             pad = (winlen // 2, (winlen - 1) // 2)
         self.padding = pad
         self.pad = nn.ConstantPad1d(pad, 0)
-        self.conv = nn.Conv1d(kernel_size=winlen, in_channels=insize, out_channels=size, stride=stride, bias=has_bias)
+        self.conv = nn.Conv1d(kernel_size=winlen, in_channels=insize,
+                              out_channels=size, stride=stride, bias=has_bias)
         self.activation = fun
         self.reset_parameters()
 
     def reset_parameters(self):
-        winit = orthonormal_matrix(self.conv.weight.shape[0], np.prod(self.conv.weight.shape[1:]))
+        winit = orthonormal_matrix(self.conv.weight.shape[0],
+                                   np.prod(self.conv.weight.shape[1:]))
         init_(self.conv.weight, winit.reshape(self.conv.weight.shape))
-        binit = truncated_normal(list(self.conv.bias.shape), sd=0.5)
-        init_(self.conv.bias, binit)
+        if self.has_bias:
+            binit = truncated_normal(list(self.conv.bias.shape), sd=0.5)
+            init_(self.conv.bias, binit)
 
     def forward(self, x):
         x = x.permute(1, 2, 0)
@@ -433,13 +437,14 @@ class Convolution(nn.Module):
         res = OrderedDict([("type", "convolution"),
                            ("insize", self.insize),
                            ("size", self.size),
+                           ("bias", self.has_bias),
                            ("winlen", self.conv.kernel_size[0]),
                            ("stride", self.conv.stride[0]),
                            ("padding", self.padding),
                            ("activation", self.activation.__name__)])
         if params:
-            res['params'] = OrderedDict([("W", self.conv.weight),
-                                         ("b", self.conv.bias)])
+            res['params'] = OrderedDict([("W", self.conv.weight)] +
+                                        [("b", self.conv.bias)] if self.has_bias else [])
         return res
 
 
