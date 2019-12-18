@@ -43,7 +43,7 @@ cacheDir = $(HOME)/.cache/taiyaki
 
 .PHONY: install
 install:
-	if [ -z "$TORCH" ]; then echo "Torch URL not specified for cuda=${CUDA}. Please check supported cuda versions"; exit 1; fi
+	if [ -z "${TORCH}" ]; then echo "Torch URL not specified for cuda=${CUDA}. Please check supported cuda versions"; exit 1; fi
 	rm -rf ${envDir}
 	virtualenv --python=${PYTHON} --prompt=${envPrompt} ${envDir}
 	source ${envDir}/bin/activate && \
