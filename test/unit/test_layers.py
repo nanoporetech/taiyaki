@@ -254,6 +254,12 @@ class ConvolutionTest(LayerTest, unittest.TestCase):
         self.layer = nn.Convolution(12, 32, 11, 5, has_bias=True)
 
 
+class ConvolutionNoBiasTest(LayerTest, unittest.TestCase):
+    _INPUTS = [np.random.uniform(size=(100, 20, 12))]
+
+    def setUp(self):
+        self.layer = nn.Convolution(12, 32, 11, 5, has_bias=False)
+
 class ResidualTest(LayerTest, unittest.TestCase):
     _INPUTS = [np.random.uniform(size=(100, 20, 12))]
 
