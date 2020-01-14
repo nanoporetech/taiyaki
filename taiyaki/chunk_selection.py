@@ -155,7 +155,7 @@ def sample_filter_parameters(read_data, number_to_sample, chunk_len,
 
 def assemble_batch(read_data, batch_size, chunk_len, filter_params,
                    chunk_len_means_sequence_len=False,
-                   select_chunks_iteratively=False):
+                   select_strands_randomly=True, first_strand_index=0):
     """Assemble a batch of data by repeatedly choosing a random (or iterating
     over reads) read and location in that read, continuing until we have found
     batch_size chunks that pass the tests.
@@ -177,4 +177,5 @@ def assemble_batch(read_data, batch_size, chunk_len, filter_params,
     return sample_chunks(read_data, batch_size, chunk_len,
                          filter_params=filter_params,
                          chunk_len_means_sequence_len=chunk_len_means_sequence_len,
-                         select_chunks_iteratively=select_chunks_iteratively)
+                         select_strands_randomly=select_strands_randomly,
+                         first_strand_index=first_strand_index)
