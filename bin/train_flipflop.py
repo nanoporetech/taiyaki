@@ -134,7 +134,7 @@ def is_cat_mod_model(network):
 def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
                            target_sub_batches, alphabet_info, reverse,
                            filter_params, network, network_is_catmod, log,
-                           select_chunks_iteratively=False):
+                           select_strands_randomly=True, first_strand_index=0):
     total_sub_batches = 0
     if reverse:
         revop = np.flip
@@ -146,7 +146,9 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         # Chunk_batch is a list of dicts
         chunk_batch, batch_rejections = chunk_selection.assemble_batch(
             read_data, sub_batch_size, batch_chunk_len, filter_params,
-            select_chunks_iteratively=select_chunks_iteratively)
+            select_strands_randomly=select_strands_randomly,
+            first_strand_index=first_strand_index)
+        first_strand_index += sum(batch_rejections.values())
         if len(chunk_batch) < sub_batch_size:
             log.write('* Warning: only {} chunks passed filters (asked for {}).\n'.format(len(chunk_batch), sub_batch_size))
 
@@ -445,7 +447,7 @@ def main():
         device, report_read_data, reporting_chunk_len, args.min_sub_batch_size,
         args.reporting_sub_batches, alphabet_info, args.reverse,
         filter_params, network, network_is_catmod, log,
-        select_chunks_iteratively=True))
+        select_strands_randomly=False))
     log.write( ('* Standard loss report: chunk length = {} & sub-batch size ' +
                 '= {} for {} sub-batches. \n').format(reporting_chunk_len,
                 args.min_sub_batch_size, args.reporting_sub_batches) )

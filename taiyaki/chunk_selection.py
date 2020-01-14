@@ -74,7 +74,7 @@ def chunk_filter(chunkdict, filter_params):
 def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
                   fraction_of_fails_allowed=0.5,
                   chunk_len_means_sequence_len=False,
-                  select_chunks_iteratively=False):
+                  select_strands_randomly=True, first_strand_index=0):
     """Sample <number_to_sample> chunks from a list of read_data, returning
     a tuple (chunklist, rejection_dict)
 
@@ -99,9 +99,11 @@ def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
                              If this is True, then chunk_len determines the length
                              in bases of the sequence in the chunk, and we use
                              mapped_signal_files.get_chunk_with_sequence_length()
-    param: select_chunks_iteratively : Select chunks from reads iteratively
-                             instead of randomly choosing a new read each
-                             iteration. Useful for validation chunks.
+    param: select_strands_randomly : Choose a random read at each iteration.
+                             When select_strands_randomly=False, iterate
+                             through reads as found in read_data.
+    param: first_strand_index : When select_strands_randomly=False, begin
+                             selecting strands at this index.
     """
     nreads = len(read_data)
     if number_to_sample is None or number_to_sample == 0:
@@ -113,8 +115,9 @@ def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
     count_dict = defaultdict(lambda: 0)  # Will contain counts of numbers of rejects and passes
     attempts = 0
     while(count_dict['pass'] < number_to_sample_used and attempts < maximum_attempts_allowed):
-        read_number = attempts % nreads if select_chunks_iteratively else \
-                      np.random.randint(nreads)
+        read_number = np.random.randint(nreads) if select_strands_randomly else \
+                      (first_strand_index + attempts) % nreads
+        attempts += 1
         read = read_data[read_number]
         if chunk_len_means_sequence_len:
             chunkdict = read.get_chunk_with_sequence_length(chunk_len)
@@ -124,7 +127,6 @@ def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
         count_dict[passfail_str] += 1
         if passfail_str == 'pass':
             chunklist.append(chunkdict)
-        attempts += 1
 
     return chunklist, count_dict
 
