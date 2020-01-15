@@ -25,15 +25,18 @@ def iterate_file_read_pairs(filepaths, read_ids, limit=None, verbose=0):
         if not os.path.exists(filepath):
             sys.stderr.write('File {} does not exist, skipping\n'.format(filepath))
             continue
-        with ont_fast5_api.fast5_interface.get_fast5_file(filepath, 'r') as f5file:
-            if read_id not in f5file.get_read_ids():
-                continue
-        if verbose > 0:
-            print("Reading", read_id, "from", filepath)
-        yield filepath, read_id
-        nyielded += 1
-        if limit is not None and nyielded >= limit:
-            return  # ends iterator
+        try:
+            with ont_fast5_api.fast5_interface.get_fast5_file(filepath, 'r') as f5file:
+                if read_id not in f5file.get_read_ids():
+                    continue
+            if verbose > 0:
+                print("Reading", read_id, "from", filepath)
+            yield filepath, read_id
+            nyielded += 1
+            if limit is not None and nyielded >= limit:
+                return  # ends iterator
+        except Exception as e:
+            sys.stderr.write("Warning: An exception occured in fast5utils (skipped this read):\n"+str(e)+"\n")
     return
 
 
@@ -49,18 +52,21 @@ def iterate_files_reads_unpaired(filepaths, read_ids, limit=None, verbose=0):
         if not os.path.exists(filepath):
             sys.stderr.write('File {} does not exist, skipping\n'.format(filepath))
             continue
-        with ont_fast5_api.fast5_interface.get_fast5_file(filepath, 'r') as f5file:
-            for read_id in f5file.get_read_ids():
-                if read_ids is None or read_id in read_ids:
-                    if verbose > 0:
-                        print("Reading", read_id, "from", filepath)
-                    yield filepath, read_id
-                    nyielded += 1
-                else:
-                    if verbose > 0:
-                        print("Skipping", read_id, "from", filepath, ":not in read_id list")
-                if limit is not None and nyielded >= limit:
-                    return  # ends iterator
+        try:
+            with ont_fast5_api.fast5_interface.get_fast5_file(filepath, 'r') as f5file:
+                for read_id in f5file.get_read_ids():
+                    if read_ids is None or read_id in read_ids:
+                        if verbose > 0:
+                            print("Reading", read_id, "from", filepath)
+                        yield filepath, read_id
+                        nyielded += 1
+                    else:
+                        if verbose > 0:
+                            print("Skipping", read_id, "from", filepath, ":not in read_id list")
+                    if limit is not None and nyielded >= limit:
+                        return  # ends iterator
+        except Exception as e:
+            sys.stderr.write("Warning: An exception occured in fast5utils (skipped this read):\n"+str(e)+"\n")
 
 
 def iterate_fast5_reads(path,
@@ -215,7 +221,7 @@ def get_read_attributes(read):
 def read_summary(read):
     """Print summary of information available in fast5 file on a particular read
 
-    param read: an ont_fast5_api read object   
+    param read: an ont_fast5_api read object
     """
     print("ONT interface: read information")
     dacs = read.get_raw_data()
