@@ -9,6 +9,7 @@ import torch
 
 from taiyaki import __version__
 from taiyaki.fileio import readtsv
+from taiyaki.layers import MODEL_VERSION
 
 
 def _load_python_model(model_file, **model_kwargs):
@@ -69,6 +70,14 @@ def load_model(model_file, params_file=None, **model_kwargs):
         network = _load_python_model(model_file, **model_kwargs)
     else:
         network = torch.load(model_file, map_location='cpu')
+        assert hasattr(network, 'metadata'), \
+            """Attempted to load unversioned model checkpoint.
+            Please run misc/upgrade_model.py
+            """
+        assert network.metadata['version'] == MODEL_VERSION, \
+            """Attempted to load old model version.
+            Please run misc/upgrade_model.py
+            """
 
     if params_file is not None:
         param_dict = torch.load(params_file, map_location='cpu')

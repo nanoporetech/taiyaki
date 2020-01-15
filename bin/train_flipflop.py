@@ -94,6 +94,8 @@ data_grp.add_argument('--reporting_strand_list', action=FileExists,
 data_grp.add_argument('--reporting_sub_batches', default=10,
                      metavar='sub_batches', type=Positive(int),
                      help='Number of sub-batches to use for std loss reporting')
+data_grp.add_argument('--standardize', default=True, action=AutoBool,
+                      help='Standardize currents for each read')
 data_grp.add_argument('--sub_batches', default=1, metavar='sub_batches',
                       type=Positive(int),
                       help='Number of sub-batches per batch')
@@ -133,7 +135,8 @@ def is_cat_mod_model(network):
 
 def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
                            target_sub_batches, alphabet_info, reverse,
-                           filter_params, network, network_is_catmod, log,
+                           standardize, filter_params, network,
+                           network_is_catmod, log,
                            select_strands_randomly=True, first_strand_index=0):
     total_sub_batches = 0
     if reverse:
@@ -146,6 +149,7 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         # Chunk_batch is a list of dicts
         chunk_batch, batch_rejections = chunk_selection.assemble_batch(
             read_data, sub_batch_size, batch_chunk_len, filter_params,
+            standardize=standardize,
             select_strands_randomly=select_strands_randomly,
             first_strand_index=first_strand_index)
         first_strand_index += sum(batch_rejections.values())
@@ -328,6 +332,25 @@ def main():
         network_save_skeleton = helpers.load_model(args.model, **model_kwargs)
         log.write('* Network has {} parameters.\n'.format(
                   sum([p.nelement() for p in network_save_skeleton.parameters()])))
+        if hasattr(network_save_skeleton, 'metadata'):
+            #  Check model metadata is consistent with command-line options
+            if network_save_skeleton.metadata['reverse'] != args.reverse:
+                sys.stderr.write('* WARNING: Commandline specifies {} orientation ' +
+                                 'but model trained in opposite direction!\n'.format(
+                                     'reverse' if args.reverse else 'forward'))
+                network_save_skeleton.metadata['reverse'] = args.reverse
+            if network_save_skeleton.metadata['standardize'] != args.standardize:
+                sys.stderr.write('* WARNING: Model and command-line ' +
+                                 'standardization are inconsistent.\n')
+                network_save_skeleton.metadata['standardize'] = args.standardize
+
+        else:
+            network_save_skeleton.metadata = {
+                'reverse' : args.reverse,
+                'standardize' : args.standardize,
+                'version' : layers.MODEL_VERSION
+            }
+
         if not alphabet_info.is_compatible_model(network_save_skeleton):
             sys.stderr.write(
                 '* ERROR: Model and mapped signal files contain incompatible ' +
@@ -446,7 +469,7 @@ def main():
     reporting_batch_list = list(prepare_random_batches(
         device, report_read_data, reporting_chunk_len, args.min_sub_batch_size,
         args.reporting_sub_batches, alphabet_info, args.reverse,
-        filter_params, network, network_is_catmod, log,
+        args.standardize, filter_params, network, network_is_catmod, log,
         select_strands_randomly=False))
     log.write( ('* Standard loss report: chunk length = {} & sub-batch size ' +
                 '= {} for {} sub-batches. \n').format(reporting_chunk_len,
@@ -491,8 +514,9 @@ def main():
         main_batch_gen = prepare_random_batches(device, read_data,
                                                 batch_chunk_len, sub_batch_size,
                                                 args.sub_batches, alphabet_info,
-                                                args.reverse, filter_params,
-                                                network, network_is_catmod, log)
+                                                args.reverse, args.standardize,
+                                                filter_params, network,
+                                                network_is_catmod, log)
 
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
                             calculate_loss( network, network_is_catmod,
