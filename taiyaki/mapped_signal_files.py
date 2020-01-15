@@ -240,7 +240,7 @@ class Read(dict):
                 return True
         return False
 
-    def _get_chunk(self, dacs_region, ref_region, verbose=False):
+    def _get_chunk(self, dacs_region, ref_region, standardize=True, verbose=False):
         """
         Get a chunk, returning a dictionary with entries:
 
@@ -271,7 +271,7 @@ class Read(dict):
                 print("Rejecting read because of zero-length signal chunk")
             returndict = {'rejected': 'emptysignal'}
         else:
-            current = self.get_current(dacs_region, True)
+            current = self.get_current(dacs_region, standardize)
             reference = self['Reference'][ref_region[0]:ref_region[1]]
             dwells = np.diff(self['Ref_to_signal'][ref_region[0]:ref_region[1]])
             # If the ref_region has length 1, then the diff has length zero and the
@@ -294,7 +294,7 @@ class Read(dict):
             returndict['read_id'] = self['read_id']
         return returndict
 
-    def get_chunk_with_sample_length(self, chunk_len, start_sample=None, verbose=False):
+    def get_chunk_with_sample_length(self, chunk_len, start_sample=None, standardize=True, verbose=False):
         """
         Get a chunk, with chunk_len samples, returning a dictionary as in the docstring for get_chunk()
 
@@ -329,9 +329,9 @@ class Read(dict):
             # this should never happen, but we don't want to halt training if
             # this is an outlier bug
             return {'rejected':'nullmapping', 'read_id':self.get('read_id')}
-        return self._get_chunk(dacs_region, ref_region, verbose)
+        return self._get_chunk(dacs_region, ref_region, standardize, verbose)
 
-    def get_chunk_with_sequence_length(self, chunk_bases, start_base=None):
+    def get_chunk_with_sequence_length(self, chunk_bases, start_base=None, standardize=True):
         """Get a chunk containing a sequence of length chunk_bases,
         returning a dictionary as in the docstring for get_chunk()
 
@@ -358,7 +358,7 @@ class Read(dict):
         #print("get_chunk_with_sequence_length(): ref region",refstart,refend_exc)
         #print("                                  sig region",dacstart,dacsend_exc)
 
-        return self._get_chunk((dacstart, dacsend_exc), (refstart, refend_exc))
+        return self._get_chunk((dacstart, dacsend_exc), (refstart, refend_exc), standardize=standardize)
 
 
 class AbstractMappedSignalReader(ABC):

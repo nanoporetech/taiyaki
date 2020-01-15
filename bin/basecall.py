@@ -119,6 +119,8 @@ def process_read(
     signal = get_signal(read_filename, read_id)
     if signal is None:
         return None, 0
+    if model.metadata['reverse']:
+        signal = signal[::-1]
 
     if read_params is None:
         normed_signal = med_mad_norm(signal)

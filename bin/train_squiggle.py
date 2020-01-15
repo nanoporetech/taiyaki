@@ -111,6 +111,12 @@ def main():
         filter_parameters.mad_meandwell))
 
     conv_net = create_convolution(args.size, args.depth, args.winlen)
+    if not hasattr(conv_net, 'metadata'):
+        conv_net.metadata = {
+            'reverse' : False,
+            'standardize' : True,
+            'version' : layers.MODEL_VERSION
+        }
     nparam = sum([p.data.detach().numpy().size for p in conv_net.parameters()])
     log.write('* Created network.  {} parameters\n'.format(nparam))
     log.write('* Depth {} layers ({} residual layers)\n'.format(args.depth + 2, args.depth))

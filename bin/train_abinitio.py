@@ -124,6 +124,12 @@ if __name__ == '__main__':
         'alphabet_info': alphabet_info
     }
     network = helpers.load_model(args.model, **model_kwargs).to(device)
+    if not hasattr(network, 'metadata'):
+        network.metadata = {
+            'reverse' : False,
+            'standardize' : True,
+            'version' : layers.MODEL_VERSION
+        }
     log.write('* Network has {} parameters.\n'.format(sum([p.nelement()
                                                            for p in network.parameters()])))
 

@@ -73,7 +73,8 @@ def chunk_filter(chunkdict, filter_params):
 
 def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
                   fraction_of_fails_allowed=0.5,
-                  chunk_len_means_sequence_len=False):
+                  chunk_len_means_sequence_len=False,
+                  standardize=True):
     """Sample <number_to_sample> chunks from a list of read_data, returning
     a tuple (chunklist, rejection_dict)
 
@@ -98,6 +99,7 @@ def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
                              If this is True, then chunk_len determines the length
                              in bases of the sequence in the chunk, and we use
                              mapped_signal_files.get_chunk_with_sequence_length()
+    :param standardize:      Return standardized currents, otherwise unscaled
     """
     nreads = len(read_data)
     if number_to_sample is None or number_to_sample == 0:
@@ -113,9 +115,9 @@ def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
         read_number = np.random.randint(nreads)
         read = read_data[read_number]
         if chunk_len_means_sequence_len:
-            chunkdict = read.get_chunk_with_sequence_length(chunk_len)
+            chunkdict = read.get_chunk_with_sequence_length(chunk_len, standardize=standardize)
         else:
-            chunkdict = read.get_chunk_with_sample_length(chunk_len)
+            chunkdict = read.get_chunk_with_sample_length(chunk_len, standardize=standardize)
         passfail_str = chunk_filter(chunkdict, filter_params)
         count_dict[passfail_str] += 1
         if passfail_str == 'pass':
@@ -147,7 +149,7 @@ def sample_filter_parameters(read_data, number_to_sample, chunk_len,
 
 
 def assemble_batch(read_data, batch_size, chunk_len, filter_params,
-                   chunk_len_means_sequence_len=False):
+                   chunk_len_means_sequence_len=False, standardize=True):
     """Assemble a batch of data by repeatedly choosing a random read and location
     in that read, continuing until we have found batch_size chunks that pass the
     tests.
@@ -168,4 +170,5 @@ def assemble_batch(read_data, batch_size, chunk_len, filter_params,
     """
     return sample_chunks(read_data, batch_size, chunk_len,
                          filter_params=filter_params,
-                         chunk_len_means_sequence_len=chunk_len_means_sequence_len)
+                         chunk_len_means_sequence_len=chunk_len_means_sequence_len,
+                         standardize=standardize)
