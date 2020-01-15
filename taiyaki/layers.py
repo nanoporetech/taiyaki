@@ -15,6 +15,9 @@ from taiyaki.constants import LARGE_LOG_VAL
 """  Convention: inMat row major (C ordering) as (time, batch, state)
 """
 _FORGET_BIAS = 2.0
+#  Increment whenever layers change in non-compatible way.
+#  Remember to alter misc/upgrade_model.py to enable upgrade of old models
+MODEL_VERSION = 1
 
 
 def init_(param, value):
@@ -404,7 +407,8 @@ class Convolution(nn.Module):
         case the padding used is (winlen // 2, (winlen - 1) // 2) which ensures
         that the output length does not depend on winlen
     """
-    def __init__(self, insize, size, winlen, stride=1, pad=None, fun=activation.tanh, has_bias=True):
+    def __init__(self, insize, size, winlen, stride=1, pad=None,
+                 fun=activation.tanh, has_bias=True):
         super().__init__()
         self.has_bias = has_bias
         self.insize = insize
@@ -694,7 +698,7 @@ class GlobalNormFlipFlop(nn.Module):
 
     def _use_cupy(self, x):
         # getattr in stead of simple look-up for backwards compatibility
-        if getattr(self, '_never_use_cupy', False):
+        if self._never_use_cupy:
             return False
 
         if not x.is_cuda:
