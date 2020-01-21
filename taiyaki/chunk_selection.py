@@ -74,7 +74,8 @@ def chunk_filter(chunkdict, filter_params):
 def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
                   fraction_of_fails_allowed=0.5,
                   chunk_len_means_sequence_len=False,
-                  standardize=True):
+                  standardize=True, select_strands_randomly=True,
+                  first_strand_index=0):
     """Sample <number_to_sample> chunks from a list of read_data, returning
     a tuple (chunklist, rejection_dict)
 
@@ -100,6 +101,11 @@ def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
                              in bases of the sequence in the chunk, and we use
                              mapped_signal_files.get_chunk_with_sequence_length()
     :param standardize:      Return standardized currents, otherwise unscaled
+    param: select_strands_randomly : Choose a random read at each iteration.
+                             When select_strands_randomly=False, iterate
+                             through reads as found in read_data.
+    param: first_strand_index : When select_strands_randomly=False, begin
+                             selecting strands at this index.
     """
     nreads = len(read_data)
     if number_to_sample is None or number_to_sample == 0:
@@ -111,8 +117,9 @@ def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
     count_dict = defaultdict(lambda: 0)  # Will contain counts of numbers of rejects and passes
     attempts = 0
     while(count_dict['pass'] < number_to_sample_used and attempts < maximum_attempts_allowed):
+        read_number = np.random.randint(nreads) if select_strands_randomly else \
+                      (first_strand_index + attempts) % nreads
         attempts += 1
-        read_number = np.random.randint(nreads)
         read = read_data[read_number]
         if chunk_len_means_sequence_len:
             chunkdict = read.get_chunk_with_sequence_length(chunk_len, standardize=standardize)
@@ -149,10 +156,11 @@ def sample_filter_parameters(read_data, number_to_sample, chunk_len,
 
 
 def assemble_batch(read_data, batch_size, chunk_len, filter_params,
-                   chunk_len_means_sequence_len=False, standardize=True):
-    """Assemble a batch of data by repeatedly choosing a random read and location
-    in that read, continuing until we have found batch_size chunks that pass the
-    tests.
+                   chunk_len_means_sequence_len=False, standardize=True,
+                   select_strands_randomly=True, first_strand_index=0):
+    """Assemble a batch of data by repeatedly choosing a random (or iterating
+    over reads) read and location in that read, continuing until we have found
+    batch_size chunks that pass the tests.
 
     Returns tuple (chunklist, rejection_dict)
 
@@ -171,4 +179,6 @@ def assemble_batch(read_data, batch_size, chunk_len, filter_params,
     return sample_chunks(read_data, batch_size, chunk_len,
                          filter_params=filter_params,
                          chunk_len_means_sequence_len=chunk_len_means_sequence_len,
-                         standardize=standardize)
+                         standardize=standardize,
+                         select_strands_randomly=select_strands_randomly,
+                         first_strand_index=first_strand_index)

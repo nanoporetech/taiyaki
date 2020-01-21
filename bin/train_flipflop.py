@@ -17,7 +17,6 @@ from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
 from taiyaki.helpers import guess_model_stride
 
-
 # This is here, not in main to allow documentation to be built
 parser = argparse.ArgumentParser(description='Train flip-flop neural network',
                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -72,6 +71,10 @@ data_grp.add_argument('--chunk_len_max', default=4000, metavar='samples',
                       type=Positive(int),
                       help='Max length of each chunk in samples ' +
                       '(chunk lengths are random between min and max)')
+data_grp.add_argument('--include_reporting_strands',
+                      default=False, action=AutoBool,
+                      help='Include reporting strands in training. Default: ' +
+                      'Hold training strands out of training.')
 data_grp.add_argument('--input_strand_list', default=None, action=FileExists,
                       help='Strand summary file containing column read_id. '+
                       'Filenames in file are ignored.')
@@ -81,6 +84,16 @@ data_grp.add_argument('--min_sub_batch_size', default=96, metavar='chunks',
                       'sub-batch for chunk_len = chunk_len_max. Actual ' +
                       'length of sub-batch used is ' +
                       '(min_sub_batch_size * chunk_len_max / chunk_len).')
+data_grp.add_argument('--reporting_percent_reads', default=1,
+                     metavar='sub_batches', type=Positive(float),
+                     help='Percent of reads to use for std loss reporting')
+data_grp.add_argument('--reporting_strand_list', action=FileExists,
+                      help='Strand summary file containing column read_id. ' +
+                      'All other fields are ignored. If not provided ' +
+                      'reporting strands will be randomly selected.')
+data_grp.add_argument('--reporting_sub_batches', default=10,
+                     metavar='sub_batches', type=Positive(int),
+                     help='Number of sub-batches to use for std loss reporting')
 data_grp.add_argument('--standardize', default=True, action=AutoBool,
                       help='Standardize currents for each read')
 data_grp.add_argument('--sub_batches', default=1, metavar='sub_batches',
@@ -100,9 +113,6 @@ add_common_command_args(out_grp, """outdir overwrite quiet
 out_grp.add_argument('--full_filter_status', default=False, action=AutoBool,
                      help='Output full chunk filtering statistics. ' +
                      'Default: only proportion of filtered chunks.')
-out_grp.add_argument('--reporting_sub_batches', default=10,
-                     metavar='sub_batches', type=Positive(int),
-                     help='Number of sub-batches to use for std loss reporting')
 
 mod_grp = parser.add_argument_group('Modified Base Arguments')
 mod_grp.add_argument('--mod_factor', type=float, default=1.0,
@@ -124,8 +134,10 @@ def is_cat_mod_model(network):
 
 
 def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
-                           target_sub_batches, alphabet_info, reverse, standardize,
-                           filter_params, network, network_is_catmod, log):
+                           target_sub_batches, alphabet_info, reverse,
+                           standardize, filter_params, network,
+                           network_is_catmod, log,
+                           select_strands_randomly=True, first_strand_index=0):
     total_sub_batches = 0
     if reverse:
         revop = np.flip
@@ -135,10 +147,12 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
     while total_sub_batches < target_sub_batches:
 
         # Chunk_batch is a list of dicts
-        chunk_batch, batch_rejections = \
-            chunk_selection.assemble_batch(read_data, sub_batch_size,
-                                           batch_chunk_len, filter_params,
-                                           standardize=standardize)
+        chunk_batch, batch_rejections = chunk_selection.assemble_batch(
+            read_data, sub_batch_size, batch_chunk_len, filter_params,
+            standardize=standardize,
+            select_strands_randomly=select_strands_randomly,
+            first_strand_index=first_strand_index)
+        first_strand_index += sum(batch_rejections.values())
         if len(chunk_batch) < sub_batch_size:
             log.write('* Warning: only {} chunks passed filters (asked for {}).\n'.format(len(chunk_batch), sub_batch_size))
 
@@ -430,15 +444,33 @@ def main():
     # value to enable mod cat weighting
     mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
 
-    #Generating list of batches for standard loss reporting
+    # Generate list of batches for standard loss reporting
+    all_read_ids = [read['read_id'] for read in read_data]
+    if args.reporting_strand_list is not None:
+        # get reporting read ids in from strand list
+        reporting_read_ids = set(helpers.get_read_ids(
+            args.reporting_strand_list)).intersection(all_read_ids)
+    else:
+        # randomly select reporting read ids (at least one for tiny test runs)
+        num_report_reads = max(
+            1, int(len(read_data) * args.reporting_percent_reads / 100))
+        reporting_read_ids = set(np.random.choice(
+            all_read_ids, size=num_report_reads, replace=False))
+    # generate reporting reads list
+    report_read_data = [read for read in read_data
+                        if read['read_id'] in reporting_read_ids]
+    if not args.include_reporting_strands:
+        # if holding strands out remove these reads from read_data
+        read_data = [read for read in read_data
+                     if read['read_id'] not in reporting_read_ids]
+        log.write(('* Standard loss reporting from {} validation reads ' +
+                   'held out of training. \n').format(len(report_read_data)))
     reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
-    reporting_batch_list=list(
-        prepare_random_batches(device, read_data, reporting_chunk_len,
-                               args.min_sub_batch_size,
-                               args.reporting_sub_batches, alphabet_info,
-                               args.reverse, args.standardize, filter_params,
-                               network, network_is_catmod, log))
-
+    reporting_batch_list = list(prepare_random_batches(
+        device, report_read_data, reporting_chunk_len, args.min_sub_batch_size,
+        args.reporting_sub_batches, alphabet_info, args.reverse,
+        args.standardize, filter_params, network, network_is_catmod, log,
+        select_strands_randomly=False))
     log.write( ('* Standard loss report: chunk length = {} & sub-batch size ' +
                 '= {} for {} sub-batches. \n').format(reporting_chunk_len,
                 args.min_sub_batch_size, args.reporting_sub_batches) )
