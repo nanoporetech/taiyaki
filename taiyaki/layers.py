@@ -626,7 +626,7 @@ def birnn(forward, backward):
 def logaddexp(x, y):
     #  NB:  use torch.logsigmoid rather than softplus since softplus allows
     # a scaling factor and hence more operations.
-    return torch.max(x, y) - torch.logsigmoid(torch.abs(x - y))
+    return torch.max(x, y) + nn.functional.softplus(-torch.abs(x - y))
 
 
 @torch.jit.script
