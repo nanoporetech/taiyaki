@@ -488,10 +488,14 @@ The easy way to achieve this is with a Makefile like the one in the directory **
 
 ## Selection of multiple GPUs in SGE
 
-When multiple GPUs are available to a SGE job (for example, if we use the command line option **-l gpu=4** in **qsub** to request 4 GPUS), the GPUs allocated are passed to the process
-as a space-separated list in **SGE_HGR_gpu**. Unfortunately, **CUDA_VISIBLE_DEVICES** requires a comma-separated list. To get around this we execute
+When multiple GPUs are available to a SGE job (for example, if we use the command line option **-l gpu=4** in **qsub** to request 4 GPUS),
+the GPUs allocated are passed to the process in **SGE_HGR_gpu**.
+Unfortunately, **CUDA_VISIBLE_DEVICES** requires a comma-separated list of integers,
+and the list supplied in **SGE_HGR_gpu** is space-separated and contains strings like 'cuda0'. To get around this we
+first convert to a comma-separated list and then remove the word 'cuda'. These lines should be placed in the script before the training script is called.
 
-    export CUDA_VISIBLE_DEVICES=${SGE_HGR_gpu// /,}
+    COMMASEP=${SGE_HGR_gpu// /,}
+    export CUDA_VISIBLE_DEVICES=${COMMASEP//cuda/}
 
 Also note that on nodes with many GPUs, port clashes may occur (see 'More than one multi-GPU training group on a single machine' above). They can be avoided with clever use of
 the command-line arguments of **torch.distributed.launch**.
