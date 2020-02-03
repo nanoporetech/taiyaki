@@ -11,7 +11,7 @@ import time
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from taiyaki import alphabet, constants, ctc, flipflopfings, helpers, maths
+from taiyaki import alphabet, constants, ctc, flipflopfings, helpers, layers, maths
 from taiyaki.cmdargs import FileExists, Maybe, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 
