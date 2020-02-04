@@ -17,7 +17,7 @@ from taiyaki.constants import LARGE_LOG_VAL
 _FORGET_BIAS = 2.0
 #  Increment whenever layers change in non-compatible way.
 #  Remember to alter misc/upgrade_model.py to enable upgrade of old models
-MODEL_VERSION = 1
+MODEL_VERSION = 2
 
 
 def init_(param, value):
@@ -668,14 +668,17 @@ def global_norm_flipflop(scores):
 
 
 class GlobalNormFlipFlop(nn.Module):
-    def __init__(self, insize, nbase, has_bias=True, _never_use_cupy=False):
+    def __init__(self, insize, nbase, has_bias=True, _never_use_cupy=False,
+                 fun=activation.tanh, scale=5.0):
         super().__init__()
         self.insize = insize
         self.nbase = nbase
         self.size = flipflopfings.nstate_flipflop(nbase)
+        self.activation = fun
         self.has_bias = has_bias
         self.linear = nn.Linear(insize, self.size, bias=has_bias)
         self.reset_parameters()
+        self.scale = scale
         self._never_use_cupy = _never_use_cupy
 
     def json(self, params=False):
@@ -683,7 +686,9 @@ class GlobalNormFlipFlop(nn.Module):
             ('type', 'GlobalNormTwoState'),
             ('size', self.size),
             ('insize', self.insize),
-            ('bias', self.has_bias)])
+            ('bias', self.has_bias),
+            ('scale', self.scale),
+            ("activation", self.activation.__name__)])
         if params:
             res['params'] = OrderedDict(
                 [('W', self.linear.weight)] +
@@ -713,7 +718,7 @@ class GlobalNormFlipFlop(nn.Module):
             return False
 
     def forward(self, x):
-        y = 5.0 * activation.tanh(self.linear(x))
+        y = self.scale * self.activation(self.linear(x))
 
         if self._use_cupy(x):
             from .cupy_extensions import flipflop

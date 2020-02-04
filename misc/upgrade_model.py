@@ -5,7 +5,7 @@ import torch
 
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.cmdargs import FileAbsent, FileExists
-from taiyaki import layers
+from taiyaki import activation, layers
 
 
 parser = argparse.ArgumentParser(description='Upgrade model file',
@@ -43,7 +43,7 @@ def convert_0_to_1(model):
             print('Checking convolution layer')
             #  Don't assert since field was silently introduced and
             #  some version 0 models have it
-            if not hasattr(layer, '_never_use_cupy'):
+            if not hasattr(layer, 'has_bias'):
                 layer.has_bias = layer.conv.bias is not None
         if isinstance(layer, layers.GlobalNormFlipFlop):
             print('Checking GlobalNormFlipFlop layer')
@@ -51,6 +51,26 @@ def convert_0_to_1(model):
             #  some version 0 models have it
             if not hasattr(layer, '_never_use_cupy'):
                 layer._never_use_cupy = False
+
+
+def convert_1_to_2(model):
+    """ Convert version 1 to version 2
+        * GlobalNormFlipFlop has `activation` and `scale` fields
+    """
+    if model.metadata['version'] >= 2:
+        return
+    print('Upgrading to version 2')
+    model.metadata['version'] = 2
+
+
+    for layer in model.modules():
+        #  Walk layers and change
+        if isinstance(layer, layers.GlobalNormFlipFlop):
+            print('Adding activation (tanh) and scale (5.0) to GlobalNormFlipFlop')
+            assert not hasattr(layer, 'activation'), 'Inconsistent model!'
+            layer.activation = activation.tanh
+            assert not hasattr(layer, 'scale'), 'Inconsistent model!'
+            layer.scale = 5.0
 
 
 def main():
@@ -62,6 +82,7 @@ def main():
     net = torch.load(args.input, map_location=torch.device('cpu'))
 
     convert_0_to_1(net)
+    convert_1_to_2(net)
 
     print('Saving upgraded model to {}'.format(args.output))
     torch.save(net, args.output)
