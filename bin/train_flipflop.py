@@ -147,7 +147,7 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
     while total_sub_batches < target_sub_batches:
 
         # Chunk_batch is a list of dicts
-        chunk_batch, batch_rejections = chunk_selection.assemble_batch(
+        chunk_batch, batch_rejections = chunk_selection.sample_chunks(
             read_data, sub_batch_size, batch_chunk_len, filter_params,
             standardize=standardize,
             select_strands_randomly=select_strands_randomly,
