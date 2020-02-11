@@ -145,7 +145,7 @@ def main():
         # If the logging threshold is 0 then we log all chunks, including those rejected, so pass the log
         # object into assemble_batch
         # chunk_batch is a list of dicts.
-        chunk_batch, batch_rejections = chunk_selection.assemble_batch(
+        chunk_batch, batch_rejections = chunk_selection.sample_chunks(
             read_data, args.batch_size, args.target_len, filter_parameters,
             chunk_len_means_sequence_len=True)
         if len(chunk_batch) < args.batch_size:
