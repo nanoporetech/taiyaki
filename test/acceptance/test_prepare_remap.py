@@ -32,10 +32,11 @@ class AcceptanceTest(unittest.TestCase):
         print("Current directory is",os.getcwd())
         print("Taiyaki dir is",self.taiyakidir)
         print("Data dir is ",self.datadir)
+        output_mapped_signal_file = self.output_mapped_signal_file + '_test_prepare_remap'
         cmd = [self.script,
                self.read_dir,
                self.per_read_params,
-               self.output_mapped_signal_file,
+               output_mapped_signal_file,
                self.remapping_model,
                self.per_read_refs,
                "--overwrite"]
@@ -44,13 +45,15 @@ class AcceptanceTest(unittest.TestCase):
         print("Result of running make command in shell:")
         print("Stdout=",r.stdout.decode('utf-8'))
         print("Stderr=",r.stderr.decode('utf-8'))
+        self.assertEqual(r.returncode, 0)
 
         # Open mapped read file and run checks to see if it complies with file format
         # Also get a chunk and check that speed is within reasonable bounds
-        with mapped_signal_files.HDF5Reader(self.output_mapped_signal_file) as f:
+        self.assertTrue(os.path.exists(output_mapped_signal_file))
+        with mapped_signal_files.HDF5Reader(output_mapped_signal_file) as f:
             testreport = f.check()
             print("Test report from checking mapped read file:")
-            print(testreport)
+            print('"', testreport, '"')
             self.assertEqual(testreport,"pass")
             read0 = f.get_multiple_reads("all")[0]
             chunk = read0.get_chunk_with_sample_length(1000,start_sample=10)
@@ -66,10 +69,11 @@ class AcceptanceTest(unittest.TestCase):
         print("Current directory is",os.getcwd())
         print("Taiyaki dir is",self.taiyakidir)
         print("Data dir is ",self.datadir)
+        output_mapped_signal_file = self.output_mapped_signal_file + 'test_mod_prepare_remap'
         cmd = [self.script,
                self.read_dir,
                self.per_read_params,
-               self.output_mapped_signal_file,
+               output_mapped_signal_file,
                self.remapping_model,
                self.mod_per_read_refs,
                "--mod", "Z", "C", "5mC",
@@ -80,13 +84,15 @@ class AcceptanceTest(unittest.TestCase):
         print("Result of running make command in shell:")
         print("Stdout=",r.stdout.decode('utf-8'))
         print("Stderr=",r.stderr.decode('utf-8'))
+        self.assertEqual(r.returncode, 0)
 
         # Open mapped read file and run checks to see if it complies with file format
         # Also get a chunk and check that speed is within reasonable bounds
-        with mapped_signal_files.HDF5Reader(self.output_mapped_signal_file) as f:
+        self.assertTrue(os.path.exists(output_mapped_signal_file))
+        with mapped_signal_files.HDF5Reader(output_mapped_signal_file) as f:
             testreport = f.check()
             print("Test report from checking mapped read file:")
-            print(testreport)
+            print('"', testreport, '"')
             self.assertEqual(testreport,"pass")
             read0 = f.get_multiple_reads("all")[0]
             chunk = read0.get_chunk_with_sample_length(1000,start_sample=10)
