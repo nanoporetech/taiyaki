@@ -33,7 +33,7 @@ show_cuda_version:
 	@echo 'Will install cupy with: ' $(if $(CUPY), pip install $(CUPY), **not installing cupy**)
 
 
-envDir = venv
+envDir ?= venv
 envPrompt ?= "(taiyaki) "
 pyTestArgs ?=
 override pyTestArgs += --durations=20 -v
@@ -41,11 +41,12 @@ override pyTestArgs += --durations=20 -v
 buildDir = build
 cacheDir = $(HOME)/.cache/taiyaki
 
-.PHONY: install
-install:
-	@if [ -z "${TORCH}" ]; then echo "Torch URL not specified for cuda=${CUDA}. Please check supported cuda versions"; exit 1; fi
-	rm -rf ${envDir}
+venv:
 	virtualenv --python=${PYTHON} --prompt=${envPrompt} ${envDir}
+
+.PHONY: install
+install: ${envDir}
+	@if [ -z "${TORCH}" ]; then echo "Torch URL not specified for cuda=${CUDA}. Please check supported cuda versions"; exit 1; fi
 	source ${envDir}/bin/activate && \
 	    ${PYTHON} ${envDir}/bin/pip install pip --upgrade && \
 	    mkdir -p ${cacheDir}/wheelhouse/${CUDA} && \

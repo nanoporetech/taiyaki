@@ -1,0 +1,50 @@
+#
+#  Yaml CI config for Gitlab See. http://docs.gitlab.com/ce/ci/yaml/README.html
+#
+
+image: git.oxfordnanolabs.local:4567/algorithm/sloika_docker:custard-16.04-latest
+
+
+variables:
+    RUN_ENVDIR: /taiyaki_venv/python3env
+    RUN_ENV: ${RUN_ENVDIR}/bin/activate
+    TEST_ENVDIR:  /taiyaki_venv/python3unittestenv
+    TEST_ENV: ${TEST_ENVDIR}/bin/activate
+    PYTEST_ARGS: -n2
+
+
+stages:
+    - build
+    - test
+    - release
+
+flake8:
+    stage: build
+    script:
+        - source $TEST_ENV && pip install flake8 &&
+          find bin/ misc/ taiyaki/ test/ -name \*.py |
+          flake8 -j 2 --exit-zero --show-source --statistics --tee --output-file=flake_results.txt
+    artifacts:
+        paths:
+        - flake_results.txt
+        expire_in: 1 week
+
+unit_test:
+    stage: test
+    script:
+        - make install envDir=${TEST_ENVDIR} && source $TEST_ENV && make unittest pyTestArgs=$PYTEST_ARGS envDir=${TEST_ENVDIR}
+
+
+acceptance_test:
+    stage: test
+    script:
+        - make install envDir=${TEST_ENVDIR} && source $TEST_ENV && make acctest pyTestArgs=$PYTEST_ARGS envDir=${TEST_ENVDIR}
+
+workflow:
+    stage: test
+    script:
+        - make install envDir=${RUN_ENVDIR} && source $RUN_ENV && make acctest pyTestArgs=$PYRUN_ARGS envDir=${RUN_ENVDIR}
+    only:
+        - release
+        - master
+        - /^ci_*/
