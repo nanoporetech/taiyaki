@@ -33,6 +33,7 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
     :param seqs: Vector containing flip-flop coded sequences (see flipflopfings.flipflop_code()), concatenated
     :param seqlen: Length of each sequence
     """
+    assert np.all(np.isfinite(logprob)), "Input not finite"
     cdef size_t nblk, nbatch, nstate
     nblk, nbatch, nstate = logprob.shape[0], logprob.shape[1], logprob.shape[2]
     # conversion checks that nstates converts to a valid number of bases
@@ -43,7 +44,7 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
     libctc.crf_flipflop_cost(&logprob[0, 0, 0], nstate, nblk, nbatch, &seqs[0],
                              &seqlen[0], sharpfact, &costs[0])
     assert np.all(costs <= 0.), (
-        "Error: costs must be negative, got {}").format(costs)
+        "Error: costs must not be positive, got {}").format(costs)
     return -costs / nblk
 
 
@@ -58,6 +59,7 @@ def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
     :param seqs: Vector containing flip-flop coded sequences (see flipflopfings.flipflop_code()), concatenated
     :param seqlen: Length of each sequence
     """
+    assert np.all(np.isfinite(logprob)), "Input not finite"
     cdef size_t nblk, nbatch, nstate
     nblk, nbatch, nstate = logprob.shape[0], logprob.shape[1], logprob.shape[2]
     # conversion checks that nstates converts to a valid number of bases
@@ -69,6 +71,9 @@ def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
         logprob, dtype=np.float32)
     libctc.crf_flipflop_grad(&logprob[0, 0, 0], nstate, nblk, nbatch, &seqs[0],
                              &seqlen[0], sharpfact, &costs[0], &grads[0, 0, 0])
+    assert np.all(costs <= 0.), (
+        "Error: costs must not be positive, got {}").format(costs)
+    assert np.all(np.isfinite(grads)), "Gradients not finite"
     return -costs / nblk, -grads / nblk
 
 
@@ -115,6 +120,7 @@ def cat_mod_flipflop_cost(
     :param mod_cats: A vector containing mod categories, concatenated
     :param seqlen: Length of each sequence
     """
+    assert np.all(np.isfinite(logprob)), "Input not finite"
     assert np.all(logprob[:,:,-can_mods_offsets[4]:] <= 0), (
         'Error: Some modified base log probs are positive.')
     cdef size_t nblk, nbatch, nstate
@@ -128,8 +134,8 @@ def cat_mod_flipflop_cost(
         &logprob[0, 0, 0], nstate, nblk, nbatch, &seqs[0], &seqlen[0],
         &mod_cats[0], &can_mods_offsets[0], &mod_cat_weights[0], mod_weight,
         sharpfact, &costs[0])
-    assert np.all(costs <= 0.), ("Error: costs must be negative, " +
-                                 "got {}").format(costs)
+    assert np.all(costs <= 0.), (
+        "Error: costs must not be positive, got {}").format(costs)
     return -costs / nblk
 
 
@@ -149,6 +155,9 @@ def cat_mod_flipflop_grad(
     :param mod_cats: A vector containing mod categories, concatenated
     :param seqlen: Length of each sequence
     """
+    assert np.all(np.isfinite(logprob)), "Input not finite"
+    assert np.all(logprob[:,:,-can_mods_offsets[4]:] <= 0), (
+        'Error: Some modified base log probs are positive.')
     cdef size_t nblk, nbatch, nstate
     nblk, nbatch, nstate = logprob.shape[0], logprob.shape[1], logprob.shape[2]
     # conversion checks that nstates converts to a valid number of bases
@@ -160,6 +169,7 @@ def cat_mod_flipflop_grad(
         &logprob[0, 0, 0], nstate, nblk, nbatch, &seqs[0], &seqlen[0],
         &mod_cats[0], &can_mods_offsets[0], &mod_cat_weights[0], mod_weight,
         sharpfact, &grads[0, 0, 0])
+    assert np.all(np.isfinite(grads)), "Gradients not finite"
     return -grads / nblk
 
 
