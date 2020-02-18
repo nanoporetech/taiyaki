@@ -1,4 +1,5 @@
 import numpy as np
+import tempfile
 import os
 import unittest
 
@@ -56,7 +57,6 @@ class TestMappedReadFiles(unittest.TestCase):
         self.testset_name = os.path.basename(self.test_directory)
         self.testset_work_dir = self.testset_name
         os.makedirs(self.testset_work_dir, exist_ok=True)
-        self.testfilepath = os.path.join(self.testset_work_dir, 'test_mapped_read_file.hdf5')
         self.plotfilepath = os.path.join(self.testset_work_dir, 'test_mapped_read_file.png')
         try:
             os.remove(self.testfilepath)
@@ -79,15 +79,17 @@ class TestMappedReadFiles(unittest.TestCase):
         self.assertEqual(check_text, "pass")
 
         print("Writing to file")
+        with tempfile.NamedTemporaryFile(delete=False, dir=self.testset_work_dir) as fh:
+            testfilepath = fh.name
         alphabet_info = alphabet.AlphabetInfo(DEFAULT_ALPHABET, DEFAULT_ALPHABET)
-        with mapped_signal_files.HDF5Writer(self.testfilepath, alphabet_info) as f:
+        with mapped_signal_files.HDF5Writer(testfilepath, alphabet_info) as f:
             f.write_read(read_object)
 
         print("Current dir = ", os.getcwd())
-        print("File written to ", self.testfilepath)
+        print("File written to ", testfilepath)
 
         print("\nOpening file for reading")
-        with mapped_signal_files.HDF5Reader(self.testfilepath) as f:
+        with mapped_signal_files.HDF5Reader(testfilepath) as f:
             ids = f.get_read_ids()
             print("Read ids=", ids[0])
             print("Version number = ", f.version)
@@ -150,14 +152,16 @@ class TestMappedReadFiles(unittest.TestCase):
 
         print("Writing to file")
         alphabet_info = alphabet.AlphabetInfo(DEFAULT_ALPHABET, DEFAULT_ALPHABET)
-        with mapped_signal_files.HDF5Writer(self.testfilepath, alphabet_info) as f:
+        with tempfile.NamedTemporaryFile(delete=False, dir=self.testset_work_dir) as fh:
+            testfilepath = fh.name
+        with mapped_signal_files.HDF5Writer(testfilepath, alphabet_info) as f:
             f.write_read(read_object)
 
         print("Current dir = ", os.getcwd())
-        print("File written to ", self.testfilepath)
+        print("File written to ", testfilepath)
 
         print("\nOpening file for reading")
-        with mapped_signal_files.HDF5Reader(self.testfilepath) as f:
+        with mapped_signal_files.HDF5Reader(testfilepath) as f:
             ids = f.get_read_ids()
             print("Read ids=", ids[0])
             print("Version number = ", f.version)
