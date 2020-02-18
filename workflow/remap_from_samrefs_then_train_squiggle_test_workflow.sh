@@ -26,6 +26,7 @@ echo "PREDICT_SQUIGGLE_TEST_FASTA=${PREDICT_SQUIGGLE_TEST_FASTA}"
 
 TAIYAKI_DIR=`pwd`
 RESULT_DIR=${TAIYAKI_DIR}/RESULTS/squiggletrain_remap_samref
+envDir=${envDir:-$TAIYAKI_DIR}
 
 rm -rf $RESULT_DIR
 rm -rf ${TAIYAKI_DIR}/RESULTS/training_ingredients
@@ -41,6 +42,7 @@ make -f workflow/Makefile \
 	REFERENCEFILE=${REFERENCEFILE} \
 	PREDICT_SQUIGGLE_TEST_FASTA=${PREDICT_SQUIGGLE_TEST_FASTA} \
 	SEED=1 \
+    envDir=${envDir} \
 	TAIYAKIACTIVATE= \
 	squigglepredict_remap_samref
 

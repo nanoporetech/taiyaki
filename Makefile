@@ -114,10 +114,10 @@ pep8:
 
 .PHONY: workflow
 workflow:
-	./workflow/remap_from_samrefs_then_train_test_workflow.sh
-	./workflow/remap_from_samrefs_then_train_multireadf5_test_workflow.sh
-	./workflow/remap_from_samrefs_then_train_squiggle_test_workflow.sh
-	./workflow/remap_from_mod_fasta_then_train_test_mod_workflow.sh
+	envDir=${envDir} ./workflow/remap_from_samrefs_then_train_test_workflow.sh
+	envDir=${envDir} ./workflow/remap_from_samrefs_then_train_multireadf5_test_workflow.sh
+	envDir=${envDir} ./workflow/remap_from_samrefs_then_train_squiggle_test_workflow.sh
+	envDir=${envDir} ./workflow/remap_from_mod_fasta_then_train_test_mod_workflow.sh
 #(The scripts each check to see if the training log file and chunk log file exist and contain data)
 
 

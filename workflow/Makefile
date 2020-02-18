@@ -57,6 +57,7 @@ MAKEFLAGS += --warn-undefined-variables
 #
 
 TAIYAKI_ROOT := $(shell pwd)
+envDir ?= ${TAIYAKI_ROOT}/venv
 NCPU := $(shell python3 -c "from multiprocessing import cpu_count; print(min(cpu_count(), 8))")
 OPENBLAS_NUM_THREADS := 1
 export OPENBLAS_NUM_THREADS
@@ -171,7 +172,7 @@ endif
 # TAIYAKIACTIVATE is placed before all taiyaki script invocations
 # to activate the venv. If the venv is already activated, or if not using a venv, then
 # set this variable to blank (e.g. make -f workflow/Makefile DEVICE=2 TAIYAKIACTIVATE= READDIR=myreads <...other params...> train_remap_samref
-TAIYAKIACTIVATE := source ${TAIYAKI_ROOT}/venv/bin/activate &&
+TAIYAKIACTIVATE := source ${envDir}/bin/activate &&
 
 # Use
 #        make MAXREADS=1000 <etc....etc> listparams
