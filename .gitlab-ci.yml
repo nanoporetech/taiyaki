@@ -43,7 +43,7 @@ acceptance_test:
 workflow:
     stage: test
     script:
-        - make install envDir=${RUN_ENVDIR} && source $RUN_ENV && make acctest pyTestArgs=$PYRUN_ARGS envDir=${RUN_ENVDIR}
+        - make install envDir=${RUN_ENVDIR} && source $RUN_ENV && make workflow envDir=${RUN_ENVDIR}
     only:
         - release
         - master

@@ -22,12 +22,13 @@ echo "REFERENCEFILE=${REFERENCEFILE}"
 
 TAIYAKI_DIR=`pwd`
 RESULT_DIR=${TAIYAKI_DIR}/RESULTS/train_remap_samref
+envDir=${envDir:-$TAIYAKI_DIR}
 
 rm -rf $RESULT_DIR
 rm -rf ${TAIYAKI_DIR}/RESULTS/training_ingredients
 
 #TAIYAKIACTIVATE=(nothing) makes the test run without activating the venv at each step. Necessary for running on the git server.
-make -f workflow/Makefile NETWORK_SIZE=96 MAXREADS=10 READDIR=${READ_DIR} TAIYAKI_ROOT=${TAIYAKI_DIR} DEVICE=cpu MAX_TRAINING_ITERS=2 BAMFILE="${SAMFILES}" REFERENCEFILE=${REFERENCEFILE} SEED=1 TAIYAKIACTIVATE= train_remap_samref
+make -f workflow/Makefile NETWORK_SIZE=96 MAXREADS=10 READDIR=${READ_DIR} TAIYAKI_ROOT=${TAIYAKI_DIR} DEVICE=cpu MAX_TRAINING_ITERS=2 BAMFILE="${SAMFILES}" REFERENCEFILE=${REFERENCEFILE} SEED=1 TAIYAKIACTIVATE= train_remap_samref envDir=${envDir}
 
 # Check that training log exists and has enough rows for us to be sure something useful has happened
 
