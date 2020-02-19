@@ -150,11 +150,11 @@ class RollingQuantile:
        
     def update(self, x):
         """Update with time series value x and return rolling quantile."""
-        if self.last_output is None or x < self.cap_inputs * self.last_output:
-            capped_input = x 
+        if self.last_output is None:
+            input_cap = x 
         else:
-            capped_input = self.cap_inputs
-        self.window_data.append(capped_input)
+            input_cap = self.cap_inputs * self.last_output
+        self.window_data.append(min(input_cap,x))
         if len(self.window_data)>self.window:
             self.window_data.popleft()
         if len(self.window_data) < self.min_data:
