@@ -124,7 +124,8 @@ def rle(x, tol=0):
 class RollingQuantile:
     """Calculate rolling quantile of time series over a specified window"""
    
-    def __init__(self, upper_quantile, window=100, min_data=1, default_to=None):
+    def __init__(self, upper_quantile, window=1000, min_data=1,
+                 default_to=None, cap_inputs = 1.1):
         """Set up rolling quantile calculator. With the default settings, there is
         no minimum data length and the first call to the calculator
         returns the first value x, and the second call returns
@@ -136,18 +137,27 @@ class RollingQuantile:
             window         : calculation is done over the last <window> data points
             min_data       : if fewer than <min_data> data points available...
             default_to     : ...then return this value.
+            cap_inputs     : when a new number is added to the rolling quantile
+                             window, cap it at this multiple of the last output
         """
         self.window_data = deque()
         self.upper_quantile = upper_quantile
         self.window = window
         self.min_data = min_data
         self.default_returnvalue = default_to
+        self.cap_inputs = cap_inputs
+        self.last_output = None
        
     def update(self, x):
         """Update with time series value x and return rolling quantile."""
-        self.window_data.append(x)
+        if self.last_output is None or x < self.cap_inputs * self.last_output:
+            capped_input = x 
+        else:
+            capped_input = self.cap_inputs
+        self.window_data.append(capped_input)
         if len(self.window_data)>self.window:
             self.window_data.popleft()
         if len(self.window_data) < self.min_data:
             return self.default_returnvalue
-        return np.quantile(self.window_data, 1.0-self.upper_quantile)
+        self.last_output = np.quantile(self.window_data, 1.0-self.upper_quantile)
+        return self.last_output
