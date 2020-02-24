@@ -526,16 +526,10 @@ def main():
 
         gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
                                       network.parameters(), gradient_cap)
-        
-        last_gradient_cap = gradient_cap
         if args.gradient_cap_fraction is not None:
             gradient_cap = rolling_quantile.update(gradnorm_uncapped)
 
-        # If the gradient is bigger than the cap
-        # then don't do the update step: in other words, ignore this batch
-        if gradnorm_uncapped < last_gradient_cap:
-            optimizer.step()
-        
+        optimizer.step()
         if is_lead_process:
             batchlog.record(fval, gradnorm_uncapped,
                   None if args.gradient_cap_fraction is None else gradient_cap)
