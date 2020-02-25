@@ -129,10 +129,6 @@ parser.add_argument('input', action=FileExists,
                     help='file containing mapped reads')
 
 
-def is_cat_mod_model(network):
-    return isinstance(network.sublayers[-1], layers.GlobalNormFlipFlopCatMod)
-
-
 def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
                            target_sub_batches, alphabet_info, reverse,
                            standardize, filter_params, network,
@@ -356,7 +352,7 @@ def main():
                 '* ERROR: Model and mapped signal files contain incompatible ' +
                 'alphabet definitions (including modified bases).')
             sys.exit(1)
-        if is_cat_mod_model(network_save_skeleton):
+        if layers.is_cat_mod_model(network_save_skeleton):
             log.write('* Loaded categorical modified base model.\n')
             if not alphabet_info.contains_modified_bases():
                 sys.stderr.write(
@@ -382,14 +378,14 @@ def main():
         saved_startmodel_path = os.path.join(args.outdir,
                                      'model_checkpoint_00000.checkpoint')
         network = helpers.load_model(saved_startmodel_path).to(device)
-        network_is_catmod = is_cat_mod_model(network)
+        network_is_catmod = layers.is_cat_mod_model(network)
         # Wrap network for training in the DistributedDataParallel structure
         network = torch.nn.parallel.DistributedDataParallel(network,
                                             device_ids=[args.local_rank],
                                             output_device=args.local_rank)
     else:
         network = network_save_skeleton.to(device)
-        network_is_catmod = is_cat_mod_model(network)
+        network_is_catmod = layers.is_cat_mod_model(network)
         network_save_skeleton = None
 
     stride = guess_model_stride(network)

@@ -192,7 +192,7 @@ def main():
     # TODO convert to logging
     sys.stderr.write("* Loading model.\n")
     model = load_model(args.model).to(device)
-    is_cat_mod = isinstance(model.sublayers[-1], layers.GlobalNormFlipFlopCatMod)
+    is_cat_mod = layers.is_cat_mod_model(model)
     do_output_mods = args.modified_base_output is not None
     if do_output_mods and not is_cat_mod:
         sys.stderr.write(

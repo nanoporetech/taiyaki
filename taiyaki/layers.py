@@ -922,6 +922,18 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         return torch.cat((norm_trans_scores, cat_mod_scores), dim=2)
 
 
+def is_cat_mod_model(net):
+    """  Is model a categorical modified base model
+
+    :param net: A network
+
+    :raises: Outer later of network is not :class:`taiyaki.layers.Serial`
+    :return: True if final layer is categorical mod base, False otherwise
+    """
+    assert isinstance(net, Serial)
+    return isinstance(net.sublayers[-1], GlobalNormFlipFlopCatMod)
+
+
 class TimeLinear(nn.Module):
     """  Basic feedforward layer over time dimension
          out = f( inMat W + b )

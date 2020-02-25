@@ -85,30 +85,6 @@ def extract_mod_weights(mod_weights, path, can_nmods):
     return mods_scores
 
 
-def cat_mod_code(labels, network):
-    """ Given a numpy array of digits representing bases, convert to canonical
-    flip-flop labels (defined by flipflopfings.flipflop_code) and
-    modified category values (defined by alphabet.AlphabetInfo).
-
-    :param labels: np array of digits representing bases
-    :param network: `taiyaki.layers.Serial` object with
-        `GlobalNormFlipFlopCatMod` last layer
-    returns: two np arrays representing 1) canonical flip-flop labels and
-        2) categorical modified base labels
-
-    E.g. (using alphabet='ACGTZYXW', collapse_alphabet='ACGTCAAT')
-    >> x = np.array([1, 5, 2, 4, 3, 3, 6, 7, 3])
-    >> cat_mod_code(x)
-          array(1, 0, 2, 1, 3, 7, 0, 3, 7), array(0, 1, 0, 1, 0, 0, 2, 1, 0)
-    """
-    assert is_cat_mod_model(network)
-    ff_layer = network.sublayers[-1]
-    mod_labels = np.ascontiguousarray(ff_layer.mod_labels[labels])
-    can_labels = np.ascontiguousarray(ff_layer.can_labels[labels])
-    ff_can_labels = flipflop_code(can_labels, ff_layer.ncan_base)
-    return ff_can_labels, mod_labels
-
-
 def nstate_flipflop(nbase):
     """  Number of states in output of flipflop network
 
