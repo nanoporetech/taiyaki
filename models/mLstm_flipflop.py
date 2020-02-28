@@ -1,9 +1,8 @@
-from taiyaki.flipflopfings import nbase_flipflop
-from taiyaki.activation import swish, tanh
-from taiyaki.layers import Convolution, Lstm, Reverse, Serial, GlobalNormFlipFlop
+from taiyaki.activation import swish
+from taiyaki.layers import (
+    Convolution, Lstm, Reverse, Serial, GlobalNormFlipFlop)
 
-"""   More initial processing, drop stride
-"""
+
 def network(insize=1, size=256, winlen=19, stride=5, alphabet_info=None):
     nbase = 4 if alphabet_info is None else alphabet_info.nbase
     winlen2 = 5
