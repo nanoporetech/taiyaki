@@ -33,8 +33,7 @@ For the impatient, the following commands will be run.  These will be explained,
         prepare_mapped_reads.py  --jobs 32 --mod Z C 5mC --mod Y A 6mA reads modbase.tsv modbase.hdf5  pretrained/r941_dna_minion.checkpoint modbase_references.fasta
 
         # Train modified base model
-        train_flipflop.py --device 0 --mod_factor 0.01 --outdir training taiyaki/models/mGru_cat_mod_flipflop.py modbase.hdf5
-        train_flipflop.py --device 0 --mod_factor 0.1 --outdir training2 training/model_final.checkpoint modbase.hdf5
+        train_flipflop.py --device 0 --mod_factor 1.0 --outdir training taiyaki/models/mLstm_cat_mod_flipflop.py modbase.hdf5
 
         # Basecall
         basecall.py --device 0 --modified_base_output basecalls.hdf5 reads training2/model_final.checkpoint  > basecalls.fa
@@ -179,18 +178,17 @@ Depending the speed of the GPU used, this process can take several days.
 
 .. code-block:: bash
 
-    train_flipflop.py --device 0 --mod_factor 0.01 --outdir training taiyaki/models/mGru_cat_mod_flipflop.py modbase.hdf5
-    train_flipflop.py --device 0 --mod_factor 1.0 --outdir training2 training/model_final.checkpoint modbase.hdf5
+    train_flipflop.py --device 0 --mod_factor 1 --outdir training taiyaki/models/mLstm_cat_mod_flipflop.py modbase.hdf5
 
 +----------------------------------------------+-------------------------------------------------------------+
 |  --device 0                                  |  Use CUDA device 0                                          |
 +----------------------------------------------+-------------------------------------------------------------+
-|  --mod_factor 0.01                           |  Relative importance of modifications in training           |
+|  --mod_factor 1.0                            |  Relative importance of modifications in training           |
 |                                              |  criterion (0.0 == ignore, 1.0 == same weight as canonical) |
 +----------------------------------------------+-------------------------------------------------------------+
 |  --outdir                                    |  Name of directory to write output files                    |
 +----------------------------------------------+-------------------------------------------------------------+
-|  taiyaki/models/mGru_cat_mod_flipflop.py     |  Model definition file, ``training/model_final.checkpoint`` |
+|  taiyaki/models/mLstm_cat_mod_flipflop.py    |  Model definition file, ``training/model_final.checkpoint`` |
 |                                              |  for second round of training.                              |
 +----------------------------------------------+-------------------------------------------------------------+
 |  training                                    |  Output directory for model checkpoints and training log    |
