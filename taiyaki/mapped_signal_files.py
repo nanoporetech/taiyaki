@@ -14,6 +14,8 @@ from taiyaki import alphabet
 
 _version = 8
 
+DO_REJECT_EDGE_SLIP = False
+
 class Read(dict):
     """Class to represent the information about a read that is stored in
     a per-read file. Includes lots of checking methods, and methods
@@ -284,7 +286,9 @@ class Read(dict):
                           'sequence': reference,
                           'max_dwell': maxdwell,
                           'start_sample': dacs_region[0]}
-            if self.check_for_slip_at_refloc(ref_region[0]) or self.check_for_slip_at_refloc(ref_region[1]):
+            if (DO_REJECT_EDGE_SLIP and (
+                    self.check_for_slip_at_refloc(ref_region[0]) or
+                    self.check_for_slip_at_refloc(ref_region[1]))):
                 if verbose:
                     print("Rejecting read because of slip:", self.check_for_slip_at_refloc(
                         ref_region[0]), self.check_for_slip_at_refloc(ref_region[1]))
