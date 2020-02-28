@@ -12,7 +12,8 @@ import torch
 
 from taiyaki import (chunk_selection, constants, ctc, flipflopfings, helpers,
                      layers, mapped_signal_files, maths, optim)
-from taiyaki.cmdargs import AutoBool, FileExists, Maybe, NonNegative, Positive
+from taiyaki.cmdargs import (AutoBool, FileExists, Maybe, NonNegative,
+                             ParseToNamedTuple, Positive)
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
 from taiyaki.helpers import guess_model_stride
@@ -24,7 +25,7 @@ parser = argparse.ArgumentParser(description='Train flip-flop neural network',
 mdl_grp = parser.add_argument_group('Model Arguments')
 mdl_grp.add_argument('--size', default=256, metavar='neurons',
                      type=Positive(int), help='Base layer size for model')
-mdl_grp.add_argument('--stride', default=2, metavar='samples',
+mdl_grp.add_argument('--stride', default=5, metavar='samples',
                      type=Positive(int), help='Stride for model')
 mdl_grp.add_argument('--winlen', default=19, type=Positive(int),
                      help='Length of window over data')
@@ -36,15 +37,15 @@ trn_grp.add_argument('--gradient_cap_fraction', default=0.05, metavar = 'f',
                      help='Cap L2 norm of gradient so that a fraction f of ' +
                      'gradients are capped. ' +
                      'Use --gradient_cap_fraction None for no capping.')
-trn_grp.add_argument('--lr_cosine_iters', default=40000, metavar='n',
+trn_grp.add_argument('--lr_cosine_iters', default=90000, metavar='n',
                     type=Positive(float),
                     help='Learning rate decreases from max to min ' +
                          'like cosine function over n batches')
 trn_grp.add_argument('--lr_frac_decay', default=None, metavar='k',
                     type=Positive(int),
                     help='If specified, use fractional learning rate ' +
-                          'schedule, rate=lr_max*k/(k+t)')
-trn_grp.add_argument('--lr_max', default=2.0e-3, metavar='rate',
+                         'schedule, rate=lr_max*k/(k+t)')
+trn_grp.add_argument('--lr_max', default=4.0e-3, metavar='rate',
                     type=Positive(float),
                     help='Max (and starting) learning rate')
 trn_grp.add_argument('--lr_min', default=1.0e-4, metavar='rate',
@@ -52,8 +53,11 @@ trn_grp.add_argument('--lr_min', default=1.0e-4, metavar='rate',
 trn_grp.add_argument('--seed', default=None, metavar='integer',
                      type=Positive(int),
                      help='Set random number seed')
-trn_grp.add_argument('--sharpen', default=1.0, metavar='factor',
-                     type=Positive(float), help='Sharpening factor')
+trn_grp.add_argument('--sharpen', default=(1.0, 1.0, 25000), nargs=3,
+                     metavar=('min', 'max', 'niter'), action=ParseToNamedTuple,
+                     type=(Positive(float), Positive(float), Positive(int)),
+                     help='Increase sharpening factor linearly from "min" to ' +
+                          '"max" over "niter" iterations')
 trn_grp.add_argument('--warmup_batches', type=int, default=200,
                      help = 'For the first n batches, ' +
                      'warm up at a low learning rate.')
@@ -63,11 +67,11 @@ trn_grp.add_argument('--lr_warmup', type=float, default=None,
 data_grp = parser.add_argument_group('Data Arguments')
 add_common_command_args(data_grp, """filter_max_dwell filter_mean_dwell limit
                                      reverse sample_nreads_before_filtering""".split())
-data_grp.add_argument('--chunk_len_min', default=2000, metavar='samples',
+data_grp.add_argument('--chunk_len_min', default=3000, metavar='samples',
                       type=Positive(int),
                       help='Min length of each chunk in samples' +
                       ' (chunk lengths are random between min and max)')
-data_grp.add_argument('--chunk_len_max', default=4000, metavar='samples',
+data_grp.add_argument('--chunk_len_max', default=8000, metavar='samples',
                       type=Positive(int),
                       help='Max length of each chunk in samples ' +
                       '(chunk lengths are random between min and max)')
@@ -78,7 +82,7 @@ data_grp.add_argument('--include_reporting_strands',
 data_grp.add_argument('--input_strand_list', default=None, action=FileExists,
                       help='Strand summary file containing column read_id. '+
                       'Filenames in file are ignored.')
-data_grp.add_argument('--min_sub_batch_size', default=96, metavar='chunks',
+data_grp.add_argument('--min_sub_batch_size', default=128, metavar='chunks',
                       type=Positive(int),
                       help='Number of chunks to run in parallel per ' +
                       'sub-batch for chunk_len = chunk_len_max. Actual ' +
@@ -493,6 +497,8 @@ def main():
 
 
     for i in range(args.niteration):
+        sharpen = args.sharpen.min + (args.sharpen.max - args.sharpen.min) * \
+            min(1.0, i / args.sharpen.niter)
 
         # Chunk length is chosen randomly in the range given but forced to
         # be a multiple of the stride
@@ -516,7 +522,7 @@ def main():
 
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
                             calculate_loss( network, network_is_catmod,
-                                            main_batch_gen, args.sharpen,
+                                            main_batch_gen, sharpen,
                                             can_mods_offsets, mod_cat_weights,
                                             mod_factor_t, calc_grads = True )
 

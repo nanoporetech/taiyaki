@@ -69,9 +69,9 @@ def gelu(x):
 
          Using approximation from paper above.
 
-         NB:  Why isn't this approximation x \sigma(x * 1.813799), which would
-         be the result of replacing the Gaussian distribution function with
-         a Logistic distribution with unit variance.
+         .. Note::  Why isn't this approximation :math:`x \sigma(1.813799 x)`,
+         which would be the result of replacing the Gaussian distribution
+         function with a Logistic distribution with unit variance?
 
     """
     #return 0.5 * (1.0 + torch.tanh(x * 0.7978846 * (1.0 + 0.044715 * x * x)))
@@ -80,6 +80,21 @@ def gelu(x):
 
 def exp(x):
     return torch.exp(x)
+
+
+def swish(x):
+    """ Swish activation
+
+        Swish is self-gated linear activation :math:`x \sigma(x)`
+        Original definition has a scaling parameter for the gating value,
+        making it a generalisation of the (logistic approximation to) the GELU.
+        Evidence presented, e.g. https://arxiv.org/abs/1908.08681 that swish-1
+        performs comparable to tuning the parameter.
+
+        https://arxiv.org/abs/1710.05941
+
+    """
+    return x * torch.sigmoid(x)
 
 
 #  Bounded and monotonic

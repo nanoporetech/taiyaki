@@ -64,7 +64,7 @@ def add_common_command_args(parser, arglist):
 
         ('niteration', lambda :
             parser.add_argument('--niteration', metavar='batches', type=Positive(int),
-                                default=50000, help='Maximum number of batches to train for')),
+                                default=100000, help='Maximum number of batches to train for')),
 
         ('outdir', lambda :
             parser.add_argument('--outdir', default='training',
