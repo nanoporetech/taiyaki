@@ -303,9 +303,9 @@ In terms of the workflow described above, the following steps need to be changed
 # Guppy compatibility
 
 In order to train a model that is compatible with Guppy (version 2.2 at time of writing), we recommend that you
-use the model defined in `models/mGru_flipflop.py` and that you call `train_flipflop.py` with:
+use the model defined in `models/mLstm_flipflop.py` and that you call `train_flipflop.py` with:
 
-    train_flipflop.py --size 256 --stride 2 --winlen 19 mGru_flipflop.py <other options...>
+    train_flipflop.py --size 256 --stride 5 --winlen 19 mLstm_flipflop.py <other options...>
 
 You should then be able to export your checkpoint to json (using bin/dump_json.py) that can be used to basecall with Guppy.
 
@@ -336,10 +336,10 @@ The table below describes the parameters currently used to train the production 
 
 | Condition                | chunk\_len\_min | chunk\_len\_max | size | stride | winlen |
 |--------------------------|-----------------|-----------------|------|--------|--------|
-| DNA, high accuracy       |   2000          |   4000          | 256  | 2 or 3 | 19     |
-| DNA, fast                |   2000          |   4000          | 96   | 4      | 19     |
-| RNA, high accuracy       |   2000          |   4000          | 256  | 10     | 31     |
-| RNA, fast                |   2000          |   4000          | 96   | 12     | 31     |
+| DNA, high accuracy       |    3000         |    8000         | 256  | 5      | 19     |
+| DNA, fast                |    2000         |    4000         |  96  | 5      | 19     |
+| RNA, high accuracy       |   10000         |   20000         | 256  | 10     | 31     |
+| RNA, fast                |   10000         |   20000         |  96  | 12     | 31     |
 
 
 # Environment variables
@@ -411,7 +411,7 @@ size is larger by a factor N than the batch size in single-GPU mode.
 
 Multi-GPU training runs can be launched using the Pytorch **distributed.launch** module. For example, in a Taiyaki environment:
 
-    python -m torch.distributed.launch --nproc_per_node=4 train_flipflop.py --lr_max 0.004 --lr_min 0.0002 taiyaki/models/mGru_flipflop.py mapped_reads.hdf5
+    python -m torch.distributed.launch --nproc_per_node=4 train_flipflop.py --lr_max 0.004 --lr_min 0.0002 taiyaki/models/mLstm_flipflop.py mapped_reads.hdf5
     
 This command line launches four processes, each using a GPU. Four GPUs numbered 0,1,2,3 must be available.
 

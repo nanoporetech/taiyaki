@@ -26,7 +26,7 @@ def convert_0_to_1(model):
     """
     if hasattr(model, 'metadata'):
         #  Version already at least 1
-        return model
+        return False
     print('Upgrading to version 1')
 
     #  Add metadata
@@ -51,6 +51,7 @@ def convert_0_to_1(model):
             #  some version 0 models have it
             if not hasattr(layer, '_never_use_cupy'):
                 layer._never_use_cupy = False
+    return True
 
 
 def convert_1_to_2(model):
@@ -58,10 +59,9 @@ def convert_1_to_2(model):
         * GlobalNormFlipFlop has `activation` and `scale` fields
     """
     if model.metadata['version'] >= 2:
-        return
+        return False
     print('Upgrading to version 2')
     model.metadata['version'] = 2
-
 
     for layer in model.modules():
         #  Walk layers and change
@@ -71,6 +71,7 @@ def convert_1_to_2(model):
             layer.activation = activation.tanh
             assert not hasattr(layer, 'scale'), 'Inconsistent model!'
             layer.scale = 5.0
+    return True
 
 
 def main():
@@ -81,11 +82,13 @@ def main():
     print('Loading model from {}'.format(args.input))
     net = torch.load(args.input, map_location=torch.device('cpu'))
 
-    convert_0_to_1(net)
-    convert_1_to_2(net)
+    upgraded = False
+    upgraded |= convert_0_to_1(net)
+    upgraded |= convert_1_to_2(net)
 
-    print('Saving upgraded model to {}'.format(args.output))
-    torch.save(net, args.output)
+    if upgraded:
+        print('Saving upgraded model to {}'.format(args.output))
+        torch.save(net, args.output)
 
 
 

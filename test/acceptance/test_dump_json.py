@@ -1,7 +1,7 @@
 import json
 from parameterized import parameterized
 import os
-import sys
+import tempfile
 import unittest
 
 import util
@@ -35,23 +35,33 @@ class AcceptanceTest(unittest.TestCase):
         util.run_cmd(self, cmd).expect_exit_code(2).expect_stderr(util.any_line_starts_with(u"usage"))
 
     @parameterized.expand([
-        [["--params"]],
-        [["--no-params"]],
+        [["--params"], "mGru_flipflop_remapping_model_r9_DNA.checkpoint"],
+        [["--no-params"], "mGru_flipflop_remapping_model_r9_DNA.checkpoint"],
+        [["--params"], "mLstm_flipflop_model_r941_DNA.checkpoint"],
+        [["--no-params"], "mLstm_flipflop_model_r941_DNA.checkpoint"],
+        [["--params"], "mLstm_flipflop_model_r103_DNA.checkpoint"],
+        [["--no-params"], "mLstm_flipflop_model_r103_DNA.checkpoint"],
     ])
-    def test_dump_to_stdout(self, options):
-        self.assertTrue(os.path.exists(self.model_file))
-        cmd = [self.script, self.model_file] + options
+    def test_dump_to_stdout(self, options, model_name):
+        model_file = os.path.join(util.MODELS_DIR, model_name)
+        self.assertTrue(os.path.exists(model_file))
+        cmd = [self.script, model_file] + options
+        print(cmd)
         util.run_cmd(self, cmd).expect_exit_code(0).expect_stdout(lambda o: is_valid_json('\n'.join(o)))
 
     @parameterized.expand([
-        [["--no-params"], "2"],
+        [["--no-params"], "mGru_flipflop_remapping_model_r9_DNA.checkpoint"],
+        [["--no-params"], "mLstm_flipflop_model_r941_DNA.checkpoint"],
+        [["--no-params"], "mLstm_flipflop_model_r103_DNA.checkpoint"]
     ])
-    def test_dump_to_a_file(self, options, subdir):
+    def test_dump_to_a_file(self, options, model_name):
+        model_file = os.path.join(util.MODELS_DIR, model_name)
         self.assertTrue(os.path.exists(self.model_file))
-        test_work_dir = self.work_dir(os.path.join("test_dump_to_a_file", subdir))
 
-        output_file = os.path.join(test_work_dir, "output.json")
-        open(output_file, "w").close()
+        test_work_dir = self.work_dir("test_dump_to_a_file")
+        with tempfile.NamedTemporaryFile(dir=test_work_dir, suffix='.json',
+                                         delete=False) as fh:
+            output_file = fh.name
 
         cmd = [self.script, self.model_file, "--output", output_file] + options
         error_message = "RuntimeError: File/path for 'output' exists, {}".format(output_file)
@@ -70,7 +80,7 @@ class AcceptanceTest(unittest.TestCase):
     def test_json_to_checkpoint(self):
         subdir="3"
         self.assertTrue(os.path.exists(self.model_file))
-        test_work_dir = self.work_dir(os.path.join("test_json_to_checkpoint", subdir))
+        test_work_dir = self.work_dir("test_json_to_checkpoint")
 
         # dump stored model to json
         json_file = os.path.join(test_work_dir, "output.json")
