@@ -155,13 +155,14 @@ Notice that each modification is given as a separate argument, describing: the l
 
 Train a Model
 -------------
+
 Having prepared the mapped read file, the ``train_flipflop.py`` script trains a flip-flop model.
 Progress is displayed on the screen and written to a log file in output directory. 
 Checkpoints are regularly saved and training can be restarted from a checkpoint by replacing the model description file with the checkpoint file on the command line.
 
-- ``train1/model.log``   Log file
-- ``train1/model.py``    Input model file
-- ``train1/model_checkpoint_xxxxx.checkpoint``   Model checkpoint files
+- ``training/model.log``   Log file
+- ``training/model.py``    Input model file
+- ``training/model_checkpoint_xxxxx.checkpoint``   Model checkpoint files
 
 Two rounds of training are performed:
 the first round down-weights learning the modified bases in favour a good canonical call,
