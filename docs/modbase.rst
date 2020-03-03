@@ -12,7 +12,6 @@ The model will be trained from a set of reads and read-specific references, mark
 A pre-trained model is used to create a mapping from the read to the reference but this model need not be modification aware.  
 The model provided is a canonical base model from R9.4.1 trained from native DNA.
 
-
 For the impatient, the following commands will be run.  These will be explained, step-by-step, in following sections.
 
 .. code-block:: bash
@@ -30,24 +29,22 @@ For the impatient, the following commands will be run.  These will be explained,
         generate_per_read_params.py --jobs 32 reads > modbase.tsv
 
         # Create Mapped Read File
-        prepare_mapped_reads.py  --jobs 32 --mod Z C 5mC --mod Y A 6mA reads modbase.tsv modbase.hdf5  pretrained/r941_dna_minion.checkpoint modbase_references.fasta
+        prepare_mapped_reads.py --jobs 32 --mod Z C 5mC --mod Y A 6mA reads modbase.tsv modbase.hdf5 pretrained/r941_dna_minion.checkpoint modbase_references.fasta
 
         # Train modified base model
-        train_flipflop.py --device 0 --mod_factor 0.01 --outdir training taiyaki/models/mGru_cat_mod_flipflop.py modbase.hdf5
-        train_flipflop.py --device 0 --mod_factor 0.1 --outdir training2 training/model_final.checkpoint modbase.hdf5
+        train_flipflop.py --device 0 taiyaki/models/mLstm_cat_mod_flipflop.py modbase.hdf5
 
         # Basecall
-        basecall.py --device 0 --modified_base_output basecalls.hdf5 reads training2/model_final.checkpoint  > basecalls.fa
-
+        basecall.py --device 0 --modified_base_output basecalls.hdf5 reads training/model_final.checkpoint > basecalls.fa
 
 
 Download and Unpack Training Data
 ---------------------------------
+
 Download the training data, consisting of 10k R9.4.1 reads from a DNA sample of the following organisms.
 
 - \E. coli (K12)
 - \H. sapiens (NA12878)
-
 
 .. code-block:: bash
 
@@ -73,6 +70,7 @@ An additional directory ``taiyaki_modbase/intermediate_files`` contains examples
 
 Obtain and install Taiyaki
 --------------------------
+
 Download the *Taiyaki* software and install into a Python virtual environment.
 For further information, see https://github.com/nanoporetech/taiyaki
 
@@ -84,9 +82,9 @@ For further information, see https://github.com/nanoporetech/taiyaki
 
 The remainder of this walk-through assumes that the working directory is ``taiyaki_modbase``, containing the data to train from, and that the *taiyaki* virtual environment is activated.
 
-
 Create Per-read Scaling Parameters
 ----------------------------------
+
 Taiyaki allows a great deal of flexibility is how reads are scaled and trimmed before mapping, parameters for each read being contained in a *tab-separated-variable* (tsv) file with the following columns:
 
 - UUID
@@ -95,13 +93,11 @@ Taiyaki allows a great deal of flexibility is how reads are scaled and trimmed b
 - shift
 - scale
 
-
 The ``generate_per_read_params.py`` script analyses a directory of reads and produces a compatible tsv file using a default scaling method.
 
 .. code-block:: bash
 
     generate_per_read_params.py --jobs 32 reads > modbase.tsv
-
 
 +----------------------------------------+-------------------------------------------------------------+
 |  --jobs 32                             |  Run using 32 threads                                       |
@@ -111,7 +107,6 @@ The ``generate_per_read_params.py`` script analyses a directory of reads and pro
 | > modbase.tsv                          |  Redirect output to ``modbase.tsv`` file.                   |
 |                                        |  Default is write to ``stdout``                             |
 +----------------------------------------+-------------------------------------------------------------+
-
 
 Create Mapped Read File
 -----------------------
@@ -124,7 +119,6 @@ Each read-specific reference should be marked up with the location of any modifi
 In reference file provided, 5mC is represented by 'Z' and 6mA by 'Y' but these should not be considered definitive or assumed to be compatible with other software.
 There are few standards for what letters represent modifications in DNA / RNA sequences and the final choice is left to the user.
 
-
 An example reference might look like:
 
 .. code-block::
@@ -132,18 +126,17 @@ An example reference might look like:
     >f7630a4a-de56-4081-b203-49832119a4a9
     ATCAGCATCCGCAAGCCZAGGGYTCACCCGGACATGTTGCAGCGAAAACTGACGACGTAATTGAGTTTCAT
 
-
-The following creates the input data for training.  Notice that each modification is given as a separate argument, describing: the letter used to represent it in the *fasta* file, the canonical base it is "equivalent" to, and a convenient name.
+The following creates the input data for training.
+Notice that each modification is given as a separate argument, describing: the letter used to represent it in the *fasta* file, the canonical base it is "equivalent" to, and a convenient name.
 
 .. code-block:: bash
 
-    prepare_mapped_reads.py  --jobs 32 --mod Z C 5mC --mod Y A 6mA reads modbase.tsv modbase.hdf5  pretrained/r941_dna_minion.checkpoint modbase_references.fasta
-
+    prepare_mapped_reads.py --jobs 32 --mod Z C 5mC --mod Y A 6mA reads modbase.tsv modbase.hdf5 pretrained/r941_dna_minion.checkpoint modbase_references.fasta
 
 +---------------------------------------------+-------------------------------------------------------------+
 | --jobs 32                                   |  Number of threads to run simultaneously                    |
 +---------------------------------------------+-------------------------------------------------------------+
-| --mod Z C 5mC                               |  Description of each modification.  Letter used to          |
+| --mod Z C 5mC                               |  Description of each modification. Letter used to           |
 | --mod Y A 6mA                               |  represent modificaton in `modbase_references.fasta`, the   |
 |                                             |  canonical base for the modification, and a name.           |
 +---------------------------------------------+-------------------------------------------------------------+
@@ -151,7 +144,7 @@ The following creates the input data for training.  Notice that each modificatio
 +---------------------------------------------+-------------------------------------------------------------+
 | modbases.tsv                                |  Per-read scaling and trimming parameters                   |
 +---------------------------------------------+-------------------------------------------------------------+
-| modbases.hdf5                               |  Output file.  A HDF5 format file, structured               |
+| modbases.hdf5                               |  Output file. A HDF5 format file, structured                |
 |                                             |  according to (docs/FILE_FORMATS.md)                        |
 +---------------------------------------------+-------------------------------------------------------------+
 | pretrained/r941_dna_minion.checkpoint       |  Model file used for remapping reads to their references    |
@@ -160,16 +153,16 @@ The following creates the input data for training.  Notice that each modificatio
 |                                             |  marked up with modified base information                   |
 +---------------------------------------------+-------------------------------------------------------------+
 
-
 Train a Model
 -------------
+
 Having prepared the mapped read file, the ``train_flipflop.py`` script trains a flip-flop model.
 Progress is displayed on the screen and written to a log file in output directory. 
 Checkpoints are regularly saved and training can be restarted from a checkpoint by replacing the model description file with the checkpoint file on the command line.
 
-- ``train1/model.log``   Log file
-- ``train1/model.py``    Input model file
-- ``train1/model_checkpoint_xxxxx.checkpoint``   Model checkpoint files
+- ``training/model.log``   Log file
+- ``training/model.py``    Input model file
+- ``training/model_checkpoint_xxxxx.checkpoint``   Model checkpoint files
 
 Two rounds of training are performed:
 the first round down-weights learning the modified bases in favour a good canonical call,
@@ -179,25 +172,16 @@ Depending the speed of the GPU used, this process can take several days.
 
 .. code-block:: bash
 
-    train_flipflop.py --device 0 --mod_factor 0.01 --outdir training taiyaki/models/mGru_cat_mod_flipflop.py modbase.hdf5
-    train_flipflop.py --device 0 --mod_factor 1.0 --outdir training2 training/model_final.checkpoint modbase.hdf5
+    train_flipflop.py --device 0 taiyaki/models/mLstm_cat_mod_flipflop.py modbase.hdf5
 
 +----------------------------------------------+-------------------------------------------------------------+
 |  --device 0                                  |  Use CUDA device 0                                          |
 +----------------------------------------------+-------------------------------------------------------------+
-|  --mod_factor 0.01                           |  Relative importance of modifications in training           |
-|                                              |  criterion (0.0 == ignore, 1.0 == same weight as canonical) |
-+----------------------------------------------+-------------------------------------------------------------+
-|  --outdir                                    |  Name of directory to write output files                    |
-+----------------------------------------------+-------------------------------------------------------------+
-|  taiyaki/models/mGru_cat_mod_flipflop.py     |  Model definition file, ``training/model_final.checkpoint`` |
+|  taiyaki/models/mLstm_cat_mod_flipflop.py    |  Model definition file, ``training/model_final.checkpoint`` |
 |                                              |  for second round of training.                              |
-+----------------------------------------------+-------------------------------------------------------------+
-|  training                                    |  Output directory for model checkpoints and training log    |
 +----------------------------------------------+-------------------------------------------------------------+
 |  modbase.hdf5                                |  Mapped reads file created by ``prepare_mapped_reads.py``   |
 +----------------------------------------------+-------------------------------------------------------------+
-
 
 Basecall
 --------
@@ -208,8 +192,7 @@ The basecalls produced use the canonical base alphabet, information about putati
 
 .. code-block:: bash
 
-     basecall.py --device 0 --modified_base_output basecalls.hdf5 reads training2/model_final.checkpoint  > basecalls.fa
-
+     basecall.py --device 0 --modified_base_output basecalls.hdf5 reads training/model_final.checkpoint > basecalls.fa
 
 +----------------------------------------------+-------------------------------------------------------------+
 |  --device 0                                  |  Use CUDA device 0                                          |
@@ -218,12 +201,11 @@ The basecalls produced use the canonical base alphabet, information about putati
 +----------------------------------------------+-------------------------------------------------------------+
 |  reads                                       |  Directory contain reads in *fast5* format                  |
 +----------------------------------------------+-------------------------------------------------------------+
-|  training2/model_final.checkpoint            |  Trained model file                                         |
+|  training/model_final.checkpoint             |  Trained model file                                         |
 +----------------------------------------------+-------------------------------------------------------------+
 |  > basecalls.fa                              |  Redirect output basecalls to ``modbase.tsv`` file.         |
 |                                              |  Default is to write to ``stdout``                          |
 +----------------------------------------------+-------------------------------------------------------------+
-
 
 Modified Base File
 ..................
@@ -244,10 +226,8 @@ Impossible calls, where the canonical basecall position and modification are inc
         .
         .
 
-
 Quick analysis
 ..............
-
 
 .. code-block:: python
 

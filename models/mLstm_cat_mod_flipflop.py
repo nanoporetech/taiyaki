@@ -1,10 +1,9 @@
 from taiyaki.activation import swish
 from taiyaki.layers import (
-    Convolution, Lstm, Reverse, Serial, GlobalNormFlipFlop)
+    Convolution, Lstm, Reverse, Serial, GlobalNormFlipFlopCatMod)
 
 
 def network(insize=1, size=256, winlen=19, stride=5, alphabet_info=None):
-    nbase = 4 if alphabet_info is None else alphabet_info.nbase
     winlen2 = 5
 
     return Serial([
@@ -16,5 +15,5 @@ def network(insize=1, size=256, winlen=19, stride=5, alphabet_info=None):
         Reverse(Lstm(size, size)),
         Lstm(size, size),
         Reverse(Lstm(size, size)),
-        GlobalNormFlipFlop(size, nbase),
+        GlobalNormFlipFlopCatMod(size, alphabet_info),
     ])

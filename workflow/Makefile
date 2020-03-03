@@ -124,11 +124,11 @@ USER_PER_READ_MOD_REFERENCE_FILE:= FOR_USER_PER_READ_MOD_REFERENCE_SET_THIS_AND_
 
 
 #Pytorch flip-flop model for remapping
-REMAPMODELFILE := ${TAIYAKI_ROOT}/models/mGru_flipflop_remapping_model_r9_DNA.checkpoint
+REMAPMODELFILE := ${TAIYAKI_ROOT}/models/mLstm_flipflop_model_r941_DNA.checkpoint
 
 #Model definition for training
-TRAININGMODEL := ${TAIYAKI_ROOT}/models/mGru_flipflop.py
-MODTRAININGMODEL := ${TAIYAKI_ROOT}/models/mGru_cat_mod_flipflop.py
+TRAININGMODEL := ${TAIYAKI_ROOT}/models/mLstm_flipflop.py
+MODTRAININGMODEL := ${TAIYAKI_ROOT}/models/mLstm_cat_mod_flipflop.py
 
 ######################
 # WHERE TO PUT THINGS
