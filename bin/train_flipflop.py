@@ -557,10 +557,10 @@ def main():
 
         if (i + 1) % DOTROWLENGTH == 0:
 
-            _, rloss, _, _, _ = calculate_loss( network, network_is_catmod,
-                                                reporting_batch_list,
-                                                args.sharpen, can_mods_offsets,
-                                                mod_cat_weights, mod_factor_t )
+            _, rloss, _, _, _ = calculate_loss(
+                network, network_is_catmod, reporting_batch_list,
+                args.sharpen.max, can_mods_offsets, mod_cat_weights,
+                mod_factor_t)
 
             # In case of super batching, additional functionality must be
             # added here
