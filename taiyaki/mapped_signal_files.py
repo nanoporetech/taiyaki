@@ -14,8 +14,6 @@ from taiyaki import alphabet
 
 _version = 8
 
-DO_REJECT_EDGE_SLIP = False
-
 class Read(dict):
     """Class to represent the information about a read that is stored in
     a per-read file. Includes lots of checking methods, and methods
@@ -187,8 +185,15 @@ class Read(dict):
         if isinstance(signal_location_vector, tuple):
             signal_location_vector = np.array(signal_location_vector)
 
+        # searchsorted to the right and then left to avoid including slip bases
+        # at the edge of a region when they occur
+        result = np.array([
+            np.searchsorted(
+                self['Ref_to_signal'], signal_location_vector[0], 'right'),
+            np.searchsorted(
+                self['Ref_to_signal'], signal_location_vector[1], 'left')])
+
         mapped_dacs_start, mapped_dacs_end = self.get_mapped_dacs_region()
-        result = np.searchsorted(self['Ref_to_signal'], signal_location_vector)
         if any(signal_location_vector < mapped_dacs_start):
             raise IndexError('Signal location before mapped region requested.')
         if any(signal_location_vector > mapped_dacs_end):
@@ -286,13 +291,6 @@ class Read(dict):
                           'sequence': reference,
                           'max_dwell': maxdwell,
                           'start_sample': dacs_region[0]}
-            if (DO_REJECT_EDGE_SLIP and (
-                    self.check_for_slip_at_refloc(ref_region[0]) or
-                    self.check_for_slip_at_refloc(ref_region[1]))):
-                if verbose:
-                    print("Rejecting read because of slip:", self.check_for_slip_at_refloc(
-                        ref_region[0]), self.check_for_slip_at_refloc(ref_region[1]))
-                returndict['rejected'] = 'slip'
 
         if 'read_id' in self:
             returndict['read_id'] = self['read_id']
