@@ -97,7 +97,7 @@ def add_common_command_args(parser, arglist):
                                 help='Sample n reads to decide on bounds for filtering before training. Set to 0 to do all.')),
 
         ('save_every', lambda :
-            parser.add_argument('--save_every', metavar='x', type=Positive(int), default=5000,
+            parser.add_argument('--save_every', metavar='x', type=Positive(int), default=1000,
                                 help='Save model every x batches')),
 
         ('version', lambda :
