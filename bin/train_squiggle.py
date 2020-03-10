@@ -50,7 +50,7 @@ parser.add_argument('--size', metavar='n', default=32, type=Positive(int),
                     help='Size of layers in convolution network')
 parser.add_argument('--target_len', metavar='n', default=300, type=Positive(int),
                     help='Target length of sequence')
-parser.add_argument('--winlen', metavar='n', default=7, type=Positive(int),
+parser.add_argument('--winlen', metavar='n', default=9, type=Positive(int),
                     help='Window for convolution network')
 parser.add_argument('input', action=FileExists, help='HDF5 file containing mapped reads')
 
