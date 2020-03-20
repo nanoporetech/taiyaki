@@ -68,16 +68,23 @@ export OMP_NUM_THREADS
 # INGREDIENTS AND PARAMETERS
 #####################################
 #Max number of reads to process - use small number for testing
-MAXREADS := 10000000000
+MAXREADS := 10
 #Max number of training iterations - use small number for testing
-MAX_TRAINING_ITERS := 50000
+MAX_TRAINING_ITERS := 51
 
 # Which device to use for remapping and for training (cpu for CPU, or integer for GPU number)
 # Run nvidia-smi to get a summary of which GPUs are in use. Specify DEVICE=cpu if no GPU available.
-DEVICE := 0
+DEVICE := cpu
 
 #Network size for training
-NETWORK_SIZE := 256
+NETWORK_SIZE := 17
+
+#Batch size of training
+BATCH_SIZE := 7
+
+#Chunk sizes
+CHUNK_LEN_MIN := 1500
+CHUNK_LEN_MAX := 2500
 
 #####################################
 # MODIFIED BASE TRAINING PARAMETERS
@@ -203,6 +210,9 @@ listparams:
 	@echo "TAIYAKIACTIVATE="${TAIYAKIACTIVATE}
 	@echo "MAX_TRAINING_ITERS="${MAX_TRAINING_ITERS}
 	@echo "NETWORK_SIZE="${NETWORK_SIZE}
+	@echo "BATCH_SIZE="${BATCH_SIZE}
+	@echo "CHUNK_LEN_MIN="${CHUNK_LEN_MIN}
+	@echo "CHUNK_LEN_MAX="${CHUNK_LEN_MAX}
 	@echo ""
 
 
@@ -297,7 +307,11 @@ ${RESULT_DIR}/train_%/trained: ${INGREDIENT_DIR}/mapped_%.hdf5
 	@echo ""
 	@echo "------------Training with $* chunks"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --size ${NETWORK_SIZE} --outdir $(dir $@) --overwrite --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} ${TRAININGMODEL} $<
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --min_sub_batch_size ${BATCH_SIZE} \
+		--chunk_len_min ${CHUNK_LEN_MIN} --chunk_len_max ${CHUNK_LEN_MAX} \
+		--sample_nreads_before_filtering 1000 \
+		--size ${NETWORK_SIZE} --outdir $(dir $@) --overwrite --niteration ${MAX_TRAINING_ITERS} \
+		--device ${DEVICE} ${SEEDOPT} ${TRAININGMODEL} $<
 	touch $@
 
 
@@ -316,7 +330,11 @@ ${RESULT_DIR}/mod_train_%/trained: ${INGREDIENT_DIR}/mod_mapped_%.hdf5
 	@echo ""
 	@echo "------------Training with $* chunks"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --size ${NETWORK_SIZE} --overwrite --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} --outdir $(dir $@) ${MODTRAININGMODEL} $<
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --min_sub_batch_size ${BATCH_SIZE} \
+		--chunk_len_min ${CHUNK_LEN_MIN} --chunk_len_max ${CHUNK_LEN_MAX} \
+		--sample_nreads_before_filtering 1000 \
+		--size ${NETWORK_SIZE} --overwrite --niteration ${MAX_TRAINING_ITERS} \
+		--device ${DEVICE} ${SEEDOPT} --outdir $(dir $@) ${MODTRAININGMODEL} $<
 	touch $@
 
 
@@ -332,7 +350,9 @@ ${RESULT_DIR}/squiggletrain_%/model_final.checkpoint: ${INGREDIENT_DIR}/mapped_%
 	@echo ""
 	@echo "------------Training squiggle model with $* map chunks"
 	@echo ""
-	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_squiggle.py --overwrite --outdir $(dir $@) --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} $<
+	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_squiggle.py --overwrite --outdir $(dir $@) \
+		--batch_size ${BATCH_SIZE} --sample_nreads_before_filtering 1000 --size ${NETWORK_SIZE} \
+		--target_len 150 --niteration ${MAX_TRAINING_ITERS} --device ${DEVICE} ${SEEDOPT} $<
 
 
 ########################################
