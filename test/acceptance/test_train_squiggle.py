@@ -36,9 +36,9 @@ class AcceptanceTest(unittest.TestCase):
         print("Trying to find ", hdf5_file)
         self.assertTrue(os.path.exists(hdf5_file))
 
-        train_cmd = [self.script, "--batch_size", "50",
+        train_cmd = [self.script, "--batch_size", "7", "--size", "17",
                      "--niteration", "1", "--save_every", "1",
-                     "--outdir", output_directory,
+                     "--target_len", "150", "--outdir", output_directory,
                      # Seed random numbers so test is reproducible
                      "--seed", "1",
                      hdf5_file]
