@@ -20,17 +20,20 @@ from taiyaki.helpers import guess_model_stride
 
 
 NETWORK_METADATA = namedtuple('NETWORK_METADATA', (
-    'is_cat_mod', 'can_mods_offsets', 'can_labels', 'mod_labels'))
+    'reverse', 'standardize', 'is_cat_mod', 'can_mods_offsets',
+    'can_labels', 'mod_labels'))
 NETWORK_METADATA.__new__.__defaults__ = (None, None, None)
 
 
 def parse_network_metadata(network):
     if layers.is_cat_mod_model(network):
         return NETWORK_METADATA(
+            network.metadata['reverse'], network.metadata['standardize'],
             True, network.sublayers[-1].can_mods_offsets,
             network.sublayers[-1].can_labels,
             network.sublayers[-1].mod_labels)
-    return NETWORK_METADATA(False)
+    return NETWORK_METADATA(
+        network.metadata['reverse'], network.metadata['standardize'], False)
 
 
 # This is here, not in main to allow documentation to be built
@@ -149,12 +152,11 @@ parser.add_argument('input', action=FileExists,
 
 
 def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
-                           target_sub_batches, alphabet_info, reverse,
-                           standardize, filter_params, network,
-                           network_metadata, log,
+                           target_sub_batches, alphabet_info, filter_params,
+                           network, network_metadata, log,
                            select_strands_randomly=True, first_strand_index=0):
     total_sub_batches = 0
-    if reverse:
+    if network_metadata.reverse:
         revop = np.flip
     else:
         revop = np.array
@@ -164,7 +166,7 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         # Chunk_batch is a list of dicts
         chunk_batch, batch_rejections = chunk_selection.sample_chunks(
             read_data, sub_batch_size, batch_chunk_len, filter_params,
-            standardize=standardize,
+            standardize=network_metadata.standardize,
             select_strands_randomly=select_strands_randomly,
             first_strand_index=first_strand_index)
         first_strand_index += sum(batch_rejections.values())
@@ -482,9 +484,8 @@ def main():
     reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
     reporting_batch_list = list(prepare_random_batches(
         device, report_read_data, reporting_chunk_len, args.min_sub_batch_size,
-        args.reporting_sub_batches, alphabet_info, args.reverse,
-        args.standardize, filter_params, network, network_metadata, log,
-        select_strands_randomly=False))
+        args.reporting_sub_batches, alphabet_info, filter_params, network,
+        network_metadata, log, select_strands_randomly=False))
     log.write( ('* Standard loss report: chunk length = {} & sub-batch size ' +
                 '= {} for {} sub-batches. \n').format(reporting_chunk_len,
                 args.min_sub_batch_size, args.reporting_sub_batches) )
@@ -527,12 +528,10 @@ def main():
 
         optimizer.zero_grad()
 
-        main_batch_gen = prepare_random_batches(device, read_data,
-                                                batch_chunk_len, sub_batch_size,
-                                                args.sub_batches, alphabet_info,
-                                                args.reverse, args.standardize,
-                                                filter_params, network,
-                                                network_metadata, log)
+        main_batch_gen = prepare_random_batches(
+            device, read_data, batch_chunk_len, sub_batch_size,
+            args.sub_batches, alphabet_info, filter_params, network,
+            network_metadata, log)
 
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
                             calculate_loss( network, network_metadata,
