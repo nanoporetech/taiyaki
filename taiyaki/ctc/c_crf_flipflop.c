@@ -10,7 +10,11 @@
 
 
 static inline float logsumexpf(float x, float y, float a){
-    return fmaxf(x, y) + log1pf(expf(-a * fabsf(x-y))) / a;
+    /* expf(-17.0f) is below float precision, and so zero */
+    float delta = a * fabsf(x - y);
+    return fmaxf(x, y) + ((delta < 17.0f) ?
+                          (log1pf(expf(-delta)) / a) :
+                          0.0f);
 }
 
 static inline size_t nstate_to_nbase(size_t ntrans_state){
