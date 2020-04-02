@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 # and with chunk limits are commented out with an 'if False'
 # may be useful in debugging
 
-from taiyaki import alphabet, mapped_signal_files
+from taiyaki import alphabet, mapped_signal_files, signal_mapping
 from taiyaki.constants import DEFAULT_ALPHABET
 
 
@@ -23,7 +23,7 @@ def vectorprint(x):
     print('[' + (' '.join([str(i) for i in x])) + ']')
 
 
-def construct_mapped_read():
+def construct_mapped_read_dict():
     """Test data for a mapped read file.
     Returns a dictionary containing the data"""
     Nsig = 20
@@ -70,8 +70,8 @@ class TestMappedReadFiles(unittest.TestCase):
         """
 
         print("Creating Read object from test data")
-        read_dict = construct_mapped_read()
-        read_object = mapped_signal_files.Read(read_dict)
+        read_dict = construct_mapped_read_dict()
+        read_object = signal_mapping.SignalMapping(**read_dict)
         print("Checking contents")
         check_text = read_object.check()
         print("Check result on read object:")
@@ -79,11 +79,13 @@ class TestMappedReadFiles(unittest.TestCase):
         self.assertEqual(check_text, "pass")
 
         print("Writing to file")
-        with tempfile.NamedTemporaryFile(delete=False, dir=self.testset_work_dir) as fh:
+        with tempfile.NamedTemporaryFile(
+                delete=False, dir=self.testset_work_dir) as fh:
             testfilepath = fh.name
-        alphabet_info = alphabet.AlphabetInfo(DEFAULT_ALPHABET, DEFAULT_ALPHABET)
+        alphabet_info = alphabet.AlphabetInfo(
+            DEFAULT_ALPHABET, DEFAULT_ALPHABET)
         with mapped_signal_files.HDF5Writer(testfilepath, alphabet_info) as f:
-            f.write_read(read_object)
+            f.write_read(read_object.get_read_dictionary())
 
         print("Current dir = ", os.getcwd())
         print("File written to ", testfilepath)
@@ -102,19 +104,19 @@ class TestMappedReadFiles(unittest.TestCase):
             read_list = f.get_multiple_reads("all")
 
         recovered_read = read_list[0]
-        reflen = len(recovered_read['Reference'])
-        siglen = len(recovered_read['Dacs'])
+        reflen = len(recovered_read.Reference)
+        siglen = len(recovered_read.Dacs)
 
         # Get a chunk - note that chunkstart is relative to the start of the mapped
         # region, not relative to the start of the signal
         chunklen, chunkstart = 5, 3
-        chunkdict = recovered_read.get_chunk_with_sample_length(chunklen, chunkstart)
+        chunk = recovered_read.get_chunk_with_sample_length(chunklen, chunkstart)
 
         # Check that the extracted chunk is the right length
-        self.assertEqual(len(chunkdict['current']), chunklen)
+        self.assertEqual(chunk.sig_len, chunklen)
 
         # Check that the mapping data agrees with what we put in
-        self.assertTrue(np.all(recovered_read['Ref_to_signal']==read_dict['Ref_to_signal']))
+        self.assertTrue(np.all(recovered_read.Ref_to_signal==read_dict['Ref_to_signal']))
 
         # Plot a picture showing ref_to_sig from the read object,    def setup():
         # and the result of searches to find the inverse
@@ -123,9 +125,9 @@ class TestMappedReadFiles(unittest.TestCase):
             plt.xlabel('Signal coord')
             plt.ylabel('Ref coord')
             ix = np.array([0, -1])
-            plt.scatter(chunkdict['current'][ix], chunkdict['sequence'][ix],
+            plt.scatter(chunk.current[ix], chunk.sequence[ix],
                         s=50, label='chunk limits', marker='s', color='black')
-            plt.scatter(recovered_read['Ref_to_signal'], np.arange(reflen + 1), label='reftosig (source data)',
+            plt.scatter(recovered_read.Ref_to_signal, np.arange(reflen + 1), label='reftosig (source data)',
                         color='none', edgecolor='blue', s=60)
             siglocs = np.arange(siglen, dtype=np.int32)
             sigtoref_fromsearch = recovered_read.get_reference_locations(siglocs)
@@ -141,9 +143,11 @@ class TestMappedReadFiles(unittest.TestCase):
         leads to errors.
         """
         print("Creating flawed Read object from test data")
-        read_dict = construct_mapped_read()
-        read_dict['Reference'] = "I'm not a numpy array!"  # Wrong type!
-        read_object = mapped_signal_files.Read(read_dict)
+        read_dict = construct_mapped_read_dict()
+        # set reference to incorrect length
+        read_dict['Reference'] = np.zeros(len(read_dict['Reference']) - 1,
+                                          dtype=np.int32)
+        read_object = signal_mapping.SignalMapping(**read_dict)
         print("Checking contents")
         check_text = read_object.check()
         print("Check result on read object: should fail")
@@ -155,7 +159,7 @@ class TestMappedReadFiles(unittest.TestCase):
         with tempfile.NamedTemporaryFile(delete=False, dir=self.testset_work_dir) as fh:
             testfilepath = fh.name
         with mapped_signal_files.HDF5Writer(testfilepath, alphabet_info) as f:
-            f.write_read(read_object)
+            f.write_read(read_object.get_read_dictionary())
 
         print("Current dir = ", os.getcwd())
         print("File written to ", testfilepath)

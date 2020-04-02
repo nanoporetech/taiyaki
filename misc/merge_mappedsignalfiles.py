@@ -144,7 +144,7 @@ def create_alphabet_conversion(hin, merge_alphabet_info):
     return file_alphabet_conv
 
 def convert_reference(read, file_alphabet_conv):
-    read['Reference'] = file_alphabet_conv[read['Reference']]
+    read.Reference = file_alphabet_conv[read.Reference]
     return read
 
 def add_file_reads(
@@ -164,10 +164,9 @@ def add_file_reads(
             continue
 
         read = hin.get_read(read_id)
-        read['read_id'] = read_id
         if allow_mod_merge:
             read = convert_reference(read, file_alphabet_conv)
-        hout.write_read(read)
+        hout.write_read(read.get_read_dictionary())
         reads_written.add(read_id)
         file_num_reads_added += 1
         # check if either global or per-file reads limit has been achieved

@@ -59,7 +59,7 @@ class AcceptanceTest(unittest.TestCase):
             chunk = read0.get_chunk_with_sample_length(1000,start_sample=10)
             # Defined start_sample to make it reproducible - otherwise randomly
             # located chunk is returned.
-            chunk_meandwell = len(chunk['current']) / (len(chunk['sequence']) + 0.0001)
+            chunk_meandwell = chunk.sig_len / (chunk.seq_len + 0.0001)
             print("chunk mean dwell time in samples = ", chunk_meandwell)
             assert 7 < chunk_meandwell < 13, "Chunk mean dwell time outside allowed range 7 to 13"
 
@@ -98,7 +98,7 @@ class AcceptanceTest(unittest.TestCase):
             chunk = read0.get_chunk_with_sample_length(1000,start_sample=10)
             # Defined start_sample to make it reproducible - otherwise randomly
             # located chunk is returned.
-            chunk_meandwell = len(chunk['current']) / (len(chunk['sequence']) + 0.0001)
+            chunk_meandwell = chunk.sig_len / (chunk.seq_len + 0.0001)
             print("chunk mean dwell time in samples = ", chunk_meandwell)
             assert 7 < chunk_meandwell < 13, "Chunk mean dwell time outside allowed range 7 to 13"
 
