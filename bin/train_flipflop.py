@@ -11,7 +11,7 @@ import torch
 
 
 from taiyaki import (chunk_selection, constants, ctc, flipflopfings, helpers,
-                     layers, mapped_signal_files, maths, optim)
+                     layers, mapped_signal_files, maths, optim, signal_mapping)
 from taiyaki.cmdargs import (AutoBool, FileExists, Maybe, NonNegative,
                              ParseToNamedTuple, Positive)
 from taiyaki.common_cmdargs import add_common_command_args
@@ -156,14 +156,15 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         if len(chunk_batch) < sub_batch_size:
             log.write('* Warning: only {} chunks passed filters (asked for {}).\n'.format(len(chunk_batch), sub_batch_size))
 
-        if not all(len(d['sequence']) > 0.0 for d in chunk_batch):
+        if not all(chunk.seq_len > 0.0 for chunk in chunk_batch):
             raise Exception('Error: zero length sequence')
 
         # Shape of input tensor must be:
         #     (timesteps) x (batch size) x (input channels)
         # in this case:
         #     batch_chunk_len x sub_batch_size x 1
-        stacked_current = np.vstack([revop(d['current']) for d in chunk_batch]).T
+        stacked_current = np.vstack([
+            revop(chunk.current) for chunk in chunk_batch]).T
         indata = torch.tensor( stacked_current, device=device,
                                             dtype=torch.float32 ).unsqueeze(2)
 
@@ -171,7 +172,7 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         seqs, seqlens = [], []
         mod_cats = [] if network_is_catmod else None
         for chunk in chunk_batch:
-            chunk_labels = revop(chunk['sequence'])
+            chunk_labels = revop(chunk.sequence)
             seqlens.append(len(chunk_labels))
             if network_is_catmod:
                 chunk_mod_cats = np.ascontiguousarray(
@@ -445,7 +446,7 @@ def main():
     mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
 
     # Generate list of batches for standard loss reporting
-    all_read_ids = [read['read_id'] for read in read_data]
+    all_read_ids = [read.read_id for read in read_data]
     if args.reporting_strand_list is not None:
         # get reporting read ids in from strand list
         reporting_read_ids = set(helpers.get_read_ids(
@@ -458,11 +459,11 @@ def main():
             all_read_ids, size=num_report_reads, replace=False))
     # generate reporting reads list
     report_read_data = [read for read in read_data
-                        if read['read_id'] in reporting_read_ids]
+                        if read.read_id in reporting_read_ids]
     if not args.include_reporting_strands:
         # if holding strands out remove these reads from read_data
         read_data = [read for read in read_data
-                     if read['read_id'] not in reporting_read_ids]
+                     if read.read_id not in reporting_read_ids]
         log.write(('* Standard loss reporting from {} validation reads ' +
                    'held out of training. \n').format(len(report_read_data)))
     reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
@@ -557,10 +558,10 @@ def main():
 
         if (i + 1) % DOTROWLENGTH == 0:
 
-            _, rloss, _, _, _ = calculate_loss( network, network_is_catmod,
-                                                reporting_batch_list,
-                                                args.sharpen, can_mods_offsets,
-                                                mod_cat_weights, mod_factor_t )
+            _, rloss, _, _, _ = calculate_loss(
+                network, network_is_catmod, reporting_batch_list,
+                args.sharpen.max, can_mods_offsets, mod_cat_weights,
+                mod_factor_t)
 
             # In case of super batching, additional functionality must be
             # added here
@@ -581,7 +582,7 @@ def main():
                 n_tot = n_fail = 0
                 for k, v in rejection_dict.items():
                     n_tot += v
-                    if k != 'pass':
+                    if k != signal_mapping.Chunk.rej_str_pass:
                         n_fail += v
                 log.write("  {:.1%} chunks filtered".format(n_fail / n_tot))
             log.write("\n")

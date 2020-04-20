@@ -1,7 +1,7 @@
 import numpy as np
 import unittest
 
-from taiyaki import flipflop_remap, mapping, signal
+from taiyaki import flipflop_remap, signal_mapping, signal
 
 
 class TestFlipFlopMapping(unittest.TestCase):
@@ -84,23 +84,58 @@ class TestFlipFlopMapping(unittest.TestCase):
         """
         sig = signal.Signal(dacs=np.zeros(12))
         # testing path with a single skip (over 3rd base; first "T")
-        path = np.array([0,0,1,1,1,3,3,3,4,4,5,6], dtype=np.int32)
-        reference =  'ACTACGT'
+        path = np.array([-1,0,0,1,1,1,3,3,3,4,4,5,6], dtype=np.int32)
+        reference = 'ACTACGT'
 
-        sigtoref_res = mapping.Mapping(
-            sig, path, reference).get_reftosignal()
+        int_ref = signal_mapping.SignalMapping.get_integer_reference(
+            reference, 'ACGT')
+        sigtoref_res = signal_mapping.SignalMapping.from_remapping_path(
+            path, int_ref, 1, sig).Ref_to_signal
         self.assertEqual(sigtoref_res.tolist(),
                          [0, 2, 5, 5, 8, 10, 11, 12])
 
         # now test with clipped bases
         sig = signal.Signal(dacs=np.zeros(15))
         # testing path with a single skip (over 4th base; first "T")
-        path = np.array([-1,1,1,2,2,2,4,4,4,5,5,6,7,-1,-1], dtype=np.int32)
-        reference =  'AACTACGTTT'
+        path = np.array([-1,-1,1,1,2,2,2,4,4,4,5,5,6,7,-1,-1], dtype=np.int32)
+        reference = 'AACTACGTTT'
 
-        sigtoref_res = mapping.Mapping(
-            sig, path, reference).get_reftosignal()
+        int_ref = signal_mapping.SignalMapping.get_integer_reference(
+            reference, 'ACGT')
+        sigtoref_res = signal_mapping.SignalMapping.from_remapping_path(
+            path, int_ref, 1, sig).Ref_to_signal
         self.assertEqual(sigtoref_res.tolist(),
                          [-1, 1, 3, 6, 6, 9, 11, 12, 13, 16, 16])
+
+        return
+
+    def test_mapping_reftosignal_stride_2(self):
+        """Test the conversion from remapped path to reftosignal output
+        """
+        sig = signal.Signal(dacs=np.zeros(24))
+        # testing path with a single skip (over 3rd base; first "T")
+        path = np.array([-1,0,0,1,1,1,3,3,3,4,4,5,6],
+                        dtype=np.int32)
+        reference = 'ACTACGT'
+
+        int_ref = signal_mapping.SignalMapping.get_integer_reference(
+            reference, 'ACGT')
+        sigtoref_res = signal_mapping.SignalMapping.from_remapping_path(
+            path, int_ref, 2, sig).Ref_to_signal
+        self.assertEqual(sigtoref_res.tolist(),
+                         [1, 5, 11, 11, 17, 21, 23, 24])
+
+        # now test with clipped bases
+        sig = signal.Signal(dacs=np.zeros(30))
+        # testing path with a single skip (over 4th base; first "T")
+        path = np.array([-1,-1,1,1,2,2,2,4,4,4,5,5,6,7,-1,-1], dtype=np.int32)
+        reference = 'AACTACGTTT'
+
+        int_ref = signal_mapping.SignalMapping.get_integer_reference(
+            reference, 'ACGT')
+        sigtoref_res = signal_mapping.SignalMapping.from_remapping_path(
+            path, int_ref, 2, sig).Ref_to_signal
+        self.assertEqual(sigtoref_res.tolist(),
+                         [-1, 3, 7, 13, 13, 19, 23, 25, 26, 31, 31])
 
         return

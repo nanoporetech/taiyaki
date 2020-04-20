@@ -8,7 +8,7 @@ import torch
 from collections import defaultdict
 
 from taiyaki import (activation, chunk_selection, helpers, layers,
-                     mapped_signal_files, optim)
+                     mapped_signal_files, optim, signal_mapping)
 from taiyaki.cmdargs import AutoBool, FileExists, Maybe, Positive, proportion
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
@@ -50,7 +50,7 @@ parser.add_argument('--size', metavar='n', default=32, type=Positive(int),
                     help='Size of layers in convolution network')
 parser.add_argument('--target_len', metavar='n', default=300, type=Positive(int),
                     help='Target length of sequence')
-parser.add_argument('--winlen', metavar='n', default=7, type=Positive(int),
+parser.add_argument('--winlen', metavar='n', default=9, type=Positive(int),
                     help='Window for convolution network')
 parser.add_argument('input', action=FileExists, help='HDF5 file containing mapped reads')
 
@@ -157,12 +157,12 @@ def main():
             rejection_dict[k] += v
 
         # Shape of input needs to be seqlen x batchsize x embedding_dimension
-        embedded_matrix = [embed_sequence(revop(d['sequence']), alphabet=None) for d in chunk_batch]
+        embedded_matrix = [embed_sequence(revop(chunk.sequence), alphabet=None) for chunk in chunk_batch]
         seq_embed = torch.tensor(embedded_matrix).permute(1,0,2).to(device)
         # Shape of labels is a flat vector
-        batch_signal = torch.tensor(np.concatenate([revop(d['current']) for d in chunk_batch])).to(device)
+        batch_signal = torch.tensor(np.concatenate([revop(chunk.current) for chunk in chunk_batch])).to(device)
         # Shape of lens is also a flat vector
-        batch_siglen = torch.tensor([len(d['current']) for d in chunk_batch]).to(device)
+        batch_siglen = torch.tensor([chunk.sig_len for chunk in chunk_batch]).to(device)
 
         #print("First 10 elements of first sequence in batch",seq_embed[:10,0,:])
         #print("First 10 elements of signal batch",batch_signal[:10])
@@ -201,7 +201,7 @@ def main():
                 n_tot = n_fail = 0
                 for k, v in rejection_dict.items():
                     n_tot += v
-                    if k != 'pass':
+                    if k != signal_mapping.Chunk.rej_str_pass:
                         n_fail += v
                 log.write("  {:.1%} chunks filtered".format(n_fail / n_tot))
             log.write("\n")
