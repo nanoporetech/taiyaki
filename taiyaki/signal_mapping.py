@@ -80,9 +80,9 @@ class SignalMapping:
             return_string += ("Length of Ref_to_signal ({}) should be 1 + " +
                               "length of Reference ()\n").format(
                                   maplen, self.reflen)
-        # -1 and len(Dacs) are used as end markers
+        # -1 and len(Dacs) + 1 are used as end markers
         if np.min(self.Ref_to_signal) < -1 or \
-           np.max(self.Ref_to_signal) > len(self.Dacs):
+           np.max(self.Ref_to_signal) > len(self.Dacs) + 1:
             return_string += ("Range of locations in mapping exceeds " +
                               "length of Dacs\n")
         if np.any(np.diff(self.Ref_to_signal) < 0):
