@@ -187,11 +187,11 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
 
         # Prepare seqs, seqlens and (if necessary) mod_cats
         seqs, seqlens = [], []
-        mod_cats = [] if network_metadata.is_catmod else None
+        mod_cats = [] if network_metadata.is_cat_mod else None
         for chunk in chunk_batch:
             chunk_labels = revop(chunk.sequence)
             seqlens.append(len(chunk_labels))
-            if network_metadata.is_catmod:
+            if network_metadata.is_cat_mod:
                 chunk_mod_cats = np.ascontiguousarray(
                     network_metadata.mod_labels[chunk_labels])
                 mod_cats.append(chunk_mod_cats)
@@ -205,7 +205,7 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         seqs = torch.tensor(
             np.concatenate(seqs), dtype=torch.float32, device=device)
         seqlens = torch.tensor(seqlens, dtype=torch.long, device=device)
-        if network_metadata.is_catmod:
+        if network_metadata.is_cat_mod:
             mod_cats = torch.tensor(
                 np.concatenate(mod_cats), dtype=torch.long, device=device)
 
@@ -237,7 +237,7 @@ def calculate_loss( network, network_metadata, batch_gen, sharpen,
 
         with torch.set_grad_enabled(calc_grads):
             outputs = network(indata)
-            if network_metadata.is_catmod:
+            if network_metadata.is_cat_mod:
                 lossvector = ctc.cat_mod_flipflop_loss(
                     outputs, seqs, seqlens, mod_cats,
                     network_metadata.can_mods_offsets,
