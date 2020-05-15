@@ -336,13 +336,23 @@ class SignalMapping:
         if any(signal_location_vector > mapped_dacs_end):
             raise IndexError('Signal location after mapped region requested.')
 
-        # searchsorted to the right and then left to avoid including slip bases
-        # at the edge of a region when they occur
-        return np.array([
-            np.searchsorted(
-                self.Ref_to_signal, signal_location_vector[0], 'right'),
-            np.searchsorted(
-                self.Ref_to_signal, signal_location_vector[1], 'left')])
+        # searchsorted to the right for start coordinate in order to avoid
+        # including slip bases
+        seq_start = np.searchsorted(
+            self.Ref_to_signal, signal_location_vector[0], 'right')
+        # if selected dac position is within the signal for a base,
+        # include that previous base. Core reason for this is that the
+        # taiyaki.ctc.c_crf_flipflop.crf_flipflop_forward_step function
+        # allows only stays in the first base of the chunk sequence. In the
+        # case where the signal position is within the range of the signal
+        # assigned to a base that base should be included in the chunk seq.
+        if self.Ref_to_signal[seq_start] < signal_location_vector[0]:
+            seq_start -= 1
+        # searchsorted to the left side for the end position to avoid slip
+        # bases at the end of a chunk.
+        seq_end = np.searchsorted(
+            self.Ref_to_signal, signal_location_vector[1], 'left')
+        return np.array([seq_start, seq_end])
 
     def get_dacs(self, region=None):
         """Get vector of DAC levels
