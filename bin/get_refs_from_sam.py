@@ -7,6 +7,7 @@ import sys
 from taiyaki.bio import complement, fasta_file_to_dict, reverse_complement
 from taiyaki.cmdargs import AutoBool, proportion, FileExists
 from taiyaki.common_cmdargs import add_common_command_args
+from taiyaki.fileio import readtsv
 from taiyaki.helpers import open_file_or_stdout
 
 
@@ -18,6 +19,8 @@ add_common_command_args(parser, ["output"])
 
 parser.add_argument('--complement', default=False, action=AutoBool,
                     help='Complement all reference sequences')
+parser.add_argument('--input_strand_list', default=None, action=FileExists,
+                    help='Strand summary file containing subset')
 parser.add_argument('--min_coverage', metavar='proportion', default=0.6, type=proportion,
                     help='Ignore reads with alignments shorter than min_coverage * read length')
 parser.add_argument('--pad', type=int, default=0,
@@ -30,13 +33,15 @@ parser.add_argument('input', metavar='input.sam', nargs='+',
                     help="SAM or BAM file(s) containing read alignments to reference")
 
 
-def get_refs(sam, ref_seq_dict, min_coverage=0.6, pad=0):
+def get_refs(sam, ref_seq_dict, min_coverage=0.6, pad=0, strand_list=None):
     """Read alignments from sam file and return accuracy metrics
     """
     with pysam.Samfile(sam, 'r') as sf:
         for read in sf:
             if read.flag != 0 and read.flag != 16:
                 #  No match, or orientation is not 0 or 16
+                continue
+            if strand_list is not None and read.query_name not in strand_list:
                 continue
 
             coverage = float(read.query_alignment_length) / read.query_length
@@ -66,10 +71,17 @@ def main():
     sys.stderr.write("* Loading references (this may take a while for large genomes)\n")
     references = fasta_file_to_dict(args.reference, filter_ambig=False)
 
+    if args.input_strand_list is None:
+        strand_list = None
+    else:
+        strand_list = readtsv(args.input_strand_list, fields=['read_id'])['read_id']
+        sys.stderr.write('* Strand list contains {} reads\n'.format(len(strand_list)))
+
     sys.stderr.write("* Extracting read references using SAM alignment\n")
     with open_file_or_stdout(args.output) as fh:
         for samfile in args.input:
-            for name, read_ref in get_refs(samfile, references, args.min_coverage, args.pad):
+            for name, read_ref in get_refs(samfile, references, args.min_coverage,
+                                           args.pad, strand_list=strand_list):
                 if args.reverse:
                     read_ref = read_ref[::-1]
                 if args.complement:
