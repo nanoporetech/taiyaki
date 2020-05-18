@@ -345,7 +345,7 @@ void cat_mod_flipflop_grad(float const * logprob, size_t nstate, size_t nblk,
                            int32_t const * seqlen, int32_t const * mod_cats,
                            int32_t const * can_mods_offsets,
                            float const * mod_cat_weights, float mod_weight,
-                           float sharpfact, float * grad){
+                           float sharpfact, float * score, float * grad){
     const size_t ldp = nbatch * nstate;
     const size_t nbase = nstate_to_nbase(nstate - can_mods_offsets[4]);
     size_t seqidx[nbatch];
@@ -369,9 +369,14 @@ void cat_mod_flipflop_grad(float const * logprob, size_t nstate, size_t nblk,
         int32_t const * mod_cat = mod_cats + seqidx[batch];
         float * fwd = calloc((nblk + 1) * nseqpos, sizeof(float));
         float * bwd = calloc((nblk + 1) * nseqpos, sizeof(float));
-        cm_flipflop_forward(logprob + batch_offset, nblk, ldp, seq,
+        // Calculate forward score and forward matrix for one batch element
+        score[batch] =
+          cm_flipflop_forward(logprob + batch_offset, nblk, ldp, seq,
                             nseqpos, sharpfact, fwd, nbase, mod_cat,
                             can_mods_offsets, mod_cat_weights, mod_weight);
+        // TODO compute backwards while computing gradient to reduce memory
+        // footprint
+        // backward matrix for one batch element
         cm_flipflop_backward(logprob + batch_offset, nblk, ldp, seq,
                              nseqpos, sharpfact, bwd, nbase, mod_cat,
                              can_mods_offsets, mod_cat_weights, mod_weight);

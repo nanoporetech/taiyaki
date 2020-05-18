@@ -163,51 +163,44 @@ def cat_mod_flipflop_grad(
     # conversion checks that nstates converts to a valid number of bases
     nstate_to_nbase(nstate - can_mods_offsets[4])
 
+    cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs = np.zeros(
+        (nbatch,), dtype=np.float32)
     cdef np.ndarray[np.float32_t, ndim=3, mode="c"] grads = np.zeros_like(
         logprob, dtype=np.float32)
     libctc.cat_mod_flipflop_grad(
         &logprob[0, 0, 0], nstate, nblk, nbatch, &seqs[0], &seqlen[0],
         &mod_cats[0], &can_mods_offsets[0], &mod_cat_weights[0], mod_weight,
-        sharpfact, &grads[0, 0, 0])
+        sharpfact, &costs[0], &grads[0, 0, 0])
     assert np.all(np.isfinite(grads)), "Gradients not finite"
-    return -grads / nblk
+    return -costs / nblk, -grads / nblk
 
 
 class CatModFlipFlop(torch.autograd.Function):
     @staticmethod
     def forward(ctx, logprob, seqs, seqlen, mod_cats, can_mods_offsets,
                 mod_cat_weights, mod_weight, sharpfact):
-        ctx.save_for_backward(
-            logprob, seqs, seqlen, mod_cats, torch.tensor(can_mods_offsets),
-            torch.tensor(mod_cat_weights), mod_weight, torch.tensor(sharpfact))
         lp = np.ascontiguousarray(
             logprob.detach().cpu().numpy().astype(np.float32))
         seqs = seqs.cpu().numpy().astype(np.int32)
         seqlen = seqlen.cpu().numpy().astype(np.int32)
         mod_cats = mod_cats.cpu().numpy().astype(np.int32)
         mod_weight, sharpfact = map(float, (mod_weight, sharpfact))
-        cost = cat_mod_flipflop_cost(
-            lp, seqs, seqlen, mod_cats, can_mods_offsets, mod_cat_weights,
-            mod_weight, sharpfact)
+        if logprob.requires_grad:
+            cost, grads = cat_mod_flipflop_grad(
+                lp, seqs, seqlen, mod_cats, can_mods_offsets, mod_cat_weights,
+                mod_weight, sharpfact)
+            ctx.save_for_backward(torch.tensor(grads, device=logprob.device))
+        else:
+            cost = cat_mod_flipflop_cost(
+                lp, seqs, seqlen, mod_cats, can_mods_offsets, mod_cat_weights,
+                mod_weight, sharpfact)
         return torch.tensor(cost, device=logprob.device)
 
     @staticmethod
     def backward(ctx, output_grads):
-        (logprob, seqs, seqlen, mod_cats, can_mods_offsets,
-         mod_cat_weights, mod_weight, sharpfact) = ctx.saved_tensors
-        lp = np.ascontiguousarray(
-            logprob.detach().cpu().numpy().astype(np.float32))
-        seqs = seqs.cpu().numpy().astype(np.int32)
-        seqlen = seqlen.cpu().numpy().astype(np.int32)
-        mod_cats = mod_cats.cpu().numpy().astype(np.int32)
-        can_mods_offsets = can_mods_offsets.cpu().numpy().astype(np.int32)
-        mod_cat_weights = mod_cat_weights.cpu().numpy().astype(np.float32)
-        mod_weight, sharpfact = map(float, (mod_weight, sharpfact))
-        grads = cat_mod_flipflop_grad(
-            lp, seqs, seqlen, mod_cats, can_mods_offsets, mod_cat_weights,
-            mod_weight, sharpfact)
+        grads, = ctx.saved_tensors
         output_grads = output_grads.unsqueeze(1)
-        return (torch.tensor(grads, device=logprob.device) * output_grads,
+        return (grads * output_grads,
                 None, None, None, None, None, None, None)
 
 cat_mod_flipflop_loss = CatModFlipFlop.apply
