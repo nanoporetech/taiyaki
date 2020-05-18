@@ -47,7 +47,7 @@ def fasta_file_to_dict(fasta_file_name, filter_ambig=True, flatten_ambig=True,
     references = {}
     with open(fasta_file_name, 'r') as fh:
         for ref in SeqIO.parse(fh, 'fasta'):
-            refseq = str(ref.seq)
+            refseq = str(ref.seq).upper()
             if len(refseq) == 0:
                 continue
             if filter_ambig and notbase_regex.search(refseq) is not None:
