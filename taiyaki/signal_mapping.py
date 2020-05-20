@@ -341,7 +341,7 @@ class SignalMapping:
         # for a base, include that previous base. Core reason for this is that
         # the taiyaki.ctc.c_crf_flipflop.crf_flipflop_forward_step function
         # allows only stays in the first base of the chunk sequence. Subtract
-        # one in base space to include this preceeding base.
+        # one in base space to include this preceding base.
         seq_start = np.searchsorted(
             self.Ref_to_signal, signal_location_vector[0], 'right') - 1
         # searchsorted to the left side for the end position to avoid slip
