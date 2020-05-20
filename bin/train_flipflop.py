@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import numpy as np
 import os
 from shutil import copyfile
@@ -17,6 +17,24 @@ from taiyaki.cmdargs import (AutoBool, FileExists, Maybe, NonNegative,
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
 from taiyaki.helpers import guess_model_stride
+
+
+NETWORK_METADATA = namedtuple('NETWORK_METADATA', (
+    'reverse', 'standardize', 'is_cat_mod', 'can_mods_offsets',
+    'can_labels', 'mod_labels'))
+NETWORK_METADATA.__new__.__defaults__ = (None, None, None)
+
+
+def parse_network_metadata(network):
+    if layers.is_cat_mod_model(network):
+        return NETWORK_METADATA(
+            network.metadata['reverse'], network.metadata['standardize'],
+            True, network.sublayers[-1].can_mods_offsets,
+            network.sublayers[-1].can_labels,
+            network.sublayers[-1].mod_labels)
+    return NETWORK_METADATA(
+        network.metadata['reverse'], network.metadata['standardize'], False)
+
 
 # This is here, not in main to allow documentation to be built
 parser = argparse.ArgumentParser(description='Train flip-flop neural network',
@@ -134,12 +152,11 @@ parser.add_argument('input', action=FileExists,
 
 
 def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
-                           target_sub_batches, alphabet_info, reverse,
-                           standardize, filter_params, network,
-                           network_is_catmod, log,
+                           target_sub_batches, alphabet_info, filter_params,
+                           network, network_metadata, log,
                            select_strands_randomly=True, first_strand_index=0):
     total_sub_batches = 0
-    if reverse:
+    if network_metadata.reverse:
         revop = np.flip
     else:
         revop = np.array
@@ -149,7 +166,7 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         # Chunk_batch is a list of dicts
         chunk_batch, batch_rejections = chunk_selection.sample_chunks(
             read_data, sub_batch_size, batch_chunk_len, filter_params,
-            standardize=standardize,
+            standardize=network_metadata.standardize,
             select_strands_randomly=select_strands_randomly,
             first_strand_index=first_strand_index)
         first_strand_index += sum(batch_rejections.values())
@@ -170,17 +187,17 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
 
         # Prepare seqs, seqlens and (if necessary) mod_cats
         seqs, seqlens = [], []
-        mod_cats = [] if network_is_catmod else None
+        mod_cats = [] if network_metadata.is_cat_mod else None
         for chunk in chunk_batch:
             chunk_labels = revop(chunk.sequence)
             seqlens.append(len(chunk_labels))
-            if network_is_catmod:
+            if network_metadata.is_cat_mod:
                 chunk_mod_cats = np.ascontiguousarray(
-                    network.sublayers[-1].mod_labels[chunk_labels])
+                    network_metadata.mod_labels[chunk_labels])
                 mod_cats.append(chunk_mod_cats)
                 # convert chunk_labels to canonical base labels
                 chunk_labels = np.ascontiguousarray(
-                    network.sublayers[-1].can_labels[chunk_labels])
+                    network_metadata.can_labels[chunk_labels])
             chunk_seq = flipflopfings.flipflop_code(
                 chunk_labels, alphabet_info.ncan_base)
             seqs.append(chunk_seq)
@@ -188,7 +205,7 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         seqs = torch.tensor(
             np.concatenate(seqs), dtype=torch.float32, device=device)
         seqlens = torch.tensor(seqlens, dtype=torch.long, device=device)
-        if network_is_catmod:
+        if network_metadata.is_cat_mod:
             mod_cats = torch.tensor(
                 np.concatenate(mod_cats), dtype=torch.long, device=device)
 
@@ -197,8 +214,8 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         yield indata, seqs, seqlens, mod_cats, sub_batch_size, batch_rejections
 
 
-def calculate_loss( network, network_is_catmod, batch_gen, sharpen,
-                    can_mods_offsets = None, mod_cat_weights = None,
+def calculate_loss( network, network_metadata, batch_gen, sharpen,
+                    mod_cat_weights = None,
                     mod_factor_t = None, calc_grads = False ):
 
     total_chunk_count = 0
@@ -220,9 +237,10 @@ def calculate_loss( network, network_is_catmod, batch_gen, sharpen,
 
         with torch.set_grad_enabled(calc_grads):
             outputs = network(indata)
-            if network_is_catmod:
+            if network_metadata.is_cat_mod:
                 lossvector = ctc.cat_mod_flipflop_loss(
-                    outputs, seqs, seqlens, mod_cats, can_mods_offsets,
+                    outputs, seqs, seqlens, mod_cats,
+                    network_metadata.can_mods_offsets,
                     mod_cat_weights, mod_factor_t, sharpen)
             else:
                 lossvector = ctc.crf_flipflop_loss(
@@ -383,14 +401,14 @@ def main():
         saved_startmodel_path = os.path.join(args.outdir,
                                      'model_checkpoint_00000.checkpoint')
         network = helpers.load_model(saved_startmodel_path).to(device)
-        network_is_catmod = layers.is_cat_mod_model(network)
+        network_metadata = parse_network_metadata(network)
         # Wrap network for training in the DistributedDataParallel structure
-        network = torch.nn.parallel.DistributedDataParallel(network,
-                                            device_ids=[args.local_rank],
-                                            output_device=args.local_rank)
+        network = torch.nn.parallel.DistributedDataParallel(
+            network, device_ids=[args.local_rank],
+            output_device=args.local_rank)
     else:
         network = network_save_skeleton.to(device)
-        network_is_catmod = layers.is_cat_mod_model(network)
+        network_metadata = parse_network_metadata(network)
         network_save_skeleton = None
 
     stride = guess_model_stride(network)
@@ -439,8 +457,6 @@ def main():
 
     # prepare modified base paramter tensors
     mod_factor_t = torch.tensor(args.mod_factor, dtype=torch.float32).to(device)
-    can_mods_offsets = (network.sublayers[-1].can_mods_offsets
-                        if network_is_catmod else None)
     # mod cat inv freq weighting is currently disabled. Compute and set this
     # value to enable mod cat weighting
     mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
@@ -469,9 +485,8 @@ def main():
     reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
     reporting_batch_list = list(prepare_random_batches(
         device, report_read_data, reporting_chunk_len, args.min_sub_batch_size,
-        args.reporting_sub_batches, alphabet_info, args.reverse,
-        args.standardize, filter_params, network, network_is_catmod, log,
-        select_strands_randomly=False))
+        args.reporting_sub_batches, alphabet_info, filter_params, network,
+        network_metadata, log, select_strands_randomly=False))
     log.write( ('* Standard loss report: chunk length = {} & sub-batch size ' +
                 '= {} for {} sub-batches. \n').format(reporting_chunk_len,
                 args.min_sub_batch_size, args.reporting_sub_batches) )
@@ -514,17 +529,15 @@ def main():
 
         optimizer.zero_grad()
 
-        main_batch_gen = prepare_random_batches(device, read_data,
-                                                batch_chunk_len, sub_batch_size,
-                                                args.sub_batches, alphabet_info,
-                                                args.reverse, args.standardize,
-                                                filter_params, network,
-                                                network_is_catmod, log)
+        main_batch_gen = prepare_random_batches(
+            device, read_data, batch_chunk_len, sub_batch_size,
+            args.sub_batches, alphabet_info, filter_params, network,
+            network_metadata, log)
 
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
-                            calculate_loss( network, network_is_catmod,
+                            calculate_loss( network, network_metadata,
                                             main_batch_gen, sharpen,
-                                            can_mods_offsets, mod_cat_weights,
+                                            mod_cat_weights,
                                             mod_factor_t, calc_grads = True )
 
         gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
@@ -559,9 +572,8 @@ def main():
         if (i + 1) % DOTROWLENGTH == 0:
 
             _, rloss, _, _, _ = calculate_loss(
-                network, network_is_catmod, reporting_batch_list,
-                args.sharpen.max, can_mods_offsets, mod_cat_weights,
-                mod_factor_t)
+                network, network_metadata, reporting_batch_list,
+                args.sharpen.max, mod_cat_weights, mod_factor_t)
 
             # In case of super batching, additional functionality must be
             # added here
