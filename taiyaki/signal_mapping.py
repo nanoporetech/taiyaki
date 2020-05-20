@@ -376,20 +376,6 @@ class SignalMapping:
             current = (current - self.shift_frompA) / self.scale_frompA
         return current
 
-    def check_for_slip_at_refloc(self, refloc):
-        """Return True if there is a slip at reference location refloc.
-        This means that the signal location at refloc is the same as
-        the signal location that goes with either the previous base
-        or the next one."""
-        sigloc = self.Ref_to_signal[refloc]
-        if refloc < self.reflen:
-            if self.Ref_to_signal[refloc + 1] == sigloc:
-                return True
-        if refloc > 1:
-            if self.Ref_to_signal[refloc - 1] == sigloc:
-                return True
-        return False
-
     def _get_chunk(self, dacs_region, ref_region, standardize=True):
         """Get a chunk, returning a Chunk object.
 
