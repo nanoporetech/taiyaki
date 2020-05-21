@@ -331,12 +331,24 @@ class SignalMapping:
             signal_location_vector = np.array(signal_location_vector)
 
         mapped_dacs_start, mapped_dacs_end = self.get_mapped_dacs_region()
-        result = np.searchsorted(self.Ref_to_signal, signal_location_vector)
         if any(signal_location_vector < mapped_dacs_start):
             raise IndexError('Signal location before mapped region requested.')
         if any(signal_location_vector > mapped_dacs_end):
             raise IndexError('Signal location after mapped region requested.')
-        return result
+
+        # searchsorted to the right for start coordinate in order to avoid
+        # including slip bases. If selected dac position is within the signal
+        # for a base, include that previous base. Core reason for this is that
+        # the taiyaki.ctc.c_crf_flipflop.crf_flipflop_forward_step function
+        # allows only stays in the first base of the chunk sequence. Subtract
+        # one in base space to include this preceding base.
+        seq_start = np.searchsorted(
+            self.Ref_to_signal, signal_location_vector[0], 'right') - 1
+        # searchsorted to the left side for the end position to avoid slip
+        # bases at the end of a chunk.
+        seq_end = np.searchsorted(
+            self.Ref_to_signal, signal_location_vector[1], 'left')
+        return np.array([seq_start, seq_end])
 
     def get_dacs(self, region=None):
         """Get vector of DAC levels
@@ -364,20 +376,6 @@ class SignalMapping:
             current = (current - self.shift_frompA) / self.scale_frompA
         return current
 
-    def check_for_slip_at_refloc(self, refloc):
-        """Return True if there is a slip at reference location refloc.
-        This means that the signal location at refloc is the same as
-        the signal location that goes with either the previous base
-        or the next one."""
-        sigloc = self.Ref_to_signal[refloc]
-        if refloc < self.reflen:
-            if self.Ref_to_signal[refloc + 1] == sigloc:
-                return True
-        if refloc > 1:
-            if self.Ref_to_signal[refloc - 1] == sigloc:
-                return True
-        return False
-
     def _get_chunk(self, dacs_region, ref_region, standardize=True):
         """Get a chunk, returning a Chunk object.
 
@@ -399,12 +397,8 @@ class SignalMapping:
             maxdwell = np.max(dwells)
         else:
             maxdwell = 1
-        reject_reason = Chunk.rej_str_slip if (
-            self.check_for_slip_at_refloc(ref_region[0]) or
-            self.check_for_slip_at_refloc(ref_region[1])) else None
         return Chunk(
-            self.read_id, current, reference, maxdwell, dacs_region[0],
-            reject_reason)
+            self.read_id, current, reference, maxdwell, dacs_region[0])
 
     def get_chunk_with_sample_length(
             self, chunk_len, start_sample=None, standardize=True):
@@ -490,15 +484,13 @@ class Chunk(object):
     rej_str_pass = 'pass'
     rej_str_empty_seq = 'emptysequence'
     rej_str_empty_sig = 'emptysignal'
-    rej_str_slip = 'slip'
     rej_str_short = 'tooshort'
     rej_str_null_map = 'nullmapping'
     rej_str_mean_dwl = 'meandwell'
     rej_str_max_dwl = 'maxdwell'
     valid_rej_strs = set((
         rej_str_pass,
-        rej_str_empty_seq, rej_str_empty_sig, rej_str_slip,
-        rej_str_short, rej_str_null_map,
+        rej_str_empty_seq, rej_str_empty_sig, rej_str_short, rej_str_null_map,
         rej_str_mean_dwl, rej_str_max_dwl))
 
     def __init__(
