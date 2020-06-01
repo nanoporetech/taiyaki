@@ -14,7 +14,8 @@ version = taiyaki.__version__
 install_requires = [
     "h5py >= 2.2.1",
     "numpy >= 1.14.5",
-    "biopython >= 1.63",
+    #  Biopython 1.76 last version to support Python 3.5
+    "biopython >= 1.63, <=1.76",
     "Cython >= 0.25.2",
     "ont_fast5_api >= 1.2.0",
     "matplotlib >= 2.0.0",
