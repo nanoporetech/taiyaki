@@ -38,6 +38,8 @@ parser.add_argument('--line_transparency', type = float, default = 1.0,
 parser.add_argument('--zero_signal_start', action = 'store_true',
                     help='Start signal locations at zero. Default: start at ' +
                     'assigned position within entire read.')
+parser.add_argument('--quiet', action='store_true',
+                    help='Do not display status messages.')
 
 
 def main():
@@ -52,20 +54,24 @@ def main():
                 read_ids = args.read_ids
             else:
                 read_ids = all_read_ids[:args.nreads]
-                sys.stderr.write(
-                    "Reading first {} read ids in file {}\n".format(
-                        args.nreads, mapped_read_file))
+                if not args.quiet:
+                    sys.stderr.write(
+                        "Reading first {} read ids in file {}\n".format(
+                            args.nreads, mapped_read_file))
             for nread, read_id in enumerate(read_ids):
                 r = h5.get_read(read_id)
-                mapping = r['Ref_to_signal']
+                mapping = r.Ref_to_signal
                 f = mapping >= 0
+                if sum(f) == 0:
+                    continue
                 if args.zero_signal_start:
                     mapping[f] -= mapping[f][0]
                 maplen = len(mapping)
                 read_info_text = (
                     'file {} read {}:{} reflen:{}, daclen:{}').format(
-                        nfile, nread, read_id, maplen - 1, len(r['Dacs']))
-                sys.stdout.write(read_info_text + '\n')
+                        nfile, nread, read_id, maplen - 1, len(r.Dacs))
+                if not args.quiet:
+                    sys.stdout.write(read_info_text + '\n')
 
                 if args.output is not None:
                     label = (read_info_text
@@ -95,7 +101,8 @@ def main():
         plt.ylabel('Signal location')
         plt.legend(loc='upper left', framealpha=0.3)
         plt.tight_layout()
-        sys.stderr.write("Saving plot to {}\n".format(args.output))
+        if not args.quiet:
+            sys.stderr.write("Saving plot to {}\n".format(args.output))
         plt.savefig(args.output)
 
 
