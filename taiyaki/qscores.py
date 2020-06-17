@@ -150,4 +150,6 @@ def path_errprobs_to_qstring(errprobs, path, qscore_scale, qscore_offset):
            basecall)
     """
     filtered_probs = errprobs[1:][path[1:]!=path[:-1]]
+    if type(filtered_probs) == torch.Tensor:
+        filtered_probs = filtered_probs.detach().cpu().numpy()    
     return qchar_from_errprob(filtered_probs, qscore_scale, qscore_offset)
