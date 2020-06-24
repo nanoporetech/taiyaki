@@ -118,9 +118,10 @@ def readtsv(fname, fields=None, **kwargs):
     """
 
     if not file_has_fields(fname, fields):
-        raise KeyError('File {} does not contain requested required fields {}'.format(fname, fields))
+        raise KeyError(
+            'File {} does not contain requested required fields {}'.format(fname, fields))
 
-    for k,v in {'names':True, 'delimiter':'\t', 'dtype':None, 'encoding':None}.items():
+    for k, v in {'names': True, 'delimiter': '\t', 'dtype': None, 'encoding': None}.items():
         if not (k in kwargs):
             kwargs[k] = v
     table = np.genfromtxt(fname, **kwargs)

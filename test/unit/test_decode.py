@@ -16,7 +16,8 @@ class TestFlipFlopDecode(unittest.TestCase):
 
     def setUp(self):
         self.scores = np.array([
-            [[0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0]],  # BA step (can't start in flop!)
+            # BA step (can't start in flop!)
+            [[0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
             [[0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]],  # Aa step
             [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]],  # aa stay
             [[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]],  # aB step
@@ -25,7 +26,8 @@ class TestFlipFlopDecode(unittest.TestCase):
             [[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],  # AA stay
         ], dtype='f4')
         self.alphabet = 'AB'
-        self.expected_path = np.array([1, 0, 2, 2, 1, 1, 0, 0], dtype=int)[:, None]
+        self.expected_path = np.array(
+            [1, 0, 2, 2, 1, 1, 0, 0], dtype=int)[:, None]
 
     def assertArrayEqual(self, a, b):
         self.assertEqual(a.shape, b.shape,
@@ -47,7 +49,8 @@ class TestFlipFlopDecode(unittest.TestCase):
 
     @unittest.skipIf(not _cupy_is_available, "Cupy is not installed")
     def test_gpu_decoding_with_cupy(self):
-        _, _, path = decode.flipflop_viterbi(torch.tensor(self.scores, device=0))
+        _, _, path = decode.flipflop_viterbi(
+            torch.tensor(self.scores, device=0))
         path = path.cpu().numpy()
         self.assertArrayEqual(path, self.expected_path)
 
@@ -76,5 +79,7 @@ class TestFlipFlopDecode(unittest.TestCase):
     def test_cupy_equals_torch_make_trans(self):
         trans_torch = decode.flipflop_make_trans(torch.tensor(self.scores, device=0),
                                                  _never_use_cupy=True)
-        trans_cupy = decode.flipflop_make_trans(torch.tensor(self.scores, device=0))
-        self.assertArrayEqual(trans_torch.cpu().numpy(), trans_cupy.cpu().numpy())
+        trans_cupy = decode.flipflop_make_trans(
+            torch.tensor(self.scores, device=0))
+        self.assertArrayEqual(trans_torch.cpu().numpy(),
+                              trans_cupy.cpu().numpy())

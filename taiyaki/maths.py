@@ -42,7 +42,7 @@ def mad(data, factor=None, axis=None, keepdims=False):
 
     :returns: the (scaled) MAD
     """
-    _ , dmad = med_mad(data, factor=factor, axis=axis, keepdims=keepdims)
+    _, dmad = med_mad(data, factor=factor, axis=axis, keepdims=keepdims)
     return dmad
 
 
@@ -123,7 +123,7 @@ def rle(x, tol=0):
 
 class RollingQuantile:
     """Calculate rolling quantile of time series over a specified window"""
-   
+
     def __init__(self, upper_quantile, window=100, min_data=1, default_to=None):
         """Set up rolling quantile calculator. With the default settings, there is
         no minimum data length and the first call to the calculator
@@ -142,12 +142,12 @@ class RollingQuantile:
         self.window = window
         self.min_data = min_data
         self.default_returnvalue = default_to
-       
+
     def update(self, x):
         """Update with time series value x and return rolling quantile."""
         self.window_data.append(x)
-        if len(self.window_data)>self.window:
+        if len(self.window_data) > self.window:
             self.window_data.popleft()
         if len(self.window_data) < self.min_data:
             return self.default_returnvalue
-        return np.quantile(self.window_data, 1.0-self.upper_quantile)
+        return np.quantile(self.window_data, 1.0 - self.upper_quantile)

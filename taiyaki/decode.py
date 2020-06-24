@@ -85,15 +85,20 @@ def _flipflop_viterbi(scores):
     T, N, S = scores.shape
     nbase = flipflopfings.nbase_flipflop(S)
 
-    fwd = torch.zeros(T + 1, N, 2 * nbase, device=scores.device, dtype=scores.dtype)
+    fwd = torch.zeros(T + 1, N, 2 * nbase,
+                      device=scores.device, dtype=scores.dtype)
     fwd[0, :, nbase:] = -LARGE_VAL
-    traceback = torch.zeros(T, N, 2 * nbase, device=scores.device, dtype=torch.long)
+    traceback = torch.zeros(
+        T, N, 2 * nbase, device=scores.device, dtype=torch.long)
 
     for t in range(T):
         to_flip = scores[t, :, :S - 2 * nbase].reshape((N, nbase, 2 * nbase))
-        fwd[t + 1, :, :nbase], traceback[t, :, :nbase] = (fwd[t].unsqueeze(1) + to_flip).max(2)
-        fwd[t + 1, :, nbase:], tb_flop = (fwd[t] + scores[t, :, -2 * nbase:]).reshape((N, 2, nbase)).max(1)
-        traceback[t, :, nbase:] = nbase * tb_flop + torch.arange(nbase, device=traceback.device, dtype=traceback.dtype)
+        fwd[t + 1, :, :nbase], traceback[t, :,
+                                         :nbase] = (fwd[t].unsqueeze(1) + to_flip).max(2)
+        fwd[t + 1, :, nbase:], tb_flop = (fwd[t] + scores[t,
+                                                          :, -2 * nbase:]).reshape((N, 2, nbase)).max(1)
+        traceback[t, :, nbase:] = nbase * tb_flop + \
+            torch.arange(nbase, device=traceback.device, dtype=traceback.dtype)
 
     path = torch.zeros(T + 1, N, device=scores.device, dtype=torch.long)
 

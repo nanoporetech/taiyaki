@@ -25,7 +25,6 @@ def main():
     json_out = model.json(args.params)
     json_out['md5sum'] = model_md5
 
-
     with open_file_or_stdout(args.output) as fh:
         json.dump(json_out, fh, indent=4, cls=JsonEncoder)
 

@@ -133,6 +133,7 @@ class AbstractMappedSignalReader(ABC):
             return "pass"
         return return_string
 
+
 class AbstractMappedSignalWriter(ABC):
     """Abstract base class for writing files containing mapped reads.
     Methods specified as abstractmethod must be overridden
@@ -179,9 +180,11 @@ class AbstractMappedSignalWriter(ABC):
         """Write alphabet information to file"""
         pass
 
+
 def _get_hdf5_read_path(read_id):
     """Returns string giving path within HDF5 file to data for a read"""
     return posixpath.join(READS_ROOT_TEXT, read_id)
+
 
 class HDF5Reader(AbstractMappedSignalReader):
     """A file storing mapped data in an HDF5 in the simplest
@@ -243,6 +246,7 @@ class HDF5Reader(AbstractMappedSignalReader):
     def version(self):
         return self.hdf5.attrs['version']
 
+
 class HDF5Writer(AbstractMappedSignalWriter):
     """A file storing mapped data in an HDF5 in the simplest
     possible way.
@@ -260,6 +264,7 @@ class HDF5Writer(AbstractMappedSignalWriter):
              mod_long_names     |
 
     """
+
     def __init__(self, filename, alphabet_info):
         # mode 'w' to preserve behaviour, 'x' would be more appropraite
         self.hdf5 = h5py.File(filename, 'w')

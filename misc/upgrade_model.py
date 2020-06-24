@@ -31,9 +31,9 @@ def convert_0_to_1(model):
 
     #  Add metadata
     model.metadata = {
-        'reverse' : False,
-        'standardize' : True,
-        'version' : 1
+        'reverse': False,
+        'standardize': True,
+        'version': 1
     }
     print('Added metadata.  Assumed reads are standardized and not reversed')
 
@@ -89,7 +89,6 @@ def main():
     if upgraded:
         print('Saving upgraded model to {}'.format(args.output))
         torch.save(net, args.output)
-
 
 
 if __name__ == '__main__':

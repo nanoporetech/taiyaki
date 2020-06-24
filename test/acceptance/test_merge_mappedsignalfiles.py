@@ -9,6 +9,7 @@ import util
 
 from taiyaki import mapped_signal_files
 
+
 class AcceptanceTest(unittest.TestCase):
 
     @classmethod
@@ -61,7 +62,7 @@ class AcceptanceTest(unittest.TestCase):
         cmd = [self.merge_script,
                merged_mapped_signal_file,
                self.mapped_signal_file0,
-               self.mapped_signal_file1 ]
+               self.mapped_signal_file1]
         util.run_cmd(self, cmd)
 
         # Output of print statements only becomes accessible if test fails

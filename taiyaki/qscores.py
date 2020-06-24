@@ -5,6 +5,7 @@ import torch
 from taiyaki import flipflopfings
 from taiyaki.constants import SMALL_VAL
 
+
 def qchar_from_qscore(score, zerochar=33):
     """Return ASCII character encoding q score from score
 
@@ -58,14 +59,14 @@ def transitions_into_base(b, nbases, device):
     :note: all transitions, including those where no base is emitted, are
            included.
     """
-    #Transition A to b_flip
+    # Transition A to b_flip
     colstart = nbases * 2 * b
-    #All transitions into b_flip
+    # All transitions into b_flip
     toflip = torch.arange(colstart, colstart + nbases * 2,
                           dtype=torch.long, device=device)
-    #Transition b_flip to b_flop
+    # Transition b_flip to b_flop
     fliptoflop = 2 * nbases * nbases + b
-    #Tensor containing b_flip to b_flop and b_flop to b_flop
+    # Tensor containing b_flip to b_flop and b_flop to b_flop
     toflop = torch.tensor([fliptoflop, fliptoflop + nbases],
                           dtype=torch.long, device=device)
     return torch.cat((toflip, toflop))
@@ -101,32 +102,32 @@ def errprobs_from_trans(trans, path):
            fed into the stitching function.
 
     """
-    nblocks,batchsize,flip_flop_transitions = trans.shape
+    nblocks, batchsize, flip_flop_transitions = trans.shape
     nbases = flipflopfings.nbase_flipflop(flip_flop_transitions)
-    #baseprobs will contain total probability for emission of each base
-    #at each block normalised by prob of emitting any base.
-    baseprobs = torch.zeros((nblocks,batchsize,nbases), dtype=torch.float,
+    # baseprobs will contain total probability for emission of each base
+    # at each block normalised by prob of emitting any base.
+    baseprobs = torch.zeros((nblocks, batchsize, nbases), dtype=torch.float,
                             device=trans.device)
-    #Calculate total probability of transition into base b at block n
+    # Calculate total probability of transition into base b at block n
     for destbase in range(nbases):
         t = transitions_into_base(destbase, nbases, device=trans.device)
         m = torch.zeros(flip_flop_transitions, dtype=torch.float,
                         device=trans.device)
         m[t] = 1.0
-        baseprobs[:,:,destbase] = torch.matmul(trans, m)
+        baseprobs[:, :, destbase] = torch.matmul(trans, m)
 
-    #Normalise
-    baseprobs = baseprobs / (baseprobs.sum(dim=2,keepdim=True) + SMALL_VAL)
+    # Normalise
+    baseprobs = baseprobs / (baseprobs.sum(dim=2, keepdim=True) + SMALL_VAL)
 
-    #Calculate matrix p (see docstring)
+    # Calculate matrix p (see docstring)
     p = torch.empty_like(path, dtype=torch.float)
-    #baseprobs is nblocks x batchsize x nbases, path is (nblocks+1) x batchsize
+    # baseprobs is nblocks x batchsize x nbases, path is (nblocks+1) x
+    # batchsize
     ix = path[1:].unsqueeze(2) % nbases
     p[1:] = torch.gather(baseprobs, 2, ix).squeeze(2)
-    #errprob at block 0 set to -1
+    # errprob at block 0 set to -1
     p[0] = 2.0
     return 1.0 - p
-
 
 
 def path_errprobs_to_qstring(errprobs, path, qscore_scale, qscore_offset):
@@ -149,7 +150,7 @@ def path_errprobs_to_qstring(errprobs, path, qscore_scale, qscore_offset):
            don't include the source base for the first transition in the
            basecall)
     """
-    filtered_probs = errprobs[1:][path[1:]!=path[:-1]]
+    filtered_probs = errprobs[1:][path[1:] != path[:-1]]
     if type(filtered_probs) == torch.Tensor:
-        filtered_probs = filtered_probs.detach().cpu().numpy()    
+        filtered_probs = filtered_probs.detach().cpu().numpy()
     return qchar_from_errprob(filtered_probs, qscore_scale, qscore_offset)

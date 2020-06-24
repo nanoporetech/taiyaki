@@ -4,6 +4,7 @@ import unittest
 
 import util
 
+
 class AcceptanceTest(unittest.TestCase):
 
     @classmethod

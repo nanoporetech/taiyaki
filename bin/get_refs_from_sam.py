@@ -68,14 +68,17 @@ def get_refs(sam, ref_seq_dict, min_coverage=0.6, pad=0, strand_list=None):
 def main():
     args = parser.parse_args()
 
-    sys.stderr.write("* Loading references (this may take a while for large genomes)\n")
+    sys.stderr.write(
+        "* Loading references (this may take a while for large genomes)\n")
     references = fasta_file_to_dict(args.reference, filter_ambig=False)
 
     if args.input_strand_list is None:
         strand_list = None
     else:
-        strand_list = readtsv(args.input_strand_list, fields=['read_id'])['read_id']
-        sys.stderr.write('* Strand list contains {} reads\n'.format(len(strand_list)))
+        strand_list = readtsv(args.input_strand_list,
+                              fields=['read_id'])['read_id']
+        sys.stderr.write(
+            '* Strand list contains {} reads\n'.format(len(strand_list)))
 
     sys.stderr.write("* Extracting read references using SAM alignment\n")
     with open_file_or_stdout(args.output) as fh:

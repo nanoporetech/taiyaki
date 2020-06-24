@@ -41,7 +41,7 @@ def flipflop_code(labels, alphabet_length=4):
     return x
 
 
-def path_to_str(path, alphabet=DEFAULT_ALPHABET, include_first_source = True):
+def path_to_str(path, alphabet=DEFAULT_ALPHABET, include_first_source=True):
     """ Convert flipflop path into a basecall string.
 
     :param path: numpy vector of integers coding
@@ -53,7 +53,7 @@ def path_to_str(path, alphabet=DEFAULT_ALPHABET, include_first_source = True):
                      (better) agreement with Guppy.
 
     :returns: python str: the basecall"""
-    move = np.ediff1d(path, to_begin = 1 if include_first_source else 0) != 0
+    move = np.ediff1d(path, to_begin=1 if include_first_source else 0) != 0
     alphabet = np.frombuffer((alphabet * 2).encode(), dtype='u1')
     seq = alphabet[path[move]]
     return seq.tobytes().decode()
@@ -107,4 +107,3 @@ def nbase_flipflop(nstate):
         'Number of states not valid for flip-flop model. ' +
         'nstates: {}\tconverted nbases: {}').format(nstate, nbase_f)
     return int(np.round(nbase_f))
-

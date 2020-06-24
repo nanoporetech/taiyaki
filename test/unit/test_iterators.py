@@ -21,7 +21,8 @@ class IteratorsTest(unittest.TestCase):
         self.assertEqual(self.f(L, 1), [(1,), (2,), (3,), (4,)])
         self.assertEqual(self.f(L, 2), [(1, 2), (2, 3), (3, 4), (4,)])
         self.assertEqual(self.f(L, 3), [(1, 2), (1, 2, 3), (2, 3, 4), (3, 4)])
-        self.assertEqual(self.f(L, 4), [(1, 2, 3), (1, 2, 3, 4), (2, 3, 4), (3, 4)])
+        self.assertEqual(
+            self.f(L, 4), [(1, 2, 3), (1, 2, 3, 4), (2, 3, 4), (3, 4)])
 
     def test_centered_truncated_window_odd(self):
         L = [1, 2, 3, 4, 5, 6, 7]

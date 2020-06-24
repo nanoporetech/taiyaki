@@ -55,9 +55,11 @@ class ANNTest(unittest.TestCase):
         self._SIZE = 64
         self._NBATCH = 2
 
-        self.W = np.random.normal(size=(self._SIZE, self._NFEATURES)).astype(numpy_dtype)
+        self.W = np.random.normal(
+            size=(self._SIZE, self._NFEATURES)).astype(numpy_dtype)
         self.b = np.random.normal(size=self._SIZE).astype(numpy_dtype)
-        self.x = np.random.normal(size=(self._NSTEP, self._NBATCH, self._NFEATURES)).astype(numpy_dtype)
+        self.x = np.random.normal(
+            size=(self._NSTEP, self._NBATCH, self._NFEATURES)).astype(numpy_dtype)
         self.res = self.x.dot(self.W.transpose()) + self.b
 
     def test_000_single_layer_linear(self):
@@ -89,17 +91,20 @@ class ANNTest(unittest.TestCase):
 
         with torch.no_grad():
             res = network(torch.tensor(self.x)).numpy()
-        np.testing.assert_almost_equal(res[:, :, :self._SIZE], res[:, :, self._SIZE:])
+        np.testing.assert_almost_equal(
+            res[:, :, :self._SIZE], res[:, :, self._SIZE:])
 
     def test_003_simple_serial(self):
-        W2 = np.random.normal(size=(self._SIZE, self._SIZE)).astype(taiyaki_dtype)
+        W2 = np.random.normal(
+            size=(self._SIZE, self._SIZE)).astype(taiyaki_dtype)
         res = self.res.dot(W2.transpose())
 
         l1 = nn.FeedForward(self._NFEATURES, self._SIZE, has_bias=True,
                             fun=activation.linear)
         nn.init_(l1.linear.weight, self.W)
         nn.init_(l1.linear.bias, self.b)
-        l2 = nn.FeedForward(self._SIZE, self._SIZE, fun=activation.linear, has_bias=False)
+        l2 = nn.FeedForward(self._SIZE, self._SIZE,
+                            fun=activation.linear, has_bias=False)
         nn.init_(l2.linear.weight, W2)
         network = nn.Serial([l1, l2])
 
@@ -129,7 +134,8 @@ class ANNTest(unittest.TestCase):
 
         with torch.no_grad():
             res = network(torch.tensor(self.x)).numpy()
-        np.testing.assert_almost_equal(res[:, :, :self._SIZE], res[:, :, self._SIZE:], decimal=5)
+        np.testing.assert_almost_equal(res[:, :, :self._SIZE], res[
+                                       :, :, self._SIZE:], decimal=5)
 
     def test_006_softmax(self):
         network = nn.Softmax(self._NFEATURES, self._SIZE, has_bias=True)
@@ -153,13 +159,17 @@ class ANNTest(unittest.TestCase):
                     np.testing.assert_almost_equal(
                         res[:, j, i * _WINLEN: (i + 1) * _WINLEN], self.x[i: 1 + i - _WINLEN, j])
                 except:
-                    win_max = np.amax(np.fabs(res[:, :, i * _WINLEN: (i + 1) * _WINLEN] - self.x[i: 1 + i - _WINLEN]))
+                    win_max = np.amax(
+                        np.fabs(res[:, :, i * _WINLEN: (i + 1) * _WINLEN] - self.x[i: 1 + i - _WINLEN]))
                     print("Window max: {}".format(win_max))
                     raise
-            np.testing.assert_almost_equal(res[:, j, _WINLEN * (_WINLEN - 1):], self.x[_WINLEN - 1:, j])
+            np.testing.assert_almost_equal(
+                res[:, j, _WINLEN * (_WINLEN - 1):], self.x[_WINLEN - 1:, j])
             #  Test first and last rows explicitly
-            np.testing.assert_almost_equal(self.x[:_WINLEN, j].ravel(), res[0, j].transpose().ravel())
-            np.testing.assert_almost_equal(self.x[-_WINLEN:, j].ravel(), res[-1, j].transpose().ravel())
+            np.testing.assert_almost_equal(self.x[:_WINLEN, j].ravel(), res[
+                                           0, j].transpose().ravel())
+            np.testing.assert_almost_equal(
+                self.x[-_WINLEN:, j].ravel(), res[-1, j].transpose().ravel())
 
     @unittest.skip('Decoding needs fixing')
     def test_017_decode_simple(self):
@@ -174,7 +184,8 @@ class ANNTest(unittest.TestCase):
             res = network(torch.tensor(self.x)).numpy()
 
         np.testing.assert_almost_equal(np.mean(res, axis=(0, 1)), 0.0)
-        np.testing.assert_almost_equal(np.std(res, axis=(0, 1)), 1.0, decimal=4)
+        np.testing.assert_almost_equal(
+            np.std(res, axis=(0, 1)), 1.0, decimal=4)
 
     def test_019_identity(self):
         network = nn.Identity()
@@ -206,7 +217,8 @@ class LayerTest(metaclass=abc.ABCMeta):
 
     def test_000_run(self):
         if self._INPUTS is None:
-            raise NotImplementedError("Please specify layer inputs for testing, or explicitly skip this test.")
+            raise NotImplementedError(
+                "Please specify layer inputs for testing, or explicitly skip this test.")
         f = self.layer.train(False)
         outs = [f(torch.tensor(x, dtype=torch_dtype)) for x in self._INPUTS]
         #  Check batch dim is preserved
@@ -215,7 +227,8 @@ class LayerTest(metaclass=abc.ABCMeta):
 
     def test_001_train(self):
         if self._INPUTS is None:
-            raise NotImplementedError("Please specify layer inputs for testing, or explicitly skip this test.")
+            raise NotImplementedError(
+                "Please specify layer inputs for testing, or explicitly skip this test.")
         f = self.layer.train(True)
         outs = [f(torch.tensor(x, dtype=torch_dtype)) for x in self._INPUTS]
         #  Check batch dim is preserved
@@ -228,7 +241,8 @@ class LayerTest(metaclass=abc.ABCMeta):
 
     def test_003_json_decodes(self):
         props = json.JSONDecoder().decode(json.dumps(self.layer.json(), cls=JsonEncoder))
-        props2 = json.JSONDecoder().decode(json.dumps(self.layer.json(params=True), cls=JsonEncoder))
+        props2 = json.JSONDecoder().decode(json.dumps(
+            self.layer.json(params=True), cls=JsonEncoder))
 
 
 class LstmTest(LayerTest, unittest.TestCase):
@@ -259,6 +273,7 @@ class ConvolutionNoBiasTest(LayerTest, unittest.TestCase):
 
     def setUp(self):
         self.layer = nn.Convolution(12, 32, 11, 5, has_bias=False)
+
 
 class ResidualTest(LayerTest, unittest.TestCase):
     _INPUTS = [np.random.uniform(size=(100, 20, 12))]
@@ -340,6 +355,7 @@ class UpSampleTest(LayerTest, unittest.TestCase):
 
     def setUp(self):
         self.layer = nn.UpSample(2)
+
 
 class DownSampleTest(LayerTest, unittest.TestCase):
     _INPUTS = [np.random.uniform(size=(100, 20, 12))]

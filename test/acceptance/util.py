@@ -8,6 +8,7 @@ DATA_DIR = "../../test/data"
 MISC_DIR = "../../misc"
 MODELS_DIR = "../../models"
 
+
 class Result(object):
 
     def __init__(self, test_case, cmd, cwd, exit_code, stdout, stderr, max_lines=100):
@@ -40,7 +41,8 @@ class Result(object):
         return '\n'.join(L)
 
     def expect_exit_code(self, expected_exit_code):
-        msg = "expected return code %s but got %s in: %s" % (expected_exit_code, self._exit_code, self)
+        msg = "expected return code %s but got %s in: %s" % (
+            expected_exit_code, self._exit_code, self)
         self.test_case.assertEqual(expected_exit_code, self._exit_code, msg)
         return self
 

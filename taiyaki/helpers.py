@@ -114,7 +114,7 @@ def subsample_array(x, length):
         return x
     assert len(x) > length
     startpos = np.random.randint(0, len(x) - length + 1)
-    return x[startpos : startpos + length]
+    return x[startpos: startpos + length]
 
 
 def get_column_from_tsv(tsv_file_name, column):
@@ -122,7 +122,8 @@ def get_column_from_tsv(tsv_file_name, column):
 
     if tsv_file_name is not None:
         data = readtsv(tsv_file_name, encoding='utf-8')
-        assert column in data.dtype.names, "Strand file does not contain required field {}".format(column)
+        assert column in data.dtype.names, "Strand file does not contain required field {}".format(
+            column)
         return [x for x in data[column]]
 
 
@@ -139,7 +140,8 @@ def get_read_ids(tsv_file_name):
 class ExponentialSmoother(object):
 
     def __init__(self, factor, val=0.0, weight=1e-30):
-        assert 0.0 <= factor <= 1.0, "Smoothing factor was {}, should be between 0.0 and 1.0.\n".format(factor)
+        assert 0.0 <= factor <= 1.0, "Smoothing factor was {}, should be between 0.0 and 1.0.\n".format(
+            factor)
         self.factor = factor
         self.val = val
         self.weight = weight
@@ -159,6 +161,7 @@ class WindowedExpSmoother(object):
     :param alpha: exponential decay factor
     :param n_vals: maximum number of values in reported smoothed value
     """
+
     def __init__(self, alpha=0.95, n_vals=100):
         assert 0.0 <= alpha <= 1.0, (
             "Alpha was {}, should be between 0.0 and 1.0.\n".format(
@@ -171,7 +174,8 @@ class WindowedExpSmoother(object):
 
     @property
     def value(self):
-        if self.n_valid_vals == 0: return np.NAN
+        if self.n_valid_vals == 0:
+            return np.NAN
         return np.average(
             self.vals[:self.n_valid_vals],
             weights=self.weights[:self.n_valid_vals])
@@ -210,7 +214,8 @@ class Logger(object):
         try:
             self.fh.write(message.encode('utf-8'))
         except IOError as e:
-            print("Failed to write to log\n Message: {}\n Error: {}".format(message, repr(e)))
+            print("Failed to write to log\n Message: {}\n Error: {}".format(
+                message, repr(e)))
 
 
 class BatchLog:
@@ -276,7 +281,8 @@ class Progress(object):
                 dotcount = self.count // self.every
                 if self.fh.isatty():
                     #  If attached to tty, do colours
-                    self.fh.write('\033[1;{}m.\033[m'.format(COLOURS[dotcount % len(COLOURS)]))
+                    self.fh.write('\033[1;{}m.\033[m'.format(
+                        COLOURS[dotcount % len(COLOURS)]))
                 else:
                     #  otherwise don't
                     self.fh.write('.')
@@ -308,6 +314,7 @@ class open_file_or_stdout():
 
     :param filename: Name or file to open, or None for stdout
     """
+
     def __init__(self, filename):
         self.filename = filename
 
@@ -335,7 +342,8 @@ def set_torch_device(device):
         if torch.cuda.is_available():
             torch.cuda.set_device(device)
         else:
-            raise ValueError('GPU device requested but cannot be set (PyTorch not compiled with CUDA enabled?)')
+            raise ValueError(
+                'GPU device requested but cannot be set (PyTorch not compiled with CUDA enabled?)')
     return device
 
 
@@ -346,7 +354,8 @@ def prepare_outdir(outdir, overwrite=False):
     if not os.path.exists(outdir):
         os.makedirs(outdir)
     elif not overwrite:
-        raise FileExistsError('\"{}\" exists but --overwrite is false\n'.format(outdir))
+        raise FileExistsError(
+            '\"{}\" exists but --overwrite is false\n'.format(outdir))
 
     if not os.path.isdir(outdir):
         raise NotADirectoryError('\"{}\" is not directory'.format(outdir))

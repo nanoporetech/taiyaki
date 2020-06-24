@@ -35,7 +35,7 @@ parser.add_argument("--chunk_size", type=Positive(int), metavar="blocks",
                     default=basecall_helpers._DEFAULT_CHUNK_SIZE,
                     help="Size of signal chunks sent to GPU is chunk_size * model stride")
 parser.add_argument('--fastq', default=False, action=AutoBool,
-                     help='Write output in fastq format (default is fasta)')
+                    help='Write output in fastq format (default is fasta)')
 parser.add_argument("--max_concurrent_chunks", type=Positive(int),
                     default=128, help="Maximum number of chunks to call at "
                     "once. Lower values will consume less (GPU) RAM.")
@@ -58,8 +58,6 @@ parser.add_argument("model", action=FileExists,
                     help="Model checkpoint file to use for basecalling")
 
 
-
-
 def med_mad_norm(x, dtype='f4'):
     """ Normalise a numpy array using median and MAD """
     med, mad = med_mad(x)
@@ -80,10 +78,11 @@ def get_signal(read_filename, read_id):
             read_id, read_filename, repr(e)))
         return None
 
+
 def process_read(
         read_filename, read_id, model, chunk_size, overlap, read_params,
         n_can_state, stride, alphabet, is_cat_mod, mods_fp,
-        max_concurrent_chunks, fastq = False, qscore_scale=1.0,
+        max_concurrent_chunks, fastq=False, qscore_scale=1.0,
         qscore_offset=0.0):
     """Basecall a read, dividing the samples into chunks before applying the
     basecalling network and then stitching them back together.
@@ -142,31 +141,31 @@ def process_read(
         if STITCH_BEFORE_VITERBI:
             out = basecall_helpers.stitch_chunks(
                 out, chunk_starts, chunk_ends, stride)
-            trans = flipflop_make_trans(out.unsqueeze(1)[:,:,:n_can_state])
+            trans = flipflop_make_trans(out.unsqueeze(1)[:, :, :n_can_state])
             _, _, best_path = flipflop_viterbi((trans + 1e-8).log())
         else:
-            trans = flipflop_make_trans(out[:,:,:n_can_state])
+            trans = flipflop_make_trans(out[:, :, :n_can_state])
             _, _, chunk_best_paths = flipflop_viterbi((trans + 1e-8).log())
             best_path = basecall_helpers.stitch_chunks(
                 chunk_best_paths, chunk_starts, chunk_ends, stride,
                 path_stitching=is_cat_mod)
             if fastq:
                 chunk_errprobs = qscores.errprobs_from_trans(trans,
-                                                         chunk_best_paths)
+                                                             chunk_best_paths)
                 errprobs = basecall_helpers.stitch_chunks(
-                        chunk_errprobs, chunk_starts, chunk_ends, stride,
-                        path_stitching=is_cat_mod)
+                    chunk_errprobs, chunk_starts, chunk_ends, stride,
+                    path_stitching=is_cat_mod)
                 qstring = qscores.path_errprobs_to_qstring(errprobs, best_path,
-                                                      qscore_scale,
-                                                      qscore_offset)
+                                                           qscore_scale,
+                                                           qscore_offset)
 
         if is_cat_mod and mods_fp is not None:
             # output modified base weights for each base call
             if STITCH_BEFORE_VITERBI:
-                mod_weights = out[:,n_can_state:]
+                mod_weights = out[:, n_can_state:]
             else:
                 mod_weights = basecall_helpers.stitch_chunks(
-                    out[:,:,n_can_state:], chunk_starts, chunk_ends, stride)
+                    out[:, :, n_can_state:], chunk_starts, chunk_ends, stride)
             mods_scores = extract_mod_weights(
                 mod_weights.detach().cpu().numpy(),
                 best_path.detach().cpu().numpy(),
@@ -175,10 +174,10 @@ def process_read(
                 'Reads/' + read_id, data=mods_scores,
                 compression="gzip")
 
-        #Don't include first source state from the path in the basecall.
-        #This makes our basecalls agree with Guppy's, and removes the
-        #problem that there is no entry transition for the first path
-        #element, so we don't know what the q score is.
+        # Don't include first source state from the path in the basecall.
+        # This makes our basecalls agree with Guppy's, and removes the
+        # problem that there is no entry transition for the first path
+        # element, so we don't know what the q score is.
         basecall = path_to_str(best_path.cpu().numpy(), alphabet=alphabet,
                                include_first_source=False)
 
@@ -211,12 +210,15 @@ def main():
     sys.stderr.write("* Found {} reads.\n".format(len(fast5_reads)))
 
     if args.scaling is not None:
-        sys.stderr.write("* Loading read scaling parameters from {}.\n".format(args.scaling))
+        sys.stderr.write(
+            "* Loading read scaling parameters from {}.\n".format(args.scaling))
         all_read_params = get_per_read_params_dict_from_tsv(args.scaling)
         input_read_ids = frozenset(rec[1] for rec in fast5_reads)
         scaling_read_ids = frozenset(all_read_params.keys())
-        sys.stderr.write("* {} / {} reads have scaling information.\n".format(len(input_read_ids & scaling_read_ids), len(input_read_ids)))
-        fast5_reads = [rec for rec in fast5_reads if rec[1] in scaling_read_ids]
+        sys.stderr.write("* {} / {} reads have scaling information.\n".format(
+            len(input_read_ids & scaling_read_ids), len(input_read_ids)))
+        fast5_reads = [rec for rec in fast5_reads if rec[
+            1] in scaling_read_ids]
     else:
         all_read_params = {}
 
@@ -239,7 +241,8 @@ def main():
     try:
         with open_file_or_stdout(args.output) as fh:
             for read_filename, read_id in fast5_reads:
-                read_params = all_read_params[read_id] if read_id in all_read_params else None
+                read_params = all_read_params[
+                    read_id] if read_id in all_read_params else None
                 basecall, qstring, read_nsample = process_read(
                     read_filename, read_id, model, chunk_size, chunk_overlap,
                     read_params, n_can_states, stride, args.alphabet,
@@ -247,13 +250,13 @@ def main():
                     args.fastq, args.qscore_scale, args.qscore_offset)
                 if basecall is not None:
                     fh.write("{}{}\n{}\n".format(startcharacter,
-                             read_id,
-                             basecall[::-1] if args.reverse else basecall))
+                                                 read_id,
+                                                 basecall[::-1] if args.reverse else basecall))
                     nbase += len(basecall)
                     ncalled += 1
                     if args.fastq:
                         fh.write("+\n{}\n".format(
-                                qstring[::-1] if args.reverse else qstring))
+                            qstring[::-1] if args.reverse else qstring))
                 nread += 1
                 nsample += read_nsample
                 progress.step()
@@ -262,9 +265,12 @@ def main():
             mods_fp.close()
     total_time = time.time() - t0
 
-    sys.stderr.write("* Called {} reads in {:.2f}s\n".format(nread, int(total_time)))
-    sys.stderr.write("* {:7.2f} kbase / s\n".format(nbase / total_time / 1000.0))
-    sys.stderr.write("* {:7.2f} ksample / s\n".format(nsample / total_time / 1000.0))
+    sys.stderr.write(
+        "* Called {} reads in {:.2f}s\n".format(nread, int(total_time)))
+    sys.stderr.write(
+        "* {:7.2f} kbase / s\n".format(nbase / total_time / 1000.0))
+    sys.stderr.write(
+        "* {:7.2f} ksample / s\n".format(nsample / total_time / 1000.0))
     sys.stderr.write("* {} reads failed.\n".format(nread - ncalled))
     return
 

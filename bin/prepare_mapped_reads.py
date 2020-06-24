@@ -15,7 +15,8 @@ program_description = "Prepare data for model training and save to hdf5 file by 
 parser = argparse.ArgumentParser(description=program_description,
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, 'alphabet input_folder input_strand_list jobs limit overwrite recursive version'.split())
+add_common_command_args(
+    parser, 'alphabet input_folder input_strand_list jobs limit overwrite recursive version'.split())
 
 parser.add_argument('--localpen', metavar='penalty', default=0.0, type=float,
                     help='Penalty for local mapping')
@@ -46,11 +47,15 @@ def main():
     modified_bases = [elt[0] for elt in args.mod]
     canonical_bases = [elt[1] for elt in args.mod]
     for b in modified_bases:
-        assert len(b) == 1, "Modified bases must be a single character, got {}".format(b)
-        assert b not in args.alphabet, "Modified base must not be a canonical base, got {}".format(b)
+        assert len(
+            b) == 1, "Modified bases must be a single character, got {}".format(b)
+        assert b not in args.alphabet, "Modified base must not be a canonical base, got {}".format(
+            b)
     for b in canonical_bases:
-        assert len(b) == 1, "Canonical coding for modified bases must be a single character, got {}".format(b)
-        assert b in args.alphabet, "Canonical coding for modified base must be a canonical base, got {}".format(b)
+        assert len(
+            b) == 1, "Canonical coding for modified bases must be a single character, got {}".format(b)
+        assert b in args.alphabet, "Canonical coding for modified base must be a canonical base, got {}".format(
+            b)
     full_alphabet = args.alphabet + ''.join(modified_bases)
     flat_alphabet = args.alphabet + ''.join(canonical_bases)
     modification_names = [elt[2] for elt in args.mod]
@@ -78,7 +83,8 @@ def main():
     workerFunction = prepare_mapping_funcs.oneread_remap
 
     def iter_jobs():
-        references = bio.fasta_file_to_dict(args.references, alphabet=full_alphabet)
+        references = bio.fasta_file_to_dict(
+            args.references, alphabet=full_alphabet)
         for fn, read_id in fast5_reads:
             yield fn, read_id, references.get(read_id, None)
 

@@ -20,11 +20,11 @@ def main():
         plt.figure(figsize=(16, 5))
         tstart = 0
         for nrow in range(len(t)):
-            i,sd,dwell = t['current'][nrow], t['sd'][nrow], t['dwell'][nrow]
-            centret = tstart + dwell/2
-            plt.bar(centret, sd, dwell, i-sd/2)
+            i, sd, dwell = t['current'][nrow], t['sd'][nrow], t['dwell'][nrow]
+            centret = tstart + dwell / 2
+            plt.bar(centret, sd, dwell, i - sd / 2)
             plt.text(centret, i, t['base'][nrow])
-            tstart +=dwell
+            tstart += dwell
         plt.xlabel('time')
         plt.ylabel('current')
         plt.grid()

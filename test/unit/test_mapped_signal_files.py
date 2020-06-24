@@ -31,10 +31,12 @@ def construct_mapped_read_dict():
     reftosigstart = np.concatenate((
         np.array([-1, -1], dtype=np.int32),  # Start marker
         np.arange(2, 5, dtype=np.int32),     # Steps, starting at 2
-        np.full(4, 5, dtype=np.int32),       # Stays (this is four fives, not five fours!)
+        # Stays (this is four fives, not five fours!)
+        np.full(4, 5, dtype=np.int32),
         np.arange(7, 11, dtype=np.int32)     # Skip followed by steps
     ))
-    reftosig = np.full(Nref + 1, Nsig, dtype=np.int32)  # Note length of reftosig is 1+reflen
+    # Note length of reftosig is 1+reflen
+    reftosig = np.full(Nref + 1, Nsig, dtype=np.int32)
     reftosig[:len(reftosigstart)] = reftosigstart
     return {
         'shift_frompA': 0.0,
@@ -57,7 +59,8 @@ class TestMappedReadFiles(unittest.TestCase):
         self.testset_name = os.path.basename(self.test_directory)
         self.testset_work_dir = self.testset_name
         os.makedirs(self.testset_work_dir, exist_ok=True)
-        self.plotfilepath = os.path.join(self.testset_work_dir, 'test_mapped_read_file.png')
+        self.plotfilepath = os.path.join(
+            self.testset_work_dir, 'test_mapped_read_file.png')
         try:
             os.remove(self.testfilepath)
             print("Previous test file removed")
@@ -110,13 +113,15 @@ class TestMappedReadFiles(unittest.TestCase):
         # Get a chunk - note that chunkstart is relative to the start of the mapped
         # region, not relative to the start of the signal
         chunklen, chunkstart = 5, 3
-        chunk = recovered_read.get_chunk_with_sample_length(chunklen, chunkstart)
+        chunk = recovered_read.get_chunk_with_sample_length(
+            chunklen, chunkstart)
 
         # Check that the extracted chunk is the right length
         self.assertEqual(chunk.sig_len, chunklen)
 
         # Check that the mapping data agrees with what we put in
-        self.assertTrue(np.all(recovered_read.Ref_to_signal==read_dict['Ref_to_signal']))
+        self.assertTrue(np.all(recovered_read.Ref_to_signal ==
+                               read_dict['Ref_to_signal']))
 
         # Plot a picture showing ref_to_sig from the read object,    def setup():
         # and the result of searches to find the inverse
@@ -130,13 +135,14 @@ class TestMappedReadFiles(unittest.TestCase):
             plt.scatter(recovered_read.Ref_to_signal, np.arange(reflen + 1), label='reftosig (source data)',
                         color='none', edgecolor='blue', s=60)
             siglocs = np.arange(siglen, dtype=np.int32)
-            sigtoref_fromsearch = recovered_read.get_reference_locations(siglocs)
-            plt.scatter(siglocs, sigtoref_fromsearch, label='from search', color='red', marker='x', s=50)
+            sigtoref_fromsearch = recovered_read.get_reference_locations(
+                siglocs)
+            plt.scatter(siglocs, sigtoref_fromsearch,
+                        label='from search', color='red', marker='x', s=50)
             plt.legend()
             plt.grid()
             plt.savefig(self.plotfilepath)
             print("Saved plot to", self.plotfilepath)
-
 
     def test_check_HDF5_mapped_read_file(self):
         """Check that constructing a read object which doesn't conform
@@ -155,7 +161,8 @@ class TestMappedReadFiles(unittest.TestCase):
         self.assertNotEqual(check_text, "pass")
 
         print("Writing to file")
-        alphabet_info = alphabet.AlphabetInfo(DEFAULT_ALPHABET, DEFAULT_ALPHABET)
+        alphabet_info = alphabet.AlphabetInfo(
+            DEFAULT_ALPHABET, DEFAULT_ALPHABET)
         with tempfile.NamedTemporaryFile(delete=False, dir=self.testset_work_dir) as fh:
             testfilepath = fh.name
         with mapped_signal_files.HDF5Writer(testfilepath, alphabet_info) as f:

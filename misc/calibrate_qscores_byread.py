@@ -2,7 +2,7 @@
 
 import argparse
 import matplotlib as mpl
-mpl.use('Agg') #So we don't need an x server
+mpl.use('Agg')  # So we don't need an x server
 import numpy as np
 import os
 from Bio import SeqIO
@@ -13,37 +13,37 @@ from taiyaki import fileio
 
 parser = argparse.ArgumentParser(
     description='Calculate parameters to correct qscores as predictor of ' +
-                 'per-read error rate',
+    'per-read error rate',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 parser.add_argument("--alignment_summary", default=None,
-                    help = "Input: tsv file containing alignment summary")
+                    help="Input: tsv file containing alignment summary")
 
 parser.add_argument("--coverage_threshold", default=0.8, type=float,
-                    help = "Disregard reads with coverage less than this")
+                    help="Disregard reads with coverage less than this")
 
-parser.add_argument("--max_alignment_score", default = 40.0, type=float,
-                    help = "Upper limit on score calculated from alignment")
+parser.add_argument("--max_alignment_score", default=40.0, type=float,
+                    help="Upper limit on score calculated from alignment")
 
-parser.add_argument("--min_fastqscore", default = 7.0, type=float,
-                    help = "Lower limit on score calculated from fastq")
+parser.add_argument("--min_fastqscore", default=7.0, type=float,
+                    help="Lower limit on score calculated from fastq")
 
 
 parser.add_argument("--fastq", default=None,
-                    help = "Input: fastq file")
+                    help="Input: fastq file")
 
 parser.add_argument("--input_directory", default=None,
-                    help = "Input directory containing fastq files and " +
+                    help="Input directory containing fastq files and " +
                     "alignment_summary.txt (use either this arg or --fastq")
 
-parser.add_argument('--maxreads', default = None, type=int,
-                    help = "Max reads to process (default to no max)")
+parser.add_argument('--maxreads', default=None, type=int,
+                    help="Max reads to process (default to no max)")
 
 parser.add_argument("--plot_title", default=None,
-                    help = "Add this title to plot")
+                    help="Add this title to plot")
 
 parser.add_argument("--plot_filename", default='qscore_calibration.png',
-                    help = "Output: file name for plot.")
+                    help="Output: file name for plot.")
 
 
 def fastq_file_qscore(qvector):
@@ -53,14 +53,14 @@ def fastq_file_qscore(qvector):
     :param qvector: numpy vector of q scores from fastq (may be int or float)
 
     :return: single qscore (float) for file."""
-    #Error probability at each location
-    p = np.power(10.0, -qvector.astype(np.float64)/10.0)
-    #Whole-file mean error rate
+    # Error probability at each location
+    p = np.power(10.0, -qvector.astype(np.float64) / 10.0)
+    # Whole-file mean error rate
     e = np.mean(p)
     return -10.0 * np.log10(e)
 
 
-def read_fastqs(fastqlist, maxreads = None, reads_per_dot = 100):
+def read_fastqs(fastqlist, maxreads=None, reads_per_dot=100):
     """Read fastq files and calculate length and mean q score for each
 
     :param fastqlist: list of fastq files
@@ -82,19 +82,19 @@ def read_fastqs(fastqlist, maxreads = None, reads_per_dot = 100):
         for record in SeqIO.parse(fastqfile, "fastq"):
             read_id_list.append(record.id)
             scores = np.array(
-                 record.letter_annotations["phred_quality"])
+                record.letter_annotations["phred_quality"])
             length_list.append(len(scores))
-            if len(scores)>0:
+            if len(scores) > 0:
                 mean_qscore_list.append(fastq_file_qscore(scores))
             else:
                 mean_qscore_list.append(None)
-            if (len(read_id_list)+1) % reads_per_dot ==0:
-                print(".",end="")
+            if (len(read_id_list) + 1) % reads_per_dot == 0:
+                print(".", end="")
             if maxreads is not None:
-                if len(read_id_list)>=maxreads:
+                if len(read_id_list) >= maxreads:
                     break
         if maxreads is not None:
-            if len(read_id_list)>=maxreads:
+            if len(read_id_list) >= maxreads:
                 break
     print("")
     return (np.array(read_id_list),
@@ -121,43 +121,44 @@ def get_alignment_data(alignment_file):
            (because there may be more than one possible alignment)
 
     """
-    #Delimiter None accepts space or tab - samaccs are space-separated.
+    # Delimiter None accepts space or tab - samaccs are space-separated.
     t = fileio.readtsv(alignment_file, delimiter=None)
 
     try:
-        #Try to read the file as a Guppy alignment summary file
+        # Try to read the file as a Guppy alignment summary file
         read_ids = t['read_id']
         accuracies = t['alignment_accuracy']
         alignment_lens = (t['alignment_strand_end']
-                        - t['alignment_strand_start'])
+                          - t['alignment_strand_start'])
         print("Interpreted alignment file as Guppy output")
-        accuracies[accuracies<0] = np.nan
+        accuracies[accuracies < 0] = np.nan
         return read_ids, accuracies, alignment_lens
     except ValueError:
-        #Thrown if the required fields are not present in the file
+        # Thrown if the required fields are not present in the file
         pass
 
     try:
-        #Try to read the file as a Taiyaki alignment summary
+        # Try to read the file as a Taiyaki alignment summary
         read_ids = t['query']
         accuracies = t['accuracy']
-        #Query length in alignment not available directly in taiyaki summary
+        # Query length in alignment not available directly in taiyaki summary
         alignment_lens = (t['reference_end']
-                        - t['reference_start']
-                        + t['insertion']
-                        - t['deletion'])
+                          - t['reference_start']
+                          + t['insertion']
+                          - t['deletion'])
         print("Interpreted alignment file as Taiyaki output")
         return read_ids, accuracies, alignment_lens
     except ValueError:
         pass
 
     columnlist = list(t.dtype.fields.keys())
-    raise Exception("Alignment summary file must contain either columns "+
+    raise Exception("Alignment summary file must contain either columns " +
                     "(read_ids, alignment accuracy, alignment_strand_end, " +
                     "alignment_strand_start) or " +
                     "(id, accuracy, reference_end, reference_start, " +
                     "insertion, deletion  )" +
-                    ". Columns are {}".format(columnlist) )
+                    ". Columns are {}".format(columnlist))
+
 
 def merge_align_fastq_data(fastq_ids,
                            alignment_ids,
@@ -182,12 +183,12 @@ def merge_align_fastq_data(fastq_ids,
     """
     n_fastqs = len(fastq_ids)
     fastq_accuracies = np.full(n_fastqs, np.nan)
-    fastq_alignment_lens  = np.full(n_fastqs, -1)
+    fastq_alignment_lens = np.full(n_fastqs, -1)
     read_not_found = 0
     more_than_one_alignment = 0
     for nread, fastq_id in enumerate(fastq_ids):
-        accuracies = alignment_accuracies[alignment_ids==fastq_id]
-        lens = alignment_lens[alignment_ids==fastq_id]
+        accuracies = alignment_accuracies[alignment_ids == fastq_id]
+        lens = alignment_lens[alignment_ids == fastq_id]
         if len(accuracies) == 0:
             read_not_found += 1
         elif len(accuracies) == 1:
@@ -201,9 +202,8 @@ def merge_align_fastq_data(fastq_ids,
     print("\n{} reads read from fastq.".format(n_fastqs))
     print("    {} not found in alignment summary.".format(read_not_found))
     print("    {} with more than one alignment.\n".format(
-                                                      more_than_one_alignment))
-    return fastq_accuracies,fastq_alignment_lens
-
+        more_than_one_alignment))
+    return fastq_accuracies, fastq_alignment_lens
 
 
 def calculate_regression(mean_qscores, calc_qscores):
@@ -237,23 +237,23 @@ def single_read_accuracy_scatter(accuracies, meanqs, max_alignment_score):
              qscore(x) = -10.0 log10(1-x)
     """
     y = -10.0 * np.log10(1.0 - accuracies)
-    y[y>max_alignment_score] = max_alignment_score
+    y[y > max_alignment_score] = max_alignment_score
     x = meanqs
 
     plt.scatter(x, y, s=2)
     #m_OLS,c_OLS, r_value, p_value, mstd_OLS = linregress(x,y)
-    c,m = calculate_regression(x,y)
+    c, m = calculate_regression(x, y)
 
     xx = np.array([np.min(x), np.max(x)])
     yy = c + m * xx
-    label='slope={:3.2f} intercept={:3.2f}'.format(m, c)
-    plt.plot(xx,yy,color='gray', label=label)
-    plt.plot(xx,xx,color='gray', linestyle='dotted', label='y=x')
+    label = 'slope={:3.2f} intercept={:3.2f}'.format(m, c)
+    plt.plot(xx, yy, color='gray', label=label)
+    plt.plot(xx, xx, color='gray', linestyle='dotted', label='y=x')
     plt.legend(loc='upper left', framealpha=0.1)
     plt.xlabel('Fastq q score')
     plt.ylabel('Alignment accuracy score')
     plt.grid()
-    return m,c
+    return m, c
 
 
 def filter_data(accuracies, fastqscores, fastq_lens, alignment_lens,
@@ -276,39 +276,39 @@ def filter_data(accuracies, fastqscores, fastq_lens, alignment_lens,
     f = ~np.isnan(accuracies)
 
     coverage_fraction = (alignment_lens.astype(np.float64) /
-                         fastq_lens.astype(np.float64) )
+                         fastq_lens.astype(np.float64))
     # Also remove coverage less than threshold (values of -1 in alignment_len
     # used to indicate null also filtered out by this step
     g = (coverage_fraction > min_coverage)
 
-
     h = (fastqscores >= min_fastqscore)
 
-    print("Total number of reads = ",len(accuracies))
-    print("    After removing those not aligned:",len(accuracies[f]))
+    print("Total number of reads = ", len(accuracies))
+    print("    After removing those not aligned:", len(accuracies[f]))
     print("    After also removing coverage < {:3.2f}: {}".format(
-            min_coverage,len(accuracies[f&g])))
+        min_coverage, len(accuracies[f & g])))
     print("    After also removing fastq score < {:3.1f}: {}".format(
-            min_fastqscore,len(accuracies[f&g&h])))
+        min_fastqscore, len(accuracies[f & g & h])))
 
-    return accuracies[f&g&h], fastqscores[f&g&h]
+    return accuracies[f & g & h], fastqscores[f & g & h]
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     print("Calculating shift and scale parameters to calibrate per-read")
     print("accuracy estimates from q scores.")
     args = parser.parse_args()
     fastqlist = None
     if args.input_directory is not None:
         fastqlist = [fi for fi in os.listdir(args.input_directory)
-                                                     if fi.endswith('.fastq')]
-        fastqlist = [os.path.join(args.input_directory,fi) for fi in fastqlist]
+                     if fi.endswith('.fastq')]
+        fastqlist = [os.path.join(args.input_directory, fi)
+                     for fi in fastqlist]
         if len(fastqlist) == 0:
             errstr = "No fastq files found in {}".format(args.input_directory)
             raise Exception(errstr)
         else:
             print("Getting q scores for {} fastq files from {}".format(
-                    len(fastqlist), args.input_directory))
+                len(fastqlist), args.input_directory))
         alignment_summary_file = os.path.join(args.input_directory,
                                               'alignment_summary.txt')
     if args.fastq is not None:
@@ -318,34 +318,34 @@ if __name__=="__main__":
         print("Calculating average q scores for {}".format(args.fastq))
 
     if args.alignment_summary is not None:
-        #args.alignment summary overrides the one in the directory.
-        print("Using alignment summary file at ",args.alignment_summary)
+        # args.alignment summary overrides the one in the directory.
+        print("Using alignment summary file at ", args.alignment_summary)
         alignment_summary_file = args.alignment_summary
 
     if fastqlist is None:
         raise Exception("You must supply a directory containing " +
                         "fastqs or the path to a fastq file")
 
-    fastq_ids,fastq_meanqs,fastq_lens = read_fastqs(fastqlist, args.maxreads)
+    fastq_ids, fastq_meanqs, fastq_lens = read_fastqs(fastqlist, args.maxreads)
 
-    align_ids,align_accuracies,align_lens = get_alignment_data(
-                                                alignment_summary_file)
+    align_ids, align_accuracies, align_lens = get_alignment_data(
+        alignment_summary_file)
 
-    fastq_accuracies,fastq_align_lens = merge_align_fastq_data(fastq_ids,
-                                 align_ids, align_accuracies, align_lens)
+    fastq_accuracies, fastq_align_lens = merge_align_fastq_data(fastq_ids,
+                                                                align_ids, align_accuracies, align_lens)
 
-    fastq_accuracies,fastq_meanqs = filter_data(fastq_accuracies,
-                                                fastq_meanqs,
-                                                fastq_lens,
-                                                fastq_align_lens,
-                                                args.coverage_threshold,
-                                                args.min_fastqscore)
+    fastq_accuracies, fastq_meanqs = filter_data(fastq_accuracies,
+                                                 fastq_meanqs,
+                                                 fastq_lens,
+                                                 fastq_align_lens,
+                                                 args.coverage_threshold,
+                                                 args.min_fastqscore)
 
-    slope,intercept = single_read_accuracy_scatter(fastq_accuracies,
-                                                   fastq_meanqs,
-                                                   args.max_alignment_score)
+    slope, intercept = single_read_accuracy_scatter(fastq_accuracies,
+                                                    fastq_meanqs,
+                                                    args.max_alignment_score)
 
-    print("\n\nBest-fit:",args.plot_title)
+    print("\n\nBest-fit:", args.plot_title)
     print("Best-fit slope (qscore_scale) = {:3.4f}".format(slope))
     print("Best-fit shift (qscore_shift) = {:3.4f}".format(intercept))
 
@@ -355,4 +355,3 @@ if __name__=="__main__":
     print("\nSaving plot to {}".format(args.plot_filename))
     plt.savefig(args.plot_filename)
     plt.close()
-

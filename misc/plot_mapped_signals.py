@@ -15,7 +15,8 @@ parser = argparse.ArgumentParser(
 parser.add_argument('mapped_read_files',  nargs='+',
                     help='Inputs: one or more mapped read files')
 
-parser.add_argument('--output', help='Output PNG filename. Default: only output per-read summaries.')
+parser.add_argument(
+    '--output', help='Output PNG filename. Default: only output per-read summaries.')
 parser.add_argument('--maxlegendsize', type=Positive(int), default=10,
                     help='Maximum number of reads to list in the legend.')
 
@@ -25,17 +26,17 @@ parser.add_argument('--nreads', type=Positive(int), default=10,
 parser.add_argument('--read_ids',  nargs='+', default=[],
                     help='One or more read_ids. If not present, plots the first NREADS in each file')
 
-parser.add_argument('--xmin', default = None, type = float,
+parser.add_argument('--xmin', default=None, type=float,
                     help='Minimum x for plot')
-parser.add_argument('--xmax', default = None, type = float,
+parser.add_argument('--xmax', default=None, type=float,
                     help='Maximum x for plot')
-parser.add_argument('--ymin', default = None, type = float,
+parser.add_argument('--ymin', default=None, type=float,
                     help='Minimum x for plot')
-parser.add_argument('--ymax', default = None, type = float,
+parser.add_argument('--ymax', default=None, type=float,
                     help='Maximum x for plot')
-parser.add_argument('--line_transparency', type = float, default = 1.0,
+parser.add_argument('--line_transparency', type=float, default=1.0,
                     help='Transparency value for lines. Default: %(default)f')
-parser.add_argument('--zero_signal_start', action = 'store_true',
+parser.add_argument('--zero_signal_start', action='store_true',
                     help='Start signal locations at zero. Default: start at ' +
                     'assigned position within entire read.')
 parser.add_argument('--quiet', action='store_true',
@@ -91,7 +92,7 @@ def main():
                         yf = y <= args.ymax
                         x, y = x[yf], y[yf]
                     plt.plot(x, y, label=label,
-                             linestyle = 'dashed' if nfile == 1 else 'solid',
+                             linestyle='dashed' if nfile == 1 else 'solid',
                              alpha=args.line_transparency)
                 reads_sofar += 1
 
@@ -106,6 +107,5 @@ def main():
         plt.savefig(args.output)
 
 
-
-if __name__=="__main__":
+if __name__ == "__main__":
     main()

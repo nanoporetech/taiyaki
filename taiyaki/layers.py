@@ -53,7 +53,7 @@ def random_orthonormal(n, m=None):
     # Make square orthog matrix
     square_orthog = Q.dot(flipper)
     # Drop unneeded rows
-    return square_orthog[:n,:]
+    return square_orthog[:n, :]
 
 
 def orthonormal_matrix(nrow, ncol):
@@ -62,11 +62,11 @@ def orthonormal_matrix(nrow, ncol):
     nrep = nrow // ncol
     out = np.zeros((nrow, ncol), dtype='f4')
     for i in range(nrep):
-        out[i * ncol : i * ncol + ncol] = random_orthonormal(ncol)
+        out[i * ncol: i * ncol + ncol] = random_orthonormal(ncol)
     #  Remaining
     remsize = nrow - nrep * ncol
-    if remsize > 0 :
-        out[nrep * ncol : , :] = random_orthonormal(remsize, ncol)
+    if remsize > 0:
+        out[nrep * ncol:, :] = random_orthonormal(remsize, ncol)
 
     return out
 
@@ -78,6 +78,7 @@ def truncated_normal(size, sd):
 
 
 class Reverse(nn.Module):
+
     def __init__(self, layer):
         super().__init__()
         self.layer = layer
@@ -91,6 +92,7 @@ class Reverse(nn.Module):
 
 
 class Residual(nn.Module):
+
     def __init__(self, layer):
         super().__init__()
         self.layer = layer
@@ -104,6 +106,7 @@ class Residual(nn.Module):
 
 
 class GatedResidual(nn.Module):
+
     def __init__(self, layer, gate_init=0.0):
         super().__init__()
         self.layer = layer
@@ -118,7 +121,8 @@ class GatedResidual(nn.Module):
         res = OrderedDict([('type', "GatedResidual"),
                            ('sublayers', self.layer.json(params))])
         if params:
-            res['params'] = OrderedDict([('alpha', float(self.alpha.detach_().numpy()[0]))])
+            res['params'] = OrderedDict(
+                [('alpha', float(self.alpha.detach_().numpy()[0]))])
         return res
 
 
@@ -131,6 +135,7 @@ class FeedForward(nn.Module):
     :param has_bias: Whether layer has bias
     :param fun: The activation function.
     """
+
     def __init__(self, insize, size, has_bias=True, fun=activation.linear):
         super().__init__()
         self.insize = insize
@@ -171,6 +176,7 @@ class Softmax(nn.Module):
     :param size: Layer size
     :param has_bias: Whether layer has bias
     """
+
     def __init__(self, insize, size, has_bias=True):
         super().__init__()
         self.insize = insize
@@ -208,6 +214,7 @@ class CudnnGru(nn.Module):
     :param size: Layer size
     :param has_bias: Whether layer has bias
     """
+
     def __init__(self, insize, size, bias=True):
         super().__init__()
         self.cudnn_gru = nn.GRU(insize, size, bias=bias)
@@ -246,7 +253,8 @@ class CudnnGru(nn.Module):
             ib = _cudnn_to_guppy_gru(self.cudnn_gru.bias_ih_l0)
             sb = _cudnn_to_guppy_gru(self.cudnn_gru.bias_hh_l0)
             res['params'] = OrderedDict([('iW', _reshape(iW, (3, self.size, self.insize))),
-                                         ('sW', _reshape(sW, (3, self.size, self.size))),
+                                         ('sW', _reshape(
+                                             sW, (3, self.size, self.size))),
                                          ('ib', _reshape(ib, (3, self.size))),
                                          ('sb', _reshape(sb, (3, self.size)))])
         return res
@@ -270,6 +278,7 @@ class Lstm(nn.Module):
     :param size: Layer size
     :param has_bias: Whether layer has bias
     """
+
     def __init__(self, insize, size, has_bias=True):
         super().__init__()
         self.lstm = nn.LSTM(insize, size, bias=has_bias)
@@ -316,7 +325,8 @@ class Lstm(nn.Module):
                            ('bias', self.has_bias)])
         if params:
             res['params'] = OrderedDict([('iW', _reshape(self.lstm.weight_ih_l0, (4, self.size, self.insize))),
-                                         ('sW', _reshape(self.lstm.weight_hh_l0, (4, self.size, self.size))),
+                                         ('sW', _reshape(self.lstm.weight_hh_l0,
+                                                         (4, self.size, self.size))),
                                          ('b', _reshape(self.lstm.bias_ih_l0, (4, self.size)))])
         return res
 
@@ -331,6 +341,7 @@ class GruMod(nn.Module):
     :param size: Layer size
     :param has_bias: Whether layer has bias
     """
+
     def __init__(self, insize, size, has_bias=True):
         super().__init__()
         self.cudnn_gru = nn.GRU(insize, size, bias=has_bias)
@@ -380,7 +391,8 @@ class GruMod(nn.Module):
             sW = _cudnn_to_guppy_gru(self.cudnn_gru.weight_hh_l0)
             b = _cudnn_to_guppy_gru(self.cudnn_gru.bias_ih_l0)
             res['params'] = OrderedDict([('iW', _reshape(iW, (3, self.size, self.insize))),
-                                         ('sW', _reshape(sW, (3, self.size, self.size))),
+                                         ('sW', _reshape(
+                                             sW, (3, self.size, self.size))),
                                          ('b', _reshape(b, (3, self.size)))])
         return res
 
@@ -407,6 +419,7 @@ class Convolution(nn.Module):
         case the padding used is (winlen // 2, (winlen - 1) // 2) which ensures
         that the output length does not depend on winlen
     """
+
     def __init__(self, insize, size, winlen, stride=1, pad=None,
                  fun=activation.tanh, has_bias=True):
         super().__init__()
@@ -453,6 +466,7 @@ class Convolution(nn.Module):
 
 
 class Parallel(nn.Module):
+
     def __init__(self, layers):
         super().__init__()
         self.sublayers = nn.ModuleList(layers)
@@ -473,6 +487,7 @@ class Product(nn.Module):
          E.g. Simple gated feed-forward layer
          Product([FeedForward(insize, size, fun=sigmoid), FeedForward(insize, size, fun=linear)])
     """
+
     def __init__(self, layers):
         super().__init__()
         self.sublayers = nn.ModuleList(layers)
@@ -490,6 +505,7 @@ class Product(nn.Module):
 
 
 class Serial(nn.Module):
+
     def __init__(self, layers):
         super().__init__()
         self.sublayers = nn.ModuleList(layers)
@@ -506,6 +522,7 @@ class Serial(nn.Module):
 
 
 class SoftChoice(nn.Module):
+
     def __init__(self, layers):
         super().__init__()
         self.sublayers = nn.ModuleList(layers)
@@ -538,6 +555,7 @@ class Identity(nn.Module):
     :param fun:  Elementwise activation function
 
     """
+
     def __init__(self, fun=activation.linear):
         super().__init__()
         self.fun = fun
@@ -561,7 +579,7 @@ class Studentise(nn.Module):
         self.epsilon = epsilon
 
     def json(self, params=False):
-        return {'type' : "studentise"}
+        return {'type': "studentise"}
 
     def forward(self, x):
         features = x.shape[-1]
@@ -668,6 +686,7 @@ def global_norm_flipflop(scores):
 
 
 class GlobalNormFlipFlop(nn.Module):
+
     def __init__(self, insize, nbase, has_bias=True, _never_use_cupy=False,
                  fun=activation.tanh, scale=5.0):
         super().__init__()
@@ -752,6 +771,7 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         order and NOT cat_mod order. Using the example alphabet above,
         mod_labels would be `[0, 0, 0, 0, 1, 1, 2, 1]`
     """
+
     def compute_label_conversions(self):
         """ Compute conversion arrays from input label to canonical base and
         modified training label values
@@ -894,14 +914,14 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         """
         mod_layers = []
         for lab_indices in self.can_indices:
-            mod_layers.append(self.lsm(cat_mod_scores[:,:,lab_indices]))
+            mod_layers.append(self.lsm(cat_mod_scores[:, :, lab_indices]))
         return torch.cat(mod_layers, dim=2)
 
     def forward(self, x):
         y = self.linear(x)
 
-        trans_scores = 5.0 * activation.tanh(y[:,:,:self.ntrans_states])
-        cat_mod_scores = y[:,:,self.ntrans_states:]
+        trans_scores = 5.0 * activation.tanh(y[:, :, :self.ntrans_states])
+        cat_mod_scores = y[:, :, self.ntrans_states:]
         assert cat_mod_scores.shape[2] == self.nmod_base + 1, (
             'Invalid scores provided to forward:  ' +
             'Expected: {}  got: {}'.format(self.nmod_base + 1,
@@ -943,6 +963,7 @@ class TimeLinear(nn.Module):
     :param has_bias: Whether layer has bias
     :param fun: The activation function.
     """
+
     def __init__(self, insize, size, has_bias=True, fun=activation.linear):
         super().__init__()
         self.insize = insize

@@ -74,7 +74,7 @@ def gelu(x):
          function with a Logistic distribution with unit variance?
 
     """
-    #return 0.5 * (1.0 + torch.tanh(x * 0.7978846 * (1.0 + 0.044715 * x * x)))
+    # return 0.5 * (1.0 + torch.tanh(x * 0.7978846 * (1.0 + 0.044715 * x * x)))
     return x * torch.sigmoid(1.702 * x)
 
 

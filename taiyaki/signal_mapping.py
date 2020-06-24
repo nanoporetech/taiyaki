@@ -165,7 +165,7 @@ class SignalMapping:
     def get_integer_reference(string_reference, alphabet):
         return np.array([
             alphabet.index(i) for i in string_reference],
-                        dtype=SignalMapping.req_data_types.Reference)
+            dtype=SignalMapping.req_data_types.Reference)
 
     @staticmethod
     def get_reftosignal(signalpos_to_refpos, reflen, siglen):
