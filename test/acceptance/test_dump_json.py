@@ -23,7 +23,8 @@ class AcceptanceTest(unittest.TestCase):
         self.testset_work_dir = os.path.basename(test_directory)
         self.script = os.path.join(util.BIN_DIR, "dump_json.py")
         self.json_to_cp = os.path.join(util.BIN_DIR, "json_to_checkpoint.py")
-        self.model_file = os.path.join(util.MODELS_DIR, "mGru_flipflop_remapping_model_r9_DNA.checkpoint")
+        self.model_file = os.path.join(
+            util.MODELS_DIR, "mGru_flipflop_remapping_model_r9_DNA.checkpoint")
 
     def work_dir(self, test_name):
         directory = os.path.join(self.testset_work_dir, test_name)
@@ -32,7 +33,8 @@ class AcceptanceTest(unittest.TestCase):
 
     def test_usage(self):
         cmd = [self.script]
-        util.run_cmd(self, cmd).expect_exit_code(2).expect_stderr(util.any_line_starts_with(u"usage"))
+        util.run_cmd(self, cmd).expect_exit_code(
+            2).expect_stderr(util.any_line_starts_with(u"usage"))
 
     @parameterized.expand([
         [["--params"], "mGru_flipflop_remapping_model_r9_DNA.checkpoint"],
@@ -47,7 +49,8 @@ class AcceptanceTest(unittest.TestCase):
         self.assertTrue(os.path.exists(model_file))
         cmd = [self.script, model_file] + options
         print(cmd)
-        util.run_cmd(self, cmd).expect_exit_code(0).expect_stdout(lambda o: is_valid_json('\n'.join(o)))
+        util.run_cmd(self, cmd).expect_exit_code(0).expect_stdout(
+            lambda o: is_valid_json('\n'.join(o)))
 
     @parameterized.expand([
         [["--no-params"], "mGru_flipflop_remapping_model_r9_DNA.checkpoint"],
@@ -64,8 +67,10 @@ class AcceptanceTest(unittest.TestCase):
             output_file = fh.name
 
         cmd = [self.script, self.model_file, "--output", output_file] + options
-        error_message = "RuntimeError: File/path for 'output' exists, {}".format(output_file)
-        util.run_cmd(self, cmd).expect_exit_code(1).expect_stderr(util.any_line_starts_with(error_message))
+        error_message = "RuntimeError: File/path for 'output' exists, {}".format(
+            output_file)
+        util.run_cmd(self, cmd).expect_exit_code(1).expect_stderr(
+            util.any_line_starts_with(error_message))
 
         os.remove(output_file)
 
@@ -78,7 +83,7 @@ class AcceptanceTest(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_json_to_checkpoint(self):
-        subdir="3"
+        subdir = "3"
         self.assertTrue(os.path.exists(self.model_file))
         test_work_dir = self.work_dir("test_json_to_checkpoint")
 
@@ -95,8 +100,10 @@ class AcceptanceTest(unittest.TestCase):
         re_model_file = os.path.join(test_work_dir, "re_model.checkpoint")
         cmd = [self.json_to_cp, json_file, "--output", re_model_file]
         open(re_model_file, "w").close()
-        error_message = "RuntimeError: File/path for 'output' exists, {}".format(re_model_file)
-        util.run_cmd(self, cmd).expect_exit_code(1).expect_stderr(util.any_line_starts_with(error_message))
+        error_message = "RuntimeError: File/path for 'output' exists, {}".format(
+            re_model_file)
+        util.run_cmd(self, cmd).expect_exit_code(1).expect_stderr(
+            util.any_line_starts_with(error_message))
         os.remove(re_model_file)
         util.run_cmd(self, cmd).expect_exit_code(0)
         self.assertTrue(os.path.exists(re_model_file))

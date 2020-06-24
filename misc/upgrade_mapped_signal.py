@@ -27,7 +27,8 @@ def convert_7_to_8(h5):
     if input_version > 7:
         return
     if input_version < 7:
-        logging.error('Input version expected to be 7, got {}'.format(input_version))
+        logging.error(
+            'Input version expected to be 7, got {}'.format(input_version))
         return
 
     print('Upgrading to version 8')

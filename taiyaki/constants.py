@@ -1,7 +1,7 @@
 DEFAULT_ALPHABET = 'ACGT'
 DEFAULT_NBASE = len(DEFAULT_ALPHABET)
 
-DOTROWLENGTH=50   #Length of a row of dots (polka) in training output
+DOTROWLENGTH = 50  # Length of a row of dots (polka) in training output
 
 SMALL_VAL = 1e-10
 LARGE_VAL = 1e30

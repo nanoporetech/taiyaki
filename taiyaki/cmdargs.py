@@ -23,7 +23,8 @@ class ByteString(argparse.Action):
 def checkProbabilities(probabilities):
     try:
         for probability in iter(probabilities):
-            assert 0.0 <= probability <= 1.0, 'Probability {} not in [0,1]'.format(probability)
+            assert 0.0 <= probability <= 1.0, 'Probability {} not in [0,1]'.format(
+                probability)
     except TypeError:
         assert 0.0 <= probabilities <= 1.0, 'Probability not in [0,1]'
 
@@ -45,14 +46,16 @@ class FileExists(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
         if not os.path.exists(values):
-            raise RuntimeError("File/path for '{}' does not exist, {}".format(self.dest, values))
+            raise RuntimeError(
+                "File/path for '{}' does not exist, {}".format(self.dest, values))
         setattr(namespace, self.dest, values)
 
 
 class FileExist(FileExists):
 
     def __init__(self, **kwdargs):
-        warnings.warn("FileExist is deprecated. Use FileExists instead.", DeprecationWarning)
+        warnings.warn(
+            "FileExist is deprecated. Use FileExists instead.", DeprecationWarning)
         super(FileExist, self).__init__(**kwdargs)
 
 
@@ -61,7 +64,8 @@ class FileAbsent(argparse.Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
         if os.path.exists(values):
-            raise RuntimeError("File/path for '{}' exists, {}".format(self.dest, values))
+            raise RuntimeError(
+                "File/path for '{}' exists, {}".format(self.dest, values))
         setattr(namespace, self.dest, values)
 
 
@@ -71,7 +75,8 @@ class CheckCPU(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         num_cpu = multiprocessing.cpu_count()
         if int(values) <= 0 or int(values) > num_cpu:
-            raise RuntimeError('Number of jobs can only be in the range of {} and {}'.format(1, num_cpu))
+            raise RuntimeError(
+                'Number of jobs can only be in the range of {} and {}'.format(1, num_cpu))
         setattr(namespace, self.dest, values)
 
 
@@ -82,13 +87,16 @@ class ParseToNamedTuple(argparse.Action):
     def __init__(self, **kwdargs):
         assert 'metavar' in kwdargs, "Argument 'metavar' must be defined"
         assert 'type' in kwdargs, "Argument 'type' must be defined"
-        assert len(kwdargs['metavar']) == kwdargs['nargs'], 'Number of arguments and descriptions inconstistent'
-        assert len(kwdargs['type']) == kwdargs['nargs'], 'Number of arguments and types inconstistent'
+        assert len(kwdargs['metavar']) == kwdargs[
+            'nargs'], 'Number of arguments and descriptions inconstistent'
+        assert len(kwdargs['type']) == kwdargs[
+            'nargs'], 'Number of arguments and types inconstistent'
         self._types = kwdargs['type']
         kwdargs['type'] = str
         self.Values = namedtuple('Values', ' '.join(kwdargs['metavar']))
         super(ParseToNamedTuple, self).__init__(**kwdargs)
-        self.default = self.Values(*self.default) if self.default is not None else None
+        self.default = self.Values(
+            *self.default) if self.default is not None else None
 
     def __call__(self, parser, namespace, values, option_string=None):
         value_dict = self.Values(*[f(v) for f, v in zip(self._types, values)])
@@ -109,7 +117,8 @@ class NegBound(argparse.Action):
             try:
                 setattr(namespace, self.dest, -int(values))
             except:
-                raise ValueError('Illegal value for {} ({}), should be castable to int')
+                raise ValueError(
+                    'Illegal value for {} ({}), should be castable to int')
 
 
 class ExpandRanges(argparse.Action):
@@ -130,7 +139,8 @@ class ExpandRanges(argparse.Action):
 class ChannelList(ExpandRanges):
 
     def __init__(self, **kwdargs):
-        warnings.warn("ChannelList is deprecated. Use ExpandRanges instead.", DeprecationWarning)
+        warnings.warn(
+            "ChannelList is deprecated. Use ExpandRanges instead.", DeprecationWarning)
         super(ChannelList, self).__init__(**kwdargs)
 
 
@@ -142,7 +152,8 @@ class AutoBool(argparse.Action):
         if default is None:
             raise ValueError('You must provide a default with AutoBool action')
         if len(option_strings) != 1:
-            raise ValueError('Only single argument is allowed with AutoBool action')
+            raise ValueError(
+                'Only single argument is allowed with AutoBool action')
         opt = option_strings[0]
         if not opt.startswith('--'):
             raise ValueError('AutoBool arguments must be prefixed with --')
@@ -190,12 +201,14 @@ class Maybe(object):
             else:
                 res = self.mytype(y)
         except:
-            raise argparse.ArgumentTypeError('Argument must be {}'.format(self))
+            raise argparse.ArgumentTypeError(
+                'Argument must be {}'.format(self))
         return res
 
 
 def TypeOrNone(mytype):
-    warnings.warn("TypeOrNone is deprecated. Use Maybe instead.", DeprecationWarning)
+    warnings.warn("TypeOrNone is deprecated. Use Maybe instead.",
+                  DeprecationWarning)
     return Maybe(mytype)
 
 
@@ -230,10 +243,12 @@ class Bounded(object):
         yt = self.mytype(y)
 
         if self.lower is not None and yt < self.lower:
-            raise argparse.ArgumentTypeError('Argument must be {}'.format(self))
+            raise argparse.ArgumentTypeError(
+                'Argument must be {}'.format(self))
 
         if self.upper is not None and yt > self.upper:
-            raise argparse.ArgumentTypeError('Argument must be {}'.format(self))
+            raise argparse.ArgumentTypeError(
+                'Argument must be {}'.format(self))
 
         return yt
 
@@ -261,7 +276,8 @@ class Positive(object):
     def __call__(self, y):
         yt = self.mytype(y)
         if yt <= 0:
-            raise argparse.ArgumentTypeError('Argument must be {}'.format(self))
+            raise argparse.ArgumentTypeError(
+                'Argument must be {}'.format(self))
         return yt
 
 
@@ -271,7 +287,8 @@ def proportion(p):
 
 
 def probability(p):
-    warnings.warn("probability is deprecated. Use proportion instead.", DeprecationWarning)
+    warnings.warn(
+        "probability is deprecated. Use proportion instead.", DeprecationWarning)
     return proportion(p)
 
 
@@ -287,7 +304,8 @@ def Vector(mytype):
             try:
                 setattr(namespace, self.dest, np.array(values, dtype=mytype))
             except:
-                raise argparse.ArgumentTypeError('Cannot convert {} to array of {}'.format(values, mytype))
+                raise argparse.ArgumentTypeError(
+                    'Cannot convert {} to array of {}'.format(values, mytype))
 
         @staticmethod
         def value_as_string(value):
@@ -324,7 +342,8 @@ class DeviceAction(argparse.Action):
         if value is None:
             return 'cpu'
 
-        # if value is (a string representation of) a positive integer, convert to int
+        # if value is (a string representation of) a positive integer, convert
+        # to int
         int_match = re.match('[0-9]+', value)
         if int_match:
             return int(int_match.group())

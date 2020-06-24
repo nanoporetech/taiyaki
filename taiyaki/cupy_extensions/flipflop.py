@@ -111,7 +111,7 @@ def flipflop_fwd(scores):
 
     fwd = torch.zeros(
         (T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
-    fwd[0, :, :nbase] = 0.0;
+    fwd[0, :, :nbase] = 0.0
     fwd[0, :, nbase:] = -LARGE_VAL
     fact = torch.zeros((T + 1, N, 1), dtype=scores.dtype, device=scores.device)
     with cp.cuda.Device(index):
@@ -478,9 +478,11 @@ def flipflop_viterbi(scores):
     nbase = flipflopfings.nbase_flipflop(S)
 
     scores = scores.contiguous()
-    fwd = torch.zeros((T + 1, N, 2 * nbase), dtype=scores.dtype, device=scores.device)
+    fwd = torch.zeros((T + 1, N, 2 * nbase),
+                      dtype=scores.dtype, device=scores.device)
     fwd[:1, :, nbase:] = -LARGE_VAL
-    traceback = torch.zeros((T + 1, N, 2 * nbase), dtype=torch.long, device=scores.device)
+    traceback = torch.zeros((T + 1, N, 2 * nbase),
+                            dtype=torch.long, device=scores.device)
     best_path = torch.zeros((T + 1, N), dtype=torch.long, device=scores.device)
     with cp.cuda.Device(index):
         _flipflop_viterbi(

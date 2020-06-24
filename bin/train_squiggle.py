@@ -28,7 +28,7 @@ parser.add_argument('--batch_size', default=100, metavar='chunks', type=Positive
                     help='Number of chunks to run in parallel')
 parser.add_argument('--back_prob', default=1e-15, metavar='probability',
                     type=proportion, help='Probability of backwards move')
-parser.add_argument('--depth', metavar='layers' , default=4, type=Positive(int),
+parser.add_argument('--depth', metavar='layers', default=4, type=Positive(int),
                     help='Number of residual convolution layers')
 parser.add_argument('--drop_slip', default=5, type=Maybe(Positive(int)), metavar='length',
                     help='Drop chunks with slips greater than given length (None = off)')
@@ -38,10 +38,10 @@ parser.add_argument('--full_filter_status', default=False, action=AutoBool,
 parser.add_argument('--input_strand_list', default=None, action=FileExists,
                     help='Strand summary file containing column read_id. Filenames in file are ignored.')
 parser.add_argument('--lr_decay', default=5000, metavar='n', type=Positive(float),
-                     help='Learning rate for batch i is lr_max / (1.0 + i / n)')
+                    help='Learning rate for batch i is lr_max / (1.0 + i / n)')
 parser.add_argument('--lr_max', default=1.0e-4, metavar='rate',
-                            type=Positive(float),
-                            help='Max (and starting) learning rate')
+                    type=Positive(float),
+                    help='Max (and starting) learning rate')
 parser.add_argument('--sd', default=0.5, metavar='value', type=Positive(float),
                     help='Standard deviation to initialise with')
 parser.add_argument('--seed', default=None, metavar='integer', type=Positive(int),
@@ -52,7 +52,8 @@ parser.add_argument('--target_len', metavar='n', default=300, type=Positive(int)
                     help='Target length of sequence')
 parser.add_argument('--winlen', metavar='n', default=9, type=Positive(int),
                     help='Window for convolution network')
-parser.add_argument('input', action=FileExists, help='HDF5 file containing mapped reads')
+parser.add_argument('input', action=FileExists,
+                    help='HDF5 file containing mapped reads')
 
 
 def create_convolution(size, depth, winlen):
@@ -77,7 +78,8 @@ def main():
 
     if args.input_strand_list is not None:
         read_ids = list(set(helpers.get_read_ids(args.input_strand_list)))
-        log.write('* Will train from a subset of {} strands\n'.format(len(read_ids)))
+        log.write(
+            '* Will train from a subset of {} strands\n'.format(len(read_ids)))
     else:
         log.write('* Reads not filtered by id\n')
         read_ids = 'all'
@@ -90,7 +92,8 @@ def main():
         assert alphabet_info.nbase == 4, (
             'Squiggle prediction with modified base training data is ' +
             'not currenly supported.')
-        read_data = per_read_file.get_multiple_reads(read_ids, max_reads=args.limit)
+        read_data = per_read_file.get_multiple_reads(
+            read_ids, max_reads=args.limit)
         # read_data now contains a list of reads
         # (each an instance of the Read class defined in mapped_signal_files.py, based on dict)
 
@@ -113,15 +116,17 @@ def main():
     conv_net = create_convolution(args.size, args.depth, args.winlen)
     if not hasattr(conv_net, 'metadata'):
         conv_net.metadata = {
-            'reverse' : False,
-            'standardize' : True,
-            'version' : layers.MODEL_VERSION
+            'reverse': False,
+            'standardize': True,
+            'version': layers.MODEL_VERSION
         }
     nparam = sum([p.data.detach().numpy().size for p in conv_net.parameters()])
     log.write('* Created network.  {} parameters\n'.format(nparam))
-    log.write('* Depth {} layers ({} residual layers)\n'.format(args.depth + 2, args.depth))
+    log.write(
+        '* Depth {} layers ({} residual layers)\n'.format(args.depth + 2, args.depth))
     log.write('* Window width {}\n'.format(args.winlen))
-    log.write('* Context +/- {} bases\n'.format((args.depth + 2) * (args.winlen // 2)))
+    log.write(
+        '* Context +/- {} bases\n'.format((args.depth + 2) * (args.winlen // 2)))
 
     conv_net = conv_net.to(device)
 
@@ -131,7 +136,8 @@ def main():
 
     lr_scheduler = optim.ReciprocalLR(optimizer, args.lr_decay)
 
-    rejection_dict = defaultdict(lambda : 0)  # To count the numbers of different sorts of chunk rejection
+    # To count the numbers of different sorts of chunk rejection
+    rejection_dict = defaultdict(lambda: 0)
     t0 = time.time()
     score_smoothed = helpers.WindowedExpSmoother()
     total_chunks = 0
@@ -149,7 +155,8 @@ def main():
             read_data, args.batch_size, args.target_len, filter_parameters,
             chunk_len_means_sequence_len=True)
         if len(chunk_batch) < args.batch_size:
-            log.write('* Warning: only {} chunks passed filters.\n'.format(len(chunk_batch)))
+            log.write(
+                '* Warning: only {} chunks passed filters.\n'.format(len(chunk_batch)))
 
         total_chunks += len(chunk_batch)
         # Update counts of reasons for rejection
@@ -157,12 +164,15 @@ def main():
             rejection_dict[k] += v
 
         # Shape of input needs to be seqlen x batchsize x embedding_dimension
-        embedded_matrix = [embed_sequence(revop(chunk.sequence), alphabet=None) for chunk in chunk_batch]
-        seq_embed = torch.tensor(embedded_matrix).permute(1,0,2).to(device)
+        embedded_matrix = [embed_sequence(
+            revop(chunk.sequence), alphabet=None) for chunk in chunk_batch]
+        seq_embed = torch.tensor(embedded_matrix).permute(1, 0, 2).to(device)
         # Shape of labels is a flat vector
-        batch_signal = torch.tensor(np.concatenate([revop(chunk.current) for chunk in chunk_batch])).to(device)
+        batch_signal = torch.tensor(np.concatenate(
+            [revop(chunk.current) for chunk in chunk_batch])).to(device)
         # Shape of lens is also a flat vector
-        batch_siglen = torch.tensor([chunk.sig_len for chunk in chunk_batch]).to(device)
+        batch_siglen = torch.tensor(
+            [chunk.sig_len for chunk in chunk_batch]).to(device)
 
         #print("First 10 elements of first sequence in batch",seq_embed[:10,0,:])
         #print("First 10 elements of signal batch",batch_signal[:10])
@@ -171,7 +181,8 @@ def main():
         optimizer.zero_grad()
 
         predicted_squiggle = conv_net(seq_embed)
-        batch_loss = squiggle_match_loss(predicted_squiggle, batch_signal, batch_siglen, args.back_prob)
+        batch_loss = squiggle_match_loss(
+            predicted_squiggle, batch_signal, batch_siglen, args.back_prob)
         fval = batch_loss.sum() / float(batch_siglen.sum())
 
         fval.backward()
@@ -179,19 +190,19 @@ def main():
 
         score_smoothed.update(float(fval))
 
-
         if (i + 1) % args.save_every == 0:
-            helpers.save_model(conv_net, args.outdir, (i + 1) // args.save_every)
+            helpers.save_model(conv_net, args.outdir,
+                               (i + 1) // args.save_every)
             log.write('C')
         else:
             log.write('.')
-
 
         if (i + 1) % DOTROWLENGTH == 0:
             tn = time.time()
             dt = tn - t0
             t = ' {:5d} {:7.5f}  {:5.2f}s'
-            log.write(t.format((i + 1) // DOTROWLENGTH, score_smoothed.value, dt))
+            log.write(t.format((i + 1) // DOTROWLENGTH,
+                               score_smoothed.value, dt))
             t0 = tn
             # Write summary of chunk rejection reasons
             if args.full_filter_status:

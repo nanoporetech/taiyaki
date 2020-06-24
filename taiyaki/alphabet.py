@@ -33,6 +33,7 @@ class AlphabetInfo(object):
     - `translation_table` contains a string.transtable to convert string
         sequence to canonical base values.
     """
+
     def compute_mod_inv_freq_weights(self, read_data, N):
         """ Compute modified base inverse frequency weights (compared to
         frequency of corresponding canonical base). Weights are intended to
@@ -118,7 +119,7 @@ class AlphabetInfo(object):
         followed by all modified bases associated with that canonical base.
         """
         self.collapse_alphabet, self.alphabet = map(
-            lambda x:''.join(x), zip(*sorted(zip(
+            lambda x: ''.join(x), zip(*sorted(zip(
                 self.collapse_alphabet, self.alphabet))))
         if self.mod_long_names is not None:
             self.mod_long_names = [self.mod_name_conv[b] for b in self.alphabet
@@ -200,7 +201,6 @@ class AlphabetInfo(object):
             self.sort_alphabet()
 
         return
-
 
     def equals(self, alphabet_info2):
         """Does alphabet_info2 describe the same alphabet as self?"""

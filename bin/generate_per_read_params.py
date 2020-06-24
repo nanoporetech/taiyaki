@@ -16,7 +16,8 @@ from taiyaki.signal import Signal
 
 parser = argparse.ArgumentParser()
 
-add_common_command_args(parser, 'input_folder input_strand_list limit output recursive version jobs'.split())
+add_common_command_args(
+    parser, 'input_folder input_strand_list limit output recursive version jobs'.split())
 
 parser.add_argument('--trim', default=(200, 50), nargs=2, type=NonNegative(int),
                     metavar=('beginning', 'end'),
@@ -45,7 +46,8 @@ def one_read_shift_scale(read_tuple):
         else:
             shift, scale = np.NaN, np.NaN
             # note - if signal trimmed by ub, it could be of length zero by this point for short reads
-            # These are taken out later in the existing code, in the new code we'll take out ub trimming
+            # These are taken out later in the existing code, in the new code
+            # we'll take out ub trimming
 
         return (read_id, shift, scale)
 
@@ -62,7 +64,8 @@ def main():
 
     with open_file_or_stdout(args.output) as tsvfile:
         writer = csv.writer(tsvfile, delimiter='\t', lineterminator='\n')
-        # UUID is 32hexdigits and four dashes eg. '43f6a05c-0856-4edc-8cd2-4866d9d60eaa'
+        # UUID is 32hexdigits and four dashes eg.
+        # '43f6a05c-0856-4edc-8cd2-4866d9d60eaa'
         writer.writerow(['UUID', 'trim_start', 'trim_end', 'shift', 'scale'])
 
         results = imap_mp(one_read_shift_scale, fast5_reads, threads=args.jobs)

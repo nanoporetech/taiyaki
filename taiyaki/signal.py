@@ -16,10 +16,10 @@ class Signal:
     """
 
     def __init__(self, read=None, dacs=None,
-                 channel_info={'offset':0, 'range':1, 'digitisation':1,
-                               'sampling_rate':4000},
-                 read_id=None, read_params={'trim_start':0, 'trim_end':0,
-                                            'shift':0, 'scale':1}):
+                 channel_info={'offset': 0, 'range': 1, 'digitisation': 1,
+                               'sampling_rate': 4000},
+                 read_id=None, read_params={'trim_start': 0, 'trim_end': 0,
+                                            'shift': 0, 'scale': 1}):
         """Loads data from read in fast5 file.
         If read is None
         and dacs is a np array then initialse the untrimmed_dacs to this array.

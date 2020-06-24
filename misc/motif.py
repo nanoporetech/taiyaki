@@ -45,7 +45,7 @@ if __name__ == '__main__':
         if pos + args.up > len(ref):
             continue
 
-        frag = ref[pos - args.down : pos + args.up].decode('ascii')
+        frag = ref[pos - args.down: pos + args.up].decode('ascii')
         states = [bases[b] for b in frag]
         frags.append([np.array(states)])
 

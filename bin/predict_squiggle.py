@@ -26,15 +26,19 @@ def main():
     with helpers.open_file_or_stdout(args.output) as fh:
         for seq in SeqIO.parse(args.input, 'fasta'):
             seqstr = str(seq.seq)
-            embedded_seq_numpy = np.expand_dims(squiggle_match.embed_sequence(seqstr), axis=1)
-            embedded_seq_torch = torch.tensor(embedded_seq_numpy, dtype=torch.float32)
+            embedded_seq_numpy = np.expand_dims(
+                squiggle_match.embed_sequence(seqstr), axis=1)
+            embedded_seq_torch = torch.tensor(
+                embedded_seq_numpy, dtype=torch.float32)
 
             with torch.no_grad():
-                squiggle = np.squeeze(predict_squiggle(embedded_seq_torch).cpu().numpy(), axis=1)
+                squiggle = np.squeeze(predict_squiggle(
+                    embedded_seq_torch).cpu().numpy(), axis=1)
 
             fh.write('base\tcurrent\tsd\tdwell\n')
             for base, (mean, logsd, dwell) in zip(seq.seq, squiggle):
-                fh.write('{}\t{}\t{}\t{}\n'.format(base, mean, np.exp(logsd), np.exp(-dwell)))
+                fh.write('{}\t{}\t{}\t{}\n'.format(
+                    base, mean, np.exp(logsd), np.exp(-dwell)))
 
 
 if __name__ == '__main__':

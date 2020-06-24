@@ -16,7 +16,8 @@ parser.add_argument('--outputbase', default=10000,
                     help='Strand lists will be saved as <outputbase>_000.txt etc. If outputbase not present then the input will be used as the base name.')
 
 
-parser.add_argument('input', help='either a strand list file or a directory name')
+parser.add_argument(
+    'input', help='either a strand list file or a directory name')
 
 strandlist_header = "filename"
 
@@ -31,7 +32,8 @@ def main():
                 cleanedline = line.rstrip()
                 if nline < 10:
                     print(cleanedline)
-                if cleanedline.endswith('fast5'):  # First line is often 'filename'
+                # First line is often 'filename'
+                if cleanedline.endswith('fast5'):
                     strands.append(cleanedline)
         print("Read", len(strands), "files from strand list")
     except:

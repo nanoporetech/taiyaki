@@ -27,12 +27,12 @@ add_common_command_args(parser, """adam alphabet device eps limit niteration
 
 parser.add_argument('--batch_size', default=128, metavar='chunks',
                     type=Positive(int), help='Number of chunks to run in parallel')
-parser.add_argument('--gradient_cap_fraction', default=0.05, metavar = 'f',
+parser.add_argument('--gradient_cap_fraction', default=0.05, metavar='f',
                     type=Maybe(NonNegative(float)),
                     help='Cap L2 norm of gradient so that a fraction f of ' +
                          'gradients are capped. ' +
                          'Use --gradient_cap_fraction None for no capping.')
-parser.add_argument( '--lr_max', default=4.0e-3, metavar='rate',
+parser.add_argument('--lr_max', default=4.0e-3, metavar='rate',
                     type=Positive(float), help='Initial learning rate')
 parser.add_argument('--size', default=96, metavar='neurons',
                     type=Positive(int), help='Base layer size for model')
@@ -56,7 +56,8 @@ def convert_seq(s, alphabet):
     for i, b in enumerate(alphabet):
         buf[buf == b] = i
     buf = buf.astype('i4')
-    assert np.all(buf < len(alphabet)), "Alphabet violates assumption in convert_seq"
+    assert np.all(buf < len(alphabet)
+                  ), "Alphabet violates assumption in convert_seq"
     return flipflopfings.flipflop_code(buf, len(alphabet))
 
 
@@ -91,7 +92,6 @@ if __name__ == '__main__':
     if args.limit is not None:
         log.write('* Limiting number of strands to {}\n'.format(args.limit))
 
-
     with h5py.File(args.chunks, 'r') as h5:
         chunks = h5['chunks'][:args.limit]
     log.write('* Loaded {} reads from {}.\n'.format(len(chunks), args.chunks))
@@ -100,35 +100,38 @@ if __name__ == '__main__':
         #  Read preprocessed sequences from pickle
         with open(args.reference, 'rb') as fh:
             seq_dict = pickle.load(fh)
-        log.write('* Loaded preprocessed references from {}.\n'.format(args.reference))
+        log.write(
+            '* Loaded preprocessed references from {}.\n'.format(args.reference))
     else:
         #  Read sequences from .fa / .fasta file
-        seq_dict = {int(seq.id) : convert_seq(str(seq.seq), args.alphabet)
+        seq_dict = {int(seq.id): convert_seq(str(seq.seq), args.alphabet)
                     for seq in SeqIO.parse(args.reference, "fasta")}
         log.write('* Loaded references from {}.\n'.format(args.reference))
         #  Write pickle for future
         pickle_name = os.path.splitext(args.reference)[0] + '.pkl'
         with open(pickle_name, 'wb') as fh:
             pickle.dump(seq_dict, fh)
-        log.write('* Written pickle of processed references to {} for future use.\n'.format(pickle_name))
-
+        log.write(
+            '* Written pickle of processed references to {} for future use.\n'.format(pickle_name))
 
     log.write('* Reading network from {}\n'.format(args.model))
     alphabet_info = alphabet.AlphabetInfo(args.alphabet, args.alphabet)
 
     model_kwargs = {
-        'size' : args.size,
+        'size': args.size,
         'stride': args.stride,
         'winlen': args.winlen,
-        'insize': 1,  # Number of input features to model e.g. was >1 for event-based models (level, std, dwell)
+        # Number of input features to model e.g. was >1 for event-based models
+        # (level, std, dwell)
+        'insize': 1,
         'alphabet_info': alphabet_info
     }
     network = helpers.load_model(args.model, **model_kwargs).to(device)
     if not hasattr(network, 'metadata'):
         network.metadata = {
-            'reverse' : False,
-            'standardize' : True,
-            'version' : layers.MODEL_VERSION
+            'reverse': False,
+            'standardize': True,
+            'version': layers.MODEL_VERSION
         }
     log.write('* Network has {} parameters.\n'.format(sum([p.nelement()
                                                            for p in network.parameters()])))
@@ -150,7 +153,7 @@ if __name__ == '__main__':
     t0 = time.time()
     log.write('* Training\n')
 
-    #Set cap at very large value (before we have any gradient stats).
+    # Set cap at very large value (before we have any gradient stats).
     gradient_cap = constants.LARGE_VAL
     if args.gradient_cap_fraction is None:
         log.write('* No gradient capping\n')
@@ -162,13 +165,17 @@ if __name__ == '__main__':
 
     for i in range(args.niteration):
 
-        idx = np.random.choice(len(chunks), size=args.batch_size, replace=False)
+        idx = np.random.choice(
+            len(chunks), size=args.batch_size, replace=False)
         indata = chunks[idx].transpose(1, 0)
-        indata = torch.tensor(indata[...,np.newaxis], device=device, dtype=torch.float32)
+        indata = torch.tensor(
+            indata[..., np.newaxis], device=device, dtype=torch.float32)
         seqs = [seq_dict[i] for i in idx]
 
-        seqlens = torch.tensor([len(seq) for seq in seqs], dtype=torch.long, device=device)
-        seqs = torch.tensor(np.concatenate(seqs), device=device, dtype=torch.long)
+        seqlens = torch.tensor([len(seq) for seq in seqs],
+                               dtype=torch.long, device=device)
+        seqs = torch.tensor(np.concatenate(
+            seqs), device=device, dtype=torch.long)
 
         optimizer.zero_grad()
         outputs = network(indata)
@@ -214,6 +221,5 @@ if __name__ == '__main__':
             t0 = tn
 
         lr_scheduler.step()
-
 
     save_model(network, args.outdir)

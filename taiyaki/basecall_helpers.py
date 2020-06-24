@@ -13,7 +13,8 @@ def chunk_read(signal, chunk_size, overlap):
     if len(signal) < chunk_size:
         return signal[:, None, None], np.array([0]), np.array([len(signal)])
 
-    chunk_ends = np.arange(chunk_size, len(signal), chunk_size - overlap, dtype=int)
+    chunk_ends = np.arange(chunk_size, len(
+        signal), chunk_size - overlap, dtype=int)
     chunk_ends = np.concatenate([chunk_ends, [len(signal)]], 0)
     chunk_starts = chunk_ends - chunk_size
     nchunks = len(chunk_ends)
@@ -48,7 +49,7 @@ def stitch_chunks(out, chunk_starts, chunk_ends, stride, path_stitching=False):
             end = (chunk_ends[i] + chunk_starts[i + 1]
                    - 2 * chunk_starts[i]) // (2 * stride)
             if path_stitching:
-                start +=1
+                start += 1
                 end += 1
             stitched_out.append(out[start:end, i])
 

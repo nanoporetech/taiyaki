@@ -26,7 +26,8 @@ parser.add_argument('--trim', default=(200, 10), nargs=2, type=NonNegative(int),
                     metavar=('beginning', 'end'), help='Number of samples to trim off start and end')
 parser.add_argument('model', action=FileExists, help='Model file')
 parser.add_argument('references', action=FileExists, help='Fasta file')
-parser.add_argument('read_dir', action=FileExists, help='Directory for fast5 reads')
+parser.add_argument('read_dir', action=FileExists,
+                    help='Directory for fast5 reads')
 
 
 def main():
@@ -43,9 +44,10 @@ def main():
 
     with helpers.open_file_or_stdout(args.output) as fh:
         for res in imap_mp(squiggle_match.worker, fast5_reads, threads=args.jobs,
-                        fix_kwargs=helpers.get_kwargs(args, worker_kwarg_names),
-                        unordered=True, init=squiggle_match.init_worker,
-                        initargs=[model, args.references]):
+                           fix_kwargs=helpers.get_kwargs(
+                               args, worker_kwarg_names),
+                           unordered=True, init=squiggle_match.init_worker,
+                           initargs=[model, args.references]):
             if res is None:
                 continue
             read_id, sig, score, path, squiggle, bases = res

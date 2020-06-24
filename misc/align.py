@@ -40,8 +40,8 @@ parser.add_argument('files', metavar='input', nargs='+',
                     help="One or more files containing query sequences")
 
 
-STRAND = {0 : '+',
-          16 : '-'}
+STRAND = {0: '+',
+          16: '-'}
 
 QUANTILES = [5, 25, 50, 75, 95]
 
@@ -65,7 +65,8 @@ def call_bwa_mem(fin, fout, genome, clargs=''):
                                          shell=True,
                                          universal_newlines=True)
     except subprocess.CalledProcessError as e:
-        sys.stderr.write("Error calling bwa, exit code {}\n".format(e.returncode))
+        sys.stderr.write(
+            "Error calling bwa, exit code {}\n".format(e.returncode))
         sys.stderr.write(e.output + "\n")
         raise
     return output
@@ -179,7 +180,8 @@ No sequences mapped
     if len(acc) > 1:
         try:
             da = gaussian_kde(acc)
-            optimization_result = minimize_scalar(lambda x: -da(x), bounds=(0, 1), method='Bounded')
+            optimization_result = minimize_scalar(
+                lambda x: -da(x), bounds=(0, 1), method='Bounded')
             if optimization_result.success:
                 try:
                     mode = optimization_result.x[0]
@@ -194,7 +196,8 @@ No sequences mapped
     else:
         mode = acc[0]
 
-    qstring1 = ''.join(['{:<11}'.format('Q' + str(q)) for q in QUANTILES]).strip()
+    qstring1 = ''.join(['{:<11}'.format('Q' + str(q))
+                        for q in QUANTILES]).strip()
     quantiles = [v for v in np.percentile(acc, QUANTILES)]
     qstring2 = '    '.join(['{:.5f}'.format(v) for v in quantiles])
 
@@ -238,7 +241,8 @@ def main():
             # align sequences to reference
             if args.reference and not suffix == '.sam':
                 sys.stdout.write("Aligning {}...\n".format(fn))
-                bwa_output = call_bwa_mem(fn, samfile, args.reference, args.bwa_mem_args)
+                bwa_output = call_bwa_mem(
+                    fn, samfile, args.reference, args.bwa_mem_args)
                 sys.stdout.write(bwa_output)
 
             # compile accuracy metrics
@@ -246,22 +250,26 @@ def main():
             if len(acc_dat) > 0:
                 with open(samaccfile, 'w') as fs:
                     fields = list(acc_dat[0].keys())
-                    writer = csv.DictWriter(fs, fieldnames=fields, delimiter=' ')
+                    writer = csv.DictWriter(
+                        fs, fieldnames=fields, delimiter=' ')
                     writer.writeheader()
                     for row in acc_dat:
                         writer.writerow(row)
 
             # write summary file and plot
             data_set_name = fn if args.data_set_name is None else args.data_set_name
-            report, f, ax = summary(acc_dat, data_set_name, args.fill, args.show_median)
+            report, f, ax = summary(
+                acc_dat, data_set_name, args.fill, args.show_median)
             if f is not None:
                 f.savefig(graphfile)
             sys.stdout.write('\n' + report + '\n')
             with open(summaryfile, 'w') as fs:
                 fs.writelines(report)
         except:
-            sys.stderr.write("{}: something went wrong, skipping\n\n".format(fn))
-            sys.stderr.write("Traceback:\n\n{}\n\n".format(traceback.format_exc()))
+            sys.stderr.write(
+                "{}: something went wrong, skipping\n\n".format(fn))
+            sys.stderr.write("Traceback:\n\n{}\n\n".format(
+                traceback.format_exc()))
             exit_code = 1
 
     sys.exit(exit_code)

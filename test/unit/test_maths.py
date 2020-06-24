@@ -35,14 +35,16 @@ class MathsTest(unittest.TestCase):
         self.assertTrue(np.allclose(np.std(x2, axis=1), 1.0))
 
     def test_004_med_mad(self):
-        x = np.array([[0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 1.0, 1.0], [0.0, 0.5, 0.5, 1.0]])
+        x = np.array(
+            [[0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 1.0, 1.0], [0.0, 0.5, 0.5, 1.0]])
         factor = 1
         loc, scale = maths.med_mad(x, factor=factor)
         self.assertTrue(np.allclose(loc, 0.5))
         self.assertTrue(np.allclose(scale, 0))
 
     def test_005_med_mad_over_axis0(self):
-        x = np.array([[0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 1.0, 1.0], [0.5, 1.0, 0.5, 1.0]])
+        x = np.array(
+            [[0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 1.0, 1.0], [0.5, 1.0, 0.5, 1.0]])
         factor = 1
         loc, scale = maths.med_mad(x, factor=factor, axis=0)
         expected_loc = [0.5, 0.5, 0.5, 1.0]
@@ -51,7 +53,8 @@ class MathsTest(unittest.TestCase):
         self.assertTrue(np.allclose(scale, expected_scale))
 
     def test_006_med_mad_over_axis1(self):
-        x = np.array([[0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 1.0, 1.0], [0.0, 0.5, 0.5, 1.0]])
+        x = np.array(
+            [[0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 1.0, 1.0], [0.0, 0.5, 0.5, 1.0]])
         factor = 1
         loc, scale = maths.med_mad(x, factor=factor, axis=1)
         expected_loc = [0.5, 0.75, 0.5]

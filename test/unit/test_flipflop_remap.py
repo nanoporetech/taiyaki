@@ -29,7 +29,8 @@ class TestFlipFlopMapping(unittest.TestCase):
             [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # BA step
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # AA stay
         ], dtype='f4')
-        score, path = flipflop_remap.flipflop_remap(log_transitions, sequence, alphabet=alphabet, localpen=-0.5)
+        score, path = flipflop_remap.flipflop_remap(
+            log_transitions, sequence, alphabet=alphabet, localpen=-0.5)
         self.assertEqual(score, 6.0)
         self.assertEqual(path.tolist(), [0, 1, 1, 2, 2, 3, 3])
 
@@ -38,7 +39,8 @@ class TestFlipFlopMapping(unittest.TestCase):
         step_score = log_transitions[:, step_index]
         stay_index = [0, 10, 5, 0]
         stay_score = log_transitions[:, stay_index]
-        score2, path2 = flipflop_remap.map_to_crf_viterbi(log_transitions, step_index, stay_index, localpen=-0.5)
+        score2, path2 = flipflop_remap.map_to_crf_viterbi(
+            log_transitions, step_index, stay_index, localpen=-0.5)
         self.assertEqual(score, score2)
         self.assertEqual(path.tolist(), path2.tolist())
 
@@ -66,7 +68,8 @@ class TestFlipFlopMapping(unittest.TestCase):
             [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # BA step
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # clip
         ], dtype='f4')
-        score, path = flipflop_remap.flipflop_remap(log_transitions, sequence, alphabet=alphabet, localpen=-0.5)
+        score, path = flipflop_remap.flipflop_remap(
+            log_transitions, sequence, alphabet=alphabet, localpen=-0.5)
         self.assertEqual(score, 3.5)
         self.assertEqual(path.tolist(), [-1, -1, 0, 0, 1, -1])
 
@@ -75,7 +78,8 @@ class TestFlipFlopMapping(unittest.TestCase):
         step_score = log_transitions[:, step_index]
         stay_index = [5, 0]
         stay_score = log_transitions[:, stay_index]
-        score2, path2 = flipflop_remap.map_to_crf_viterbi(log_transitions, step_index, stay_index, localpen=-0.5)
+        score2, path2 = flipflop_remap.map_to_crf_viterbi(
+            log_transitions, step_index, stay_index, localpen=-0.5)
         self.assertEqual(score, score2)
         self.assertEqual(path.tolist(), path2.tolist())
 
@@ -84,7 +88,8 @@ class TestFlipFlopMapping(unittest.TestCase):
         """
         sig = signal.Signal(dacs=np.zeros(12))
         # testing path with a single skip (over 3rd base; first "T")
-        path = np.array([-1,0,0,1,1,1,3,3,3,4,4,5,6], dtype=np.int32)
+        path = np.array([-1, 0, 0, 1, 1, 1, 3, 3, 3,
+                         4, 4, 5, 6], dtype=np.int32)
         reference = 'ACTACGT'
 
         int_ref = signal_mapping.SignalMapping.get_integer_reference(
@@ -97,7 +102,8 @@ class TestFlipFlopMapping(unittest.TestCase):
         # now test with clipped bases
         sig = signal.Signal(dacs=np.zeros(15))
         # testing path with a single skip (over 4th base; first "T")
-        path = np.array([-1,-1,1,1,2,2,2,4,4,4,5,5,6,7,-1,-1], dtype=np.int32)
+        path = np.array([-1, -1, 1, 1, 2, 2, 2, 4, 4, 4, 5,
+                         5, 6, 7, -1, -1], dtype=np.int32)
         reference = 'AACTACGTTT'
 
         int_ref = signal_mapping.SignalMapping.get_integer_reference(
@@ -114,7 +120,7 @@ class TestFlipFlopMapping(unittest.TestCase):
         """
         sig = signal.Signal(dacs=np.zeros(24))
         # testing path with a single skip (over 3rd base; first "T")
-        path = np.array([-1,0,0,1,1,1,3,3,3,4,4,5,6],
+        path = np.array([-1, 0, 0, 1, 1, 1, 3, 3, 3, 4, 4, 5, 6],
                         dtype=np.int32)
         reference = 'ACTACGT'
 
@@ -128,7 +134,8 @@ class TestFlipFlopMapping(unittest.TestCase):
         # now test with clipped bases
         sig = signal.Signal(dacs=np.zeros(30))
         # testing path with a single skip (over 4th base; first "T")
-        path = np.array([-1,-1,1,1,2,2,2,4,4,4,5,5,6,7,-1,-1], dtype=np.int32)
+        path = np.array([-1, -1, 1, 1, 2, 2, 2, 4, 4, 4, 5,
+                         5, 6, 7, -1, -1], dtype=np.int32)
         reference = 'AACTACGTTT'
 
         int_ref = signal_mapping.SignalMapping.get_integer_reference(

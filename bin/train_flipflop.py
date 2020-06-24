@@ -38,7 +38,7 @@ def parse_network_metadata(network):
 
 # This is here, not in main to allow documentation to be built
 parser = argparse.ArgumentParser(description='Train flip-flop neural network',
-                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 mdl_grp = parser.add_argument_group('Model Arguments')
 mdl_grp.add_argument('--size', default=256, metavar='neurons',
@@ -49,25 +49,26 @@ mdl_grp.add_argument('--winlen', default=19, type=Positive(int),
                      help='Length of window over data')
 
 trn_grp = parser.add_argument_group('Training Arguments')
-add_common_command_args(trn_grp, """adam eps niteration weight_decay""".split())
-trn_grp.add_argument('--gradient_cap_fraction', default=0.05, metavar = 'f',
+add_common_command_args(
+    trn_grp, """adam eps niteration weight_decay""".split())
+trn_grp.add_argument('--gradient_cap_fraction', default=0.05, metavar='f',
                      type=Maybe(NonNegative(float)),
                      help='Cap L2 norm of gradient so that a fraction f of ' +
                      'gradients are capped. ' +
                      'Use --gradient_cap_fraction None for no capping.')
 trn_grp.add_argument('--lr_cosine_iters', default=90000, metavar='n',
-                    type=Positive(float),
-                    help='Learning rate decreases from max to min ' +
-                         'like cosine function over n batches')
+                     type=Positive(float),
+                     help='Learning rate decreases from max to min ' +
+                     'like cosine function over n batches')
 trn_grp.add_argument('--lr_frac_decay', default=None, metavar='k',
-                    type=Positive(int),
-                    help='If specified, use fractional learning rate ' +
-                         'schedule, rate=lr_max*k/(k+t)')
+                     type=Positive(int),
+                     help='If specified, use fractional learning rate ' +
+                     'schedule, rate=lr_max*k/(k+t)')
 trn_grp.add_argument('--lr_max', default=4.0e-3, metavar='rate',
-                    type=Positive(float),
-                    help='Max (and starting) learning rate')
+                     type=Positive(float),
+                     help='Max (and starting) learning rate')
 trn_grp.add_argument('--lr_min', default=1.0e-4, metavar='rate',
-                    type=Positive(float), help='Min (and final) learning rate')
+                     type=Positive(float), help='Min (and final) learning rate')
 trn_grp.add_argument('--seed', default=None, metavar='integer',
                      type=Positive(int),
                      help='Set random number seed')
@@ -77,10 +78,10 @@ trn_grp.add_argument('--sharpen', default=(1.0, 1.0, 25000), nargs=3,
                      help='Increase sharpening factor linearly from "min" to ' +
                           '"max" over "niter" iterations')
 trn_grp.add_argument('--warmup_batches', type=int, default=200,
-                     help = 'For the first n batches, ' +
+                     help='For the first n batches, ' +
                      'warm up at a low learning rate.')
 trn_grp.add_argument('--lr_warmup', type=float, default=None,
-                     help = "Learning rate used for warmup. Defaults to lr_min")
+                     help="Learning rate used for warmup. Defaults to lr_min")
 
 data_grp = parser.add_argument_group('Data Arguments')
 add_common_command_args(data_grp, """filter_max_dwell filter_mean_dwell limit
@@ -98,7 +99,7 @@ data_grp.add_argument('--include_reporting_strands',
                       help='Include reporting strands in training. Default: ' +
                       'Hold training strands out of training.')
 data_grp.add_argument('--input_strand_list', default=None, action=FileExists,
-                      help='Strand summary file containing column read_id. '+
+                      help='Strand summary file containing column read_id. ' +
                       'Filenames in file are ignored.')
 data_grp.add_argument('--min_sub_batch_size', default=128, metavar='chunks',
                       type=Positive(int),
@@ -107,15 +108,15 @@ data_grp.add_argument('--min_sub_batch_size', default=128, metavar='chunks',
                       'length of sub-batch used is ' +
                       '(min_sub_batch_size * chunk_len_max / chunk_len).')
 data_grp.add_argument('--reporting_percent_reads', default=1,
-                     metavar='sub_batches', type=Positive(float),
-                     help='Percent of reads to use for std loss reporting')
+                      metavar='sub_batches', type=Positive(float),
+                      help='Percent of reads to use for std loss reporting')
 data_grp.add_argument('--reporting_strand_list', action=FileExists,
                       help='Strand summary file containing column read_id. ' +
                       'All other fields are ignored. If not provided ' +
                       'reporting strands will be randomly selected.')
 data_grp.add_argument('--reporting_sub_batches', default=10,
-                     metavar='sub_batches', type=Positive(int),
-                     help='Number of sub-batches to use for std loss reporting')
+                      metavar='sub_batches', type=Positive(int),
+                      help='Number of sub-batches to use for std loss reporting')
 data_grp.add_argument('--standardize', default=True, action=AutoBool,
                       help='Standardize currents for each read')
 data_grp.add_argument('--sub_batches', default=1, metavar='sub_batches',
@@ -124,10 +125,10 @@ data_grp.add_argument('--sub_batches', default=1, metavar='sub_batches',
 
 cmp_grp = parser.add_argument_group('Compute Arguments')
 add_common_command_args(cmp_grp, set(("device",)))
-#Argument local_rank is used only by when the script is run in multi-GPU
-#mode using torch.distributed.launch. See the README.
+# Argument local_rank is used only by when the script is run in multi-GPU
+# mode using torch.distributed.launch. See the README.
 cmp_grp.add_argument('--local_rank', type=int, default=None,
-                     help = argparse.SUPPRESS)
+                     help=argparse.SUPPRESS)
 
 out_grp = parser.add_argument_group('Output Arguments')
 add_common_command_args(out_grp, """outdir overwrite quiet
@@ -171,7 +172,8 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
             first_strand_index=first_strand_index)
         first_strand_index += sum(batch_rejections.values())
         if len(chunk_batch) < sub_batch_size:
-            log.write('* Warning: only {} chunks passed filters (asked for {}).\n'.format(len(chunk_batch), sub_batch_size))
+            log.write('* Warning: only {} chunks passed filters (asked for {}).\n'.format(
+                len(chunk_batch), sub_batch_size))
 
         if not all(chunk.seq_len > 0.0 for chunk in chunk_batch):
             raise Exception('Error: zero length sequence')
@@ -182,8 +184,8 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         #     batch_chunk_len x sub_batch_size x 1
         stacked_current = np.vstack([
             revop(chunk.current) for chunk in chunk_batch]).T
-        indata = torch.tensor( stacked_current, device=device,
-                                            dtype=torch.float32 ).unsqueeze(2)
+        indata = torch.tensor(stacked_current, device=device,
+                              dtype=torch.float32).unsqueeze(2)
 
         # Prepare seqs, seqlens and (if necessary) mod_cats
         seqs, seqlens = [], []
@@ -214,9 +216,9 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         yield indata, seqs, seqlens, mod_cats, sub_batch_size, batch_rejections
 
 
-def calculate_loss( network, network_metadata, batch_gen, sharpen,
-                    mod_cat_weights = None,
-                    mod_factor_t = None, calc_grads = False ):
+def calculate_loss(network, network_metadata, batch_gen, sharpen,
+                   mod_cat_weights=None,
+                   mod_factor_t=None, calc_grads=False):
 
     total_chunk_count = 0
     total_fval = 0
@@ -275,18 +277,18 @@ def main():
     is_lead_process = (not is_multi_gpu) or args.local_rank == 0
 
     if is_multi_gpu:
-        #Use distributed parallel processing to run one process per GPU
+        # Use distributed parallel processing to run one process per GPU
         try:
             torch.distributed.init_process_group(backend='nccl')
         except:
             raise Exception("Unable to start multiprocessing group. " +
-              "The most likely reason is that the script is running with " +
-              "local_rank set but without the set-up for distributed " +
-              "operation. local_rank should be used " +
-              "only by torch.distributed.launch. See the README.")
+                            "The most likely reason is that the script is running with " +
+                            "local_rank set but without the set-up for distributed " +
+                            "operation. local_rank should be used " +
+                            "only by torch.distributed.launch. See the README.")
         device = helpers.set_torch_device(args.local_rank)
         if args.seed is not None:
-            #Make sure processes get different random picks of training data
+            # Make sure processes get different random picks of training data
             np.random.seed(args.seed + args.local_rank)
     else:
         device = helpers.set_torch_device(args.device)
@@ -339,7 +341,7 @@ def main():
         # Number of input features to model e.g. was >1 for event-based
         # models (level, std, dwell)
         'insize': 1,
-        'size' : args.size,
+        'size': args.size,
         'alphabet_info': alphabet_info
     }
 
@@ -361,13 +363,14 @@ def main():
             if network_save_skeleton.metadata['standardize'] != args.standardize:
                 sys.stderr.write('* WARNING: Model and command-line ' +
                                  'standardization are inconsistent.\n')
-                network_save_skeleton.metadata['standardize'] = args.standardize
+                network_save_skeleton.metadata[
+                    'standardize'] = args.standardize
 
         else:
             network_save_skeleton.metadata = {
-                'reverse' : args.reverse,
-                'standardize' : args.standardize,
-                'version' : layers.MODEL_VERSION
+                'reverse': args.reverse,
+                'standardize': args.standardize,
+                'version': layers.MODEL_VERSION
             }
 
         if not alphabet_info.is_compatible_model(network_save_skeleton):
@@ -394,12 +397,13 @@ def main():
         helpers.save_model(network_save_skeleton, args.outdir, 0)
 
     if is_multi_gpu:
-        #so that processes 1,2,3.. don't try to load before process 0 has saved
+        # so that processes 1,2,3.. don't try to load before process 0 has
+        # saved
         torch.distributed.barrier()
         log.write('* MultiGPU process {}'.format(args.local_rank))
         log.write(': loading initial model saved by process 0\n')
         saved_startmodel_path = os.path.join(args.outdir,
-                                     'model_checkpoint_00000.checkpoint')
+                                             'model_checkpoint_00000.checkpoint')
         network = helpers.load_model(saved_startmodel_path).to(device)
         network_metadata = parse_network_metadata(network)
         # Wrap network for training in the DistributedDataParallel structure
@@ -456,7 +460,8 @@ def main():
     score_smoothed = helpers.WindowedExpSmoother()
 
     # prepare modified base paramter tensors
-    mod_factor_t = torch.tensor(args.mod_factor, dtype=torch.float32).to(device)
+    mod_factor_t = torch.tensor(
+        args.mod_factor, dtype=torch.float32).to(device)
     # mod cat inv freq weighting is currently disabled. Compute and set this
     # value to enable mod cat weighting
     mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
@@ -487,11 +492,11 @@ def main():
         device, report_read_data, reporting_chunk_len, args.min_sub_batch_size,
         args.reporting_sub_batches, alphabet_info, filter_params, network,
         network_metadata, log, select_strands_randomly=False))
-    log.write( ('* Standard loss report: chunk length = {} & sub-batch size ' +
-                '= {} for {} sub-batches. \n').format(reporting_chunk_len,
-                args.min_sub_batch_size, args.reporting_sub_batches) )
+    log.write(('* Standard loss report: chunk length = {} & sub-batch size ' +
+               '= {} for {} sub-batches. \n').format(reporting_chunk_len,
+                                                     args.min_sub_batch_size, args.reporting_sub_batches))
 
-    #Set cap at very large value (before we have any gradient stats).
+    # Set cap at very large value (before we have any gradient stats).
     gradient_cap = constants.LARGE_VAL
     if args.gradient_cap_fraction is None:
         log.write('* No gradient capping\n')
@@ -499,8 +504,7 @@ def main():
         rolling_quantile = maths.RollingQuantile(args.gradient_cap_fraction)
         log.write('* Gradient L2 norm cap will be upper' +
                   ' {:3.2f} quantile of the last {} norms.\n'.format(
-                          args.gradient_cap_fraction, rolling_quantile.window))
-
+                      args.gradient_cap_fraction, rolling_quantile.window))
 
     total_bases = 0
     total_samples = 0
@@ -510,7 +514,6 @@ def main():
 
     t0 = time.time()
     log.write('* Training\n')
-
 
     for i in range(args.niteration):
         sharpen = args.sharpen.min + (args.sharpen.max - args.sharpen.min) * \
@@ -524,8 +527,8 @@ def main():
         # We choose the size of a sub-batch so that the size of the data in
         # the sub-batch is about the same as args.min_sub_batch_size chunks of
         # length args.chunk_len_max
-        sub_batch_size = int( args.min_sub_batch_size * args.chunk_len_max /
-                              batch_chunk_len + 0.5)
+        sub_batch_size = int(args.min_sub_batch_size * args.chunk_len_max /
+                             batch_chunk_len + 0.5)
 
         optimizer.zero_grad()
 
@@ -535,20 +538,20 @@ def main():
             network_metadata, log)
 
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
-                            calculate_loss( network, network_metadata,
-                                            main_batch_gen, sharpen,
-                                            mod_cat_weights,
-                                            mod_factor_t, calc_grads = True )
+            calculate_loss(network, network_metadata,
+                           main_batch_gen, sharpen,
+                           mod_cat_weights,
+                           mod_factor_t, calc_grads=True)
 
         gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
-                                      network.parameters(), gradient_cap)
+            network.parameters(), gradient_cap)
         if args.gradient_cap_fraction is not None:
             gradient_cap = rolling_quantile.update(gradnorm_uncapped)
 
         optimizer.step()
         if is_lead_process:
             batchlog.record(fval, gradnorm_uncapped,
-                  None if args.gradient_cap_fraction is None else gradient_cap)
+                            None if args.gradient_cap_fraction is None else gradient_cap)
 
         total_chunks += chunk_count
         total_samples += chunk_samples
@@ -567,7 +570,6 @@ def main():
             log.write('C')
         else:
             log.write('.')
-
 
         if (i + 1) % DOTROWLENGTH == 0:
 
@@ -604,16 +606,15 @@ def main():
 
             # Uncomment the lines below to check synchronisation of models
             # between processes in multi-GPU operation
-            #for p in network.parameters():
+            # for p in network.parameters():
             #    v = p.data.reshape(-1)[:5].to('cpu')
             #    u = p.data.reshape(-1)[-5:].to('cpu')
             #    break
-            #if args.local_rank is not None:
+            # if args.local_rank is not None:
             #    log.write("* GPU{} params:".format(args.local_rank))
-            #log.write("{}...{}\n".format(v,u))
+            # log.write("{}...{}\n".format(v,u))
 
         lr_scheduler.step()
-
 
     if is_lead_process:
         helpers.save_model(network, args.outdir,

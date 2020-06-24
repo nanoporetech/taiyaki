@@ -41,6 +41,7 @@ def check_version(file_handle, filename):
                  filename, file_handle.version, mapped_signal_files._version))
     return
 
+
 def validate_and_merge_alphabets(in_fns):
     """ Validate that all alphabets are compatible. Alphabets can be
     incompatible if:
@@ -110,6 +111,7 @@ def validate_and_merge_alphabets(in_fns):
         merge_alphabet, merge_collapse_alphabet, merge_mod_long_names,
         do_reorder=True)
 
+
 def assert_all_alphabets_equal(in_fns):
     """ Check that all alphabets are the same in order to perform simple merge.
 
@@ -135,6 +137,7 @@ def assert_all_alphabets_equal(in_fns):
 
     return merge_alphabet_info
 
+
 def create_alphabet_conversion(hin, merge_alphabet_info):
     file_alphabet_info = hin.get_alphabet_information()
     file_alphabet_conv = np.zeros(file_alphabet_info.nbase, dtype=np.int16) - 1
@@ -143,9 +146,11 @@ def create_alphabet_conversion(hin, merge_alphabet_info):
             file_base)
     return file_alphabet_conv
 
+
 def convert_reference(read, file_alphabet_conv):
     read.Reference = file_alphabet_conv[read.Reference]
     return read
+
 
 def add_file_reads(
         hin, hout, infile, allow_mod_merge, merge_alphabet_info,
@@ -177,6 +182,7 @@ def add_file_reads(
 
     return file_num_reads_added, reads_written
 
+
 def main():
     args = parser.parse_args()
     if args.allow_mod_merge:
@@ -188,7 +194,7 @@ def main():
 
     reads_written = set()
     sys.stderr.write("Writing reads to {}\n".format(args.output))
-    with  MAPPED_SIGNAL_WRITER(args.output, merge_alphabet_info) as hout:
+    with MAPPED_SIGNAL_WRITER(args.output, merge_alphabet_info) as hout:
         for infile in args.input:
             with MAPPED_SIGNAL_READER(infile) as hin:
                 file_num_reads_added, reads_written = add_file_reads(

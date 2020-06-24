@@ -6,6 +6,7 @@ import os
 import numpy as np
 from taiyaki.maths import med_mad
 
+
 class FILTER_PARAMETERS(namedtuple(
         'FILTER_PARAMETERS', (
             'filter_mean_dwell', 'filter_max_dwell',
@@ -20,6 +21,7 @@ class FILTER_PARAMETERS(namedtuple(
     param: mad_meandwell     : Drop chunks with max dwell more than multiple
         of median
     """
+
 
 def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
                   fraction_of_fails_allowed=0.5,
@@ -73,7 +75,7 @@ def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
     while(len(chunks) < number_to_sample_used and
           attempts < maximum_attempts_allowed):
         read_number = np.random.randint(nreads) if select_strands_randomly else \
-                      (first_strand_index + attempts) % nreads
+            (first_strand_index + attempts) % nreads
         attempts += 1
         read = read_data[read_number]
         if chunk_len_means_sequence_len:
@@ -92,7 +94,7 @@ def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
 
 def sample_filter_parameters(read_data, number_to_sample, chunk_len,
                              filter_mean_dwell, filter_max_dwell,
-                             chunk_len_means_sequence_len = False):
+                             chunk_len_means_sequence_len=False):
     """Sample number_to_sample reads from read_data, calculate median and MAD
     of mean dwell. Note the MAD has an adjustment factor so that it would give the
     same result as the std for a normal distribution.

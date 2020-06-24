@@ -29,21 +29,22 @@ parser.add_argument('--upper_x_limit', default=None,
 parser.add_argument('--lower_x_limit', default=None,
                     type=Positive(float), help='Lower limit of plot x(iterations) axis')
 
-def moving_average(a, n=3) :
+
+def moving_average(a, n=3):
     """Moving average with square window length n.
     If length of a is less than n, and for elements earlier
     than the nth, average as many points as available."""
     x = np.cumsum(a, dtype=float)
-    m=len(x)
-    if m>n:
+    m = len(x)
+    if m > n:
         x[n:] = x[n:] - x[:-n]
-        x[n:] = x[n:]/n
-    x[:n] = x[:n]/np.arange(1,min(n,m)+1)
+        x[n:] = x[n:] / n
+    x[:n] = x[:n] / np.arange(1, min(n, m) + 1)
     return x
 
 
 def read_training_log(filepath):
-    polkas,train_loss,val_loss,lr = [],[],[],[]
+    polkas, train_loss, val_loss, lr = [], [], [], []
     with open(filepath, "r") as f:
         for line in f:
             if not ('*' in line):
@@ -57,17 +58,19 @@ def read_training_log(filepath):
                     lr.append(float(line.split('lr=')[1].split()[0]))
                 except:
                     break
-    return {'t':DOTROWLENGTH*np.array(polkas),
-            'training_loss':np.array(train_loss),
-            'validation_loss':np.array(val_loss),
-            'learning_rate':np.array(lr)}
+    return {'t': DOTROWLENGTH * np.array(polkas),
+            'training_loss': np.array(train_loss),
+            'validation_loss': np.array(val_loss),
+            'learning_rate': np.array(lr)}
+
 
 def read_batch_log(filepath):
     t = fileio.readtsv(filepath)
-    return {'t':np.arange(len(t)),
-            'training_loss':t['loss'],
-            'gradientnorm':t['gradientnorm'],
-            'gradientcap':t['gradientcap']}
+    return {'t': np.arange(len(t)),
+            'training_loss': t['loss'],
+            'gradientnorm': t['gradientnorm'],
+            'gradientcap': t['gradientcap']}
+
 
 def main():
     args = parser.parse_args()
@@ -75,24 +78,26 @@ def main():
     logdata = {}
     batchdata = {}
     for td in args.input_directories:
-        logdata[td] = read_training_log(os.path.join(td,'model.log'))
-        batchdata[td] = read_batch_log(os.path.join(td,'batch.log'))
+        logdata[td] = read_training_log(os.path.join(td, 'model.log'))
+        batchdata[td] = read_batch_log(os.path.join(td, 'batch.log'))
         if args.mav is not None:
-            batchdata[td]['training_loss'] = moving_average(batchdata[td]['training_loss'], args.mav)
+            batchdata[td]['training_loss'] = moving_average(
+                batchdata[td]['training_loss'], args.mav)
 
-    #Plot validation and training loss
+    # Plot validation and training loss
     plt.figure(figsize=(6, 4.8))
     colour_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
     for td, colour in zip(args.input_directories, colour_cycle):
         label = os.path.basename(os.path.normpath(td))
         plt.plot(batchdata[td]['t'], batchdata[td]['training_loss'],
-                 color=colour, label=label+' (training)', alpha=0.5,
+                 color=colour, label=label + ' (training)', alpha=0.5,
                  linewidth=0.5)
-        if len(logdata[td]['t'])==0:
-            print("No log data for {} - perhaps <{} iterations complete?".format(td,DOTROWLENGTH))
+        if len(logdata[td]['t']) == 0:
+            print(
+                "No log data for {} - perhaps <{} iterations complete?".format(td, DOTROWLENGTH))
             continue
-        plt.plot(logdata[td]['t'],logdata[td]['validation_loss'],
-                 color=colour, label=label+' (validation)',
+        plt.plot(logdata[td]['t'], logdata[td]['validation_loss'],
+                 color=colour, label=label + ' (validation)',
                  linewidth=0.5)
 
     plt.grid()
@@ -116,5 +121,5 @@ def main():
     plt.savefig(args.output, dpi=300)
     plt.close()
 
-if __name__=="__main__":
+if __name__ == "__main__":
     main()

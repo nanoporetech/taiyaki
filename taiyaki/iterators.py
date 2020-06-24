@@ -267,7 +267,8 @@ def window(iterable, size):
     :returns: an iterator returning a tuple containing the data in the window
 
     """
-    assert size > 0, "Window size for iterator should be strictly positive, got {0}".format(size)
+    assert size > 0, "Window size for iterator should be strictly positive, got {0}".format(
+        size)
     iters = tee(iterable, size)
     for i in range(1, size):
         for each in iters[i:]:

@@ -12,15 +12,19 @@ from taiyaki.cmdargs import FileExists, Positive
 parser = argparse.ArgumentParser(description='Plot an accuracy histogram from a combined read file',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-parser.add_argument('combined_read_file', action=FileExists, help='Combined read file to get data from')
-parser.add_argument('--bins', default=100, type=Positive(int), help='Number of bins for histogram')
+parser.add_argument('combined_read_file', action=FileExists,
+                    help='Combined read file to get data from')
+parser.add_argument('--bins', default=100, type=Positive(int),
+                    help='Number of bins for histogram')
 parser.add_argument('--title', default='', help='Figure title')
-parser.add_argument('--output_name', default='basecaller_histogram.png', help='Output file name')
+parser.add_argument(
+    '--output_name', default='basecaller_histogram.png', help='Output file name')
+
 
 def main():
     args = parser.parse_args()
 
-    AccVals=readtsv(args.combined_read_file)['alignment_accuracy']
+    AccVals = readtsv(args.combined_read_file)['alignment_accuracy']
 
     fig, ax = plt.subplots()
 
@@ -33,7 +37,7 @@ def main():
     ax.grid(which='major', linestyle=':')
     ax.grid(which='minor', linestyle=':')
 
-    plt.hist(np.array(AccVals[AccVals>=0]), bins = args.bins)
+    plt.hist(np.array(AccVals[AccVals >= 0]), bins=args.bins)
 
     plt.tight_layout()
 

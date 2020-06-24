@@ -23,7 +23,8 @@ def iterate_file_read_pairs(filepaths, read_ids, limit=None, verbose=0):
     nyielded = 0
     for filepath, read_id in zip(filepaths, read_ids):
         if not os.path.exists(filepath):
-            sys.stderr.write('File {} does not exist, skipping\n'.format(filepath))
+            sys.stderr.write(
+                'File {} does not exist, skipping\n'.format(filepath))
             continue
         try:
             with ont_fast5_api.fast5_interface.get_fast5_file(filepath, 'r') as f5file:
@@ -36,7 +37,8 @@ def iterate_file_read_pairs(filepaths, read_ids, limit=None, verbose=0):
             if limit is not None and nyielded >= limit:
                 return  # ends iterator
         except Exception as e:
-            sys.stderr.write("Warning: An exception occured in fast5utils (skipped this read):\n"+str(e)+"\n")
+            sys.stderr.write(
+                "Warning: An exception occured in fast5utils (skipped this read):\n" + str(e) + "\n")
     return
 
 
@@ -50,7 +52,8 @@ def iterate_files_reads_unpaired(filepaths, read_ids, limit=None, verbose=0):
     nyielded = 0
     for filepath in filepaths:
         if not os.path.exists(filepath):
-            sys.stderr.write('File {} does not exist, skipping\n'.format(filepath))
+            sys.stderr.write(
+                'File {} does not exist, skipping\n'.format(filepath))
             continue
         try:
             with ont_fast5_api.fast5_interface.get_fast5_file(filepath, 'r') as f5file:
@@ -62,11 +65,13 @@ def iterate_files_reads_unpaired(filepaths, read_ids, limit=None, verbose=0):
                         nyielded += 1
                     else:
                         if verbose > 0:
-                            print("Skipping", read_id, "from", filepath, ":not in read_id list")
+                            print("Skipping", read_id, "from",
+                                  filepath, ":not in read_id list")
                     if limit is not None and nyielded >= limit:
                         return  # ends iterator
         except Exception as e:
-            sys.stderr.write("Warning: An exception occured in fast5utils (skipped this read):\n"+str(e)+"\n")
+            sys.stderr.write(
+                "Warning: An exception occured in fast5utils (skipped this read):\n" + str(e) + "\n")
 
 
 def iterate_fast5_reads(path,
@@ -131,7 +136,8 @@ def iterate_fast5_reads(path,
             raise Exception("Strand list at {} has no column that can be used:".format(strand_list) +
                             "(it should contain ('filename' or 'filename_fast5') or 'read_id'," +
                             "or both a filename column and a read_id column)")
-        # The strand list supplies filenames, not paths, so we supply the rest of the path
+        # The strand list supplies filenames, not paths, so we supply the rest
+        # of the path
         if filepaths is not None:
             filepaths = [os.path.join(path, x) for x in filepaths]
 
@@ -145,7 +151,8 @@ def iterate_fast5_reads(path,
     if filepaths is None:
         # Filenames not supplied by strand list, so we get them from the path
         if os.path.isdir(path):
-            filepaths = ont_fast5_api.conversion_tools.conversion_utils.get_fast5_file_list(path, recursive=recursive)
+            filepaths = ont_fast5_api.conversion_tools.conversion_utils.get_fast5_file_list(
+                path, recursive=recursive)
         else:
             filepaths = [path]
 
@@ -193,7 +200,8 @@ def get_channel_info(read):
 
     returns   : dict-like object containing channel info
     """
-    # This is how it is done in _load_raw() in AbstractFast5File in ont_fast5_api.fast5_file.py
+    # This is how it is done in _load_raw() in AbstractFast5File in
+    # ont_fast5_api.fast5_file.py
     return read.handle[read.global_key + 'channel_id'].attrs
 
 

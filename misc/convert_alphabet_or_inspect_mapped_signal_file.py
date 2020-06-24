@@ -7,6 +7,7 @@ import h5py
 import argparse
 from taiyaki import alphabet, mapped_signal_files
 
+
 def get_parser():
     parser = argparse.ArgumentParser(
         description='Convert (or print) alphabet attributes contained within ' +
@@ -37,6 +38,7 @@ def get_parser():
         'long names.')
     return parser
 
+
 def main():
     args = get_parser().parse_args()
     with mapped_signal_files.HDF5Reader(args.input) as hin:
@@ -56,10 +58,10 @@ def main():
     for curr_can_base, new_can_base in args.can_base_convert:
         assert len(curr_can_base) == 1, (
             'Single letter codes must be a single character. Got {}'.format(
-            curr_can_base))
+                curr_can_base))
         assert len(new_can_base) == 1, (
             'Single letter codes must be a single character. Got {}'.format(
-            new_can_base))
+                new_can_base))
         if curr_can_base not in alphabet_info.can_bases_set:
             sys.stderr.write((
                 'Specified current canonical base ({}) not found in ' +
@@ -78,10 +80,10 @@ def main():
     for curr_mod_base, new_mod_base in args.mod_base_convert:
         assert len(curr_mod_base) == 1, (
             'Single letter codes must be a single character. Got {}'.format(
-            curr_mod_base))
+                curr_mod_base))
         assert len(new_mod_base) == 1, (
             'Single letter codes must be a single character. Got {}'.format(
-            new_mod_base))
+                new_mod_base))
         if curr_mod_base not in alphabet_info.mod_bases_set:
             sys.stderr.write((
                 'Specified current modified base ({}) not found in ' +
