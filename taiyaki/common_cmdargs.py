@@ -8,16 +8,20 @@ from taiyaki import __version__
 
 
 def add_common_command_args(parser, arglist):
-    """Given an argparse parser object and a list of keys such as
-    ['input_strand_list', 'jobs'], add these command line args
-    to the parser.
+    """Add common command line args to the parser.
+    
+    Args:
+        parser (argparse parser): parser
+        arglist (list of str): list of keys such as
+                                 ['input_strand_list', 'jobs']
+                                 
+    Note:
+        Not all command line args used in the package are
+        included in this func: only those that are used by more than
+        one script and which have the same defaults.
 
-    Not all command line args used in the package are
-    included in this func: only those that are used by more than
-    one script and which have the same defaults.
-
-    Some args are positional and some are optional.
-    The optional ones are listed first below."""
+        Some args are positional and some are optional.
+        The optional ones are listed first below."""
 
     ALLOWED_ARGS = dict([
         #  Optional arguments

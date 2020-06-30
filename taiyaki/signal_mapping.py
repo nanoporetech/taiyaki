@@ -34,11 +34,23 @@ class SignalMapping:
 
     @staticmethod
     def is_numpy(x):
+        """Is this a numpy array?
+        
+        Args:
+            x : object to be tested
+        Returns:
+            bool : is it a numpy array?
+        """
         return hasattr(x, 'dtype')
 
     def _typecheck(self, name):
-        """Returns empty string or error string depending on whether
-        type matches
+        """Check the type of an attribute is correct.
+        
+        Args:
+            name (str): name of the attr
+        Returns:
+            str :  empty string if type matches, , or error string
+                   describing the problem if not
         """
         is_req = name in self.req_data_types._fields
         is_opt = name in self.opt_data_types._fields
@@ -65,8 +77,11 @@ class SignalMapping:
         return ""
 
     def check(self):
-        """Return string "pass" if read info passes some integrity tests.
-        Return failure information as string otherwise."""
+        """Perform some checks on the attributes of a class instance.
+        
+        Returns:
+            str : "pass" if read info passes some integrity tests.
+                   Return failure information as string otherwise."""
         # type checking
         return_string = ''.join(self._typecheck(k)
                                 for k in self.req_data_types._fields)
@@ -97,23 +112,28 @@ class SignalMapping:
             signalstart=None, shift_frompA=None, scale_frompA=None, range=None,
             offset=None, digitisation=None, read_id=None, Dacs=None,
             mapping_score=None, mapping_method=None):
-        """
-        param: Ref_to_signal: Assignment of reference positions to signal
-            points. See get_reftosignal.
-        param: Reference: Integer encoded reference sequence.
-        param: signalObj: taiyaki.signal.Signal object
-        param: signalstart: start of mapping within dacs
-        param: shift_frompA: shift from pA scaling to standardised scaling
-        param: scale_frompA: scale from pA scaling to standardised scaling
-        param: range: pA scaling range parameter
-        param: offset: pA scaling offset parameter
-        param: digitisation: pA scaling digitisation parameter
-        param: read_id: read UUID
-        param: Dacs: Raw data aquisition values (int16)
-        param: mapping_score: Mapping score
-        param: mapping_method: Mapping method
+        """Construct SignalMapping object from data.
+        Args:
+            Ref_to_signal (np int array): Assignment of reference positions to
+                                          signal points. See get_reftosignal.
+            Reference (np int array): Integer encoded reference sequence.
+            signalObj (taiyaki.signal.Signal object): signal data
+            signalstart (int): start of mapping within dacs
+            shift_frompA (float): shift from pA scaling to standardised scaling
+            scale_frompA (float): scale from pA scaling to standardised scaling
+            range (float): pA scaling range parameter
+            offset (float): pA scaling offset parameter
+            digitisation (float): pA scaling digitisation parameter
+            read_id (str): read UUID
+            Dacs (np int16 array): Raw data aquisition values
+            mapping_score (float): Mapping score
+            mapping_method (str): Mapping method
 
-        Must provide either signalObj or all of: signalstart, shift_frompA,
+        Returns:
+            SignalMapping object.
+
+        Note:
+            Must provide either signalObj or all of: signalstart, shift_frompA,
             scale_frompA, range, offset, digitisation, read_id and Dacs.
         """
         # required attrs
@@ -163,6 +183,15 @@ class SignalMapping:
 
     @staticmethod
     def get_integer_reference(string_reference, alphabet):
+        """Get integer-coded reference sequence.
+        
+        Args:
+            string_reference (str) : sequence
+            alphabet (str) : alphabet
+            
+        Returns:
+            np int array : integer coded ref
+        """
         return np.array([
             alphabet.index(i) for i in string_reference],
             dtype=SignalMapping.req_data_types.Reference)
@@ -171,20 +200,29 @@ class SignalMapping:
     def get_reftosignal(signalpos_to_refpos, reflen, siglen):
         """Return integer vector reftosig,  mapping reference to signal.
 
-        length of reftosig returned is (1 + reflen),
-        where reflen = len(reference)
+        Args:
+            signalpos_to_refpos (np int array) : vector giving a ref position
+                                                for each location in the signal
+            reflen (int) : length of the ref
+            siglen (int) : length of the signal
+        Returns:
+            np int array : reftosig, giving locations in signal for each point
+                            in the ref.
+            
+        Note:
+              Length of reftosig returned is (1 + reflen),
+              where reflen = len(reference)
+              reftosig[n] is the location in the untrimmed
+              dacs where the base at reference[n] starts.
 
-        reftosig[n] is the location in the untrimmed dacs where the base at
-        reference[n] starts.
+            The last element, reftosig[reflen] is consistent with this scheme:
+            it is (1 + (last location in untrimmed dacs))
 
-        The last element, reftosig[reflen] is consistent with this scheme:
-        it is (1 + (last location in untrimmed dacs))
+            if the start of the reference is not mapped, then reftosig will
+            begin with a sequence of (-1)s
 
-        if the start of the reference is not mapped, then reftosig will begin
-        with a sequence of (-1)s
-
-        if the end of the reference is not mapped, then reftosig will end with
-         ... f, f, f, f]  where f = siglen + 1.
+            if the end of the reference is not mapped, then reftosig will end
+            with         ... f, f, f, f]  where f = siglen + 1.
         """
         rts_dt = SignalMapping.req_data_types.Ref_to_signal
         valid_sig_to_ref_idxs = np.where(
@@ -220,13 +258,20 @@ class SignalMapping:
         Construct Mapping object based on downsampled mapping information
         (rather than just copying sigtoref).
 
-        param: sigtoref_downsampled : a numpy int vector where
-            sigtoref_downsampled[k] is the location in the reference of the
-            base starting at untrimmed_dacs[k*stride-1+signalstart]
-        param: reference : numpy int16 array representing read reference
-            sequence. See `signal_mapping.Mapping.get_integer_reference`
-        param: stride: model stride
-        param: taiyaki.signal.Signal object
+        Args:
+            sigtoref_downsampled (numpy int vector): sigtoref_downsampled[k] is
+                                        the location in the reference of the
+                                        base starting at
+                                        untrimmed_dacs[k*stride-1+signalstart]
+            reference (numpy int16 array) : reference sequence. See
+                                `signal_mapping.Mapping.get_integer_reference`
+            stride (int): model stride
+            sig (taiyaki.signal.Signal object) : signal data
+            
+        Returns:
+            SignalMapping object.
+            
+        Note:
 
         There is a bit of freedom in where to put the signal locations
         because of transition weights
@@ -264,15 +309,19 @@ class SignalMapping:
         return _class(ref_to_sig, reference, signalObj=sig)
 
     def get_read_dictionary(self, check=True):
-        """Return a read dictionary for insertion via AbstractMappedSignalWriter
+        """Return a read dict for insertion via AbstractMappedSignalWriter
+        
+        Args:
+            check (bool): if True, do checking on the SignalMapping object.
+        
+        Returns:
+            dict : contains all the attributes of the SignalMapping object.
 
-        Note that we return the dictionary, not the object itself.
+        Note:
+            We return the dictionary, not the object itself.
         That's because this method is used inside worker processes which
         need to pass their results out through the pickling mechanism in
         imap_mp.
-
-        Apply error checking if check = True, and raise an Exception if it
-        fails
         """
         if check:
             self.check()
@@ -286,9 +335,12 @@ class SignalMapping:
         return readDict
 
     def get_mapped_reference_region(self):
-        """Return tuple (start,end_exc) so that
-        read_dict['Reference'][start:end_exc] is the mapped region
-        of the reference"""
+        """Get a the part of the reference that's mapped.
+        
+        Returns:
+            tuple : (start,end_exc) where
+                read_dict['Reference'][start:end_exc] is the mapped region
+                of the reference"""
         # Locations in the ref that are mapped
         # note siglen indicates a valid mapping end position
         # while siglen + 1 indicates unmapped reference positions
@@ -300,8 +352,11 @@ class SignalMapping:
         return valid_ref_locs[0], valid_ref_locs[-1]
 
     def get_mapped_dacs_region(self):
-        """Return range tuple so that self.Dacs[range[0]:range[1]] is the
-        mapped region of the signal"""
+        """Get the part of the dacs vector that's mapped.
+        
+        Returns:
+            tuple :range where self.Dacs[range[0]:range[1]] is the
+                     mapped region of the signal"""
         # Locations in the DACs that are mapped
         # note siglen indicates a valid mapping end position
         # while siglen + 1 indicates unmapped reference positions
@@ -314,18 +369,23 @@ class SignalMapping:
 
     def get_reference_locations(self, signal_location_vector):
         """Return reference locations that go with given signal locations.
-        signal_location_vector should be a numpy integer vector of signal
-        locations.
-        The return value is a numpy integer vector of reference locations.
-        (feeding in a tuple works too but the result is still a vector)
+ 
+        Args:
+           signal_location_vector (numpy int vector): locations in the signal.
 
-        If signal locations outside of the mapped region are requested an
-        IndexError is raised.
+        Returns:
+            numpy int vector :reference locations.
+            
+        Note:
+            Feeding in a tuple works too but the result is still a vector
 
-        If we have a numpy-style range in a tuple
-        t = (signal_start_inclusive, signal_end_exclusive)
-        then f(t) is
-        reference_start_inclusive, reference_end_exclusive
+            If signal locations outside of the mapped region are requested an
+            IndexError is raised.
+
+            If we have a numpy-style range in a tuple
+            t = (signal_start_inclusive, signal_end_exclusive)
+            then f(t) is
+            reference_start_inclusive, reference_end_exclusive
         """
         if isinstance(signal_location_vector, tuple):
             signal_location_vector = np.array(signal_location_vector)
@@ -352,10 +412,13 @@ class SignalMapping:
 
     def get_dacs(self, region=None):
         """Get vector of DAC levels
-        If region is not None, then treat region as a tuple:
-            region = (start_inclusive, end_exclusive)
+        
+        Args:
+            region (tuple of two ints or None):
+                                region = (start_inclusive, end_exclusive)
 
-        :returns: current[start_inclusive:end_exclusive].
+        Returns:
+            np int array : current[start_inclusive:end_exclusive].
         """
         if region is None:
             return self.Dacs
@@ -363,11 +426,17 @@ class SignalMapping:
         return self.Dacs[a:b]
 
     def get_current(self, region=None, standardize=True):
-        """Get current vector and, optionally apply standardization factors.
-        If region is not None, then treat region as a tuple:
-            region = (start_inclusive, end_exclusive)
-
-        :returns: current[start_inclusive:end_exclusive].
+        """Get current vector and optionally apply standardization factors.
+        
+        Args:
+            region (tuple of two ints or None):
+                                region = (start_inclusive, end_exclusive)
+            standardize (bool) : if true, then apply standardisation
+                                 factors as stored in the SignalMapping object.
+        
+        Returns:
+            np float array : current[start_inclusive:end_exclusive],
+                              normalised if standardize=True.
         """
         dacs = self.get_dacs(region)
 
@@ -379,7 +448,19 @@ class SignalMapping:
     def _get_chunk(self, dacs_region, ref_region, standardize=True):
         """Get a chunk, returning a Chunk object.
 
-        Note there is no checking in this function that the dacs_region and
+        Args:
+            dacs_region (tuple of two ints):
+                                region = (start_inclusive, end_exclusive)
+            ref_region (tuple of two ints):
+                                region = (start_inclusive, end_exclusive)
+            standardize (bool) : if true, then apply standardisation
+                                 factors as stored in the SignalMapping object.
+
+        Returns:
+            chunk object : data from the selected region
+
+        Note:
+            There is no checking in this function that the dacs_region and
         ref_region are associated with one another. That must be done before
         calling this function.
         """
@@ -404,11 +485,19 @@ class SignalMapping:
             self, chunk_len, start_sample=None, standardize=True):
         """Get a chunk, with chunk_len samples, returning a Chunk object.
 
-        If start_sample is None, then choose the start point randomly over the
-        possible start points that lead to a chunk of the right size.
-        If start_sample is specified as an int, then use a start  point
-        start_sample samples into the mapped region.
+        Args:
+            chunk_len (int) : number of samples in the chunk
+            start_sample (int or None): if None, then choose the start point
+                        randomly over the possible start points that lead to
+                        a chunk of the right size.
+                        If start_sample is specified as an int, then use start
+                        start_sample samples into the mapped region.
 
+        Returns:
+            Chunk object : signal and ref data.
+
+        Note:
+            
         The chunk should have length chunk_len samples, with the number of
         bases determined by the mapping.
         """
@@ -435,14 +524,21 @@ class SignalMapping:
 
     def get_chunk_with_sequence_length(
             self, chunk_bases, start_base=None, standardize=True):
-        """Get a chunk containing a sequence of length chunk_bases,
-        returning a dictionary as in the docstring for get_chunk()
+        """Get a Chunk object with chunk_bases bases in the ref.
 
-        If start_base is None, then choose the start point randomly over the
-        possible start points that lead to a chunk of the right size.
-        If start_base is specified as an int, then use a start point
-        start_base bases into the mapped region.
+        Args:
+            chunk_bases (int) : number of bases in the chunk
+            start_base (int or None): if None, then choose the start point
+                        randomly over the possible start points that lead to
+                        a chunk of the right size.
+                        If start_base is specified as an int, then use start
+                        start_base bases into the mapped region.
 
+        Returns:
+            Chunk object : signal and ref data.
+
+        Note:
+            
         The chunk should have length chunk_bases bases, with the number of
         samples determined by the mapping.
         """
@@ -497,14 +593,20 @@ class Chunk(object):
             self, read_id, current=None, sequence=None, max_dwell=None,
             start_sample=None, reject_reason=None):
         """
-        :param read_id: Read UUID
-        :param current: Signal current array
-        :param sequence: Integer encoded chunk sequence
-        :param max_dwell: Maximum dwell found in this chunk
-        :param start_sample: Index of the start of this chunk from the full
-            read SignalMapping current.
-        :param reject_reason: Reason for rejecting this chunk. Default of None
-            indicates that the read is not rejected.
+        Create a chunk object from signal data.
+        
+        Args:
+            read_id (str): Read UUID
+            current (np float array): Signal current array
+            sequence (np int array): Integer encoded chunk sequence
+            max_dwell (int): Maximum dwell found in this chunk
+            start_sample (int): Index of the start of this chunk from the full
+                                 read SignalMapping current.
+            reject_reason (str): Reason for rejecting this chunk. Default of
+                                 None indicates that the read is not rejected.
+                                 
+        Returns:
+            Chunk object.
         """
         self.current = current
         self.sequence = sequence
@@ -517,30 +619,43 @@ class Chunk(object):
 
     @property
     def accepted(self):
+        """Is chunk acceptable?
+        Returns:
+            bool : True if chunk not rejected"""
         return self.reject_reason == self.rej_str_pass
 
     @property
     def mean_dwell(self):
         """Calculate mean dwell from chunk.
+        Returns:
+            float : mean dwell
         """
         return len(self.current) / (len(self.sequence) + self._tiny)
 
     @property
     def seq_len(self):
+        """Length of ref sequence in chunk.
+        Returns:
+            int : length of sequence (0 if not present)"""
         return len(self.sequence) if self.sequence is not None else 0
 
     @property
     def sig_len(self):
+        """Length of signal in chunk.
+        Returns:
+            int : length of signal (0 if not present)"""
         return len(self.current) if self.current is not None else 0
 
     def apply_filters(self, filter_params):
         """Apply filtering conditions, and set rejected attribute.
+        
+        Args:
+            filter_params (namedtuple as in
+                           taiyaki.signal_mappings.FILTER_PARAMETERS)
 
-        param: filter_params : taiyaki.signal_mappings.FILTER_PARAMETERS
-            namedtuple
-
-        If filter_params.median_mean_dwell or filter_params.mad_dwell are
-        None or if chunk is already filtered, then don't filter.
+        Note:
+            If filter_params.median_mean_dwell or filter_params.mad_dwell are
+            None or if chunk is already filtered, then don't filter.
         """
         if not self.accepted or \
            filter_params.median_meandwell is None or \

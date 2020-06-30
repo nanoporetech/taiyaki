@@ -6,6 +6,7 @@ from taiyaki.fast5utils import iterate_fast5_reads
 
 
 class TestStrandList(unittest.TestCase):
+    """Test strand list reading function"""
     READ_DIR = os.path.join(DATA_DIR, "reads")
     MULTIREAD_DIR = os.path.join(DATA_DIR, "multireads")
     EXPECTED_READ_IDS = [
@@ -21,43 +22,58 @@ class TestStrandList(unittest.TestCase):
         DATA_DIR, "basecaller_output/sequencing_summary.txt")
 
     def _check_found_read_ids(self, found_reads):
+        """Test to see if read ids found.
+        Args:
+            found_reads (list of str) : reads found by file reader
+        """
         found_read_ids = sorted([rid for _, rid in found_reads])
         self.assertEqual(found_read_ids, self.EXPECTED_READ_IDS)
 
     def test_no_strand_list_multiread(self):
+        """See if read ids found in multiread file with no strand list"""
         self._check_found_read_ids(iterate_fast5_reads(self.MULTIREAD_DIR))
 
     def test_no_strand_list_single_reads(self):
+        """See if read ids found in single-read file with no strand list"""
         self._check_found_read_ids(iterate_fast5_reads(self.READ_DIR))
 
     def test_sequencing_summary_multiread(self):
+        """See if read ids found using sequencing-summary style strand list"""
         self._check_found_read_ids(iterate_fast5_reads(
             self.MULTIREAD_DIR, strand_list=self.SEQUENCING_SUMMARY))
 
     def test_strand_list_single_reads(self):
+        """See if read ids found using strandlist with single read fast5s"""
         strand_list = os.path.join(
             self.STRAND_LIST_DIR, "strand_list_single.txt")
         self._check_found_read_ids(iterate_fast5_reads(
             self.READ_DIR, strand_list=strand_list))
 
     def test_strand_list_multiread(self):
+        """See if read ids found using strand list with multi read fast5s"""
         strand_list = os.path.join(self.STRAND_LIST_DIR, "strand_list.txt")
         self._check_found_read_ids(iterate_fast5_reads(
             self.MULTIREAD_DIR, strand_list=strand_list))
 
     def test_strand_list_no_filename_multiread(self):
+        """See if read ids found iterating through multiread files in directory
+        with strand list"""
         strand_list = os.path.join(
             self.STRAND_LIST_DIR, "strand_list_no_filename.txt")
         self._check_found_read_ids(iterate_fast5_reads(
             self.MULTIREAD_DIR, strand_list=strand_list))
 
     def test_strand_list_no_filename_single_reads(self):
+        """See if read ids found iterating through single-read files in
+        directory with strand list"""
         strand_list = os.path.join(
             self.STRAND_LIST_DIR, "strand_list_no_filename.txt")
         self._check_found_read_ids(iterate_fast5_reads(
             self.READ_DIR, strand_list=strand_list))
 
     def test_strand_list_no_read_id_multiread(self):
+        """See if reads ids found iterating through strand list containing
+        filenames, not read ids"""
         strand_list = os.path.join(
             self.STRAND_LIST_DIR, "strand_list_no_read_id.txt")
         self._check_found_read_ids(iterate_fast5_reads(
