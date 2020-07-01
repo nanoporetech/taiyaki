@@ -1519,7 +1519,7 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         modified training label values
 
         Returns:
-            None:  Layer adjusted in-place
+            None: Layer adjusted in-place
         """
         # create table of mod label offsets within each canonical label group
         can_labels, mod_labels = [], []
@@ -1538,10 +1538,10 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         return
 
     def compute_layer_mods_info(self):
-        """  Sort alphabet into canonical grouping and rearrange mod_long_names
+        """ Sort alphabet into canonical grouping and rearrange mod_long_names
 
         Returns:
-            None:  Layer adjusted in-place
+            None: Layer adjusted in-place
         """
         self.output_alphabet = ''.join(b[1] for b in sorted(zip(
             self.collapse_alphabet, self.alphabet)))
@@ -1572,14 +1572,14 @@ class GlobalNormFlipFlopCatMod(nn.Module):
 
     def __init__(self, insize, alphabet_info, has_bias=True,
                  _never_use_cupy=False):
-        """  Constructor for `GlobalNormFlipFlopCatMod` layer
+        """ Constructor for `GlobalNormFlipFlopCatMod` layer
 
         Args:
-            insize (int):  Size (number of features) expected for input tensor
-            alphabet_info (:class:`alphabet.AlphabetInfo`):  Alphabet for layer,
+            insize (int): Size (number of features) expected for input tensor
+            alphabet_info (:class:`alphabet.AlphabetInfo`): Alphabet for layer,
                 containing description of modified bases and their cannonical
                 equivalents.
-            has_bias (bool, optional):  Whether layer has bias.  If `False`,
+            has_bias (bool, optional): Whether layer has bias. If `False`,
                 bias is initialised to zero and not trained.
             _never_use_cupy (bool, optional):  If True, never use accelerated
                 cupy routine even if it is available.  Default will use cupy if
@@ -1619,7 +1619,7 @@ class GlobalNormFlipFlopCatMod(nn.Module):
 
     @property
     def nbase(self):
-        """  Number of canonical bases
+        """ Number of canonical bases
 
         Returns:
             int: Number of canonical bases
@@ -1627,10 +1627,10 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         return self.ncan_base
 
     def json(self, params=False):
-        """  Create structured output describing layer for converting to json
+        """ Create structured output describing layer for converting to json
 
         Args:
-            params (bool, optional):  Whether to include parameter values in
+            params (bool, optional): Whether to include parameter values in
                 output.
 
         Returns:
@@ -1651,13 +1651,13 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         return res
 
     def reset_parameters(self):
-        """  Initialise parameters for layer
+        """ Initialise parameters for layer
 
         Performs orthogonal initialisation for matrix parameters and truncated
         normal ('Xavier') initialisation for vector parameters.
 
         Returns:
-            None:  Parameters for weight and bias of `linear` altered in-place.
+            None: Parameters for weight and bias of `linear` altered in-place.
         """
         winit = orthonormal_matrix(*list(self.linear.weight.shape))
         init_(self.linear.weight, winit)
@@ -1666,7 +1666,7 @@ class GlobalNormFlipFlopCatMod(nn.Module):
             init_(self.linear.bias, binit)
 
     def _use_cupy(self, x):
-        """  Determine whether cupy should be used
+        """ Determine whether cupy should be used
 
         Note:
             getattr used instead of simple look-up for backwards compatibility
@@ -1691,11 +1691,12 @@ class GlobalNormFlipFlopCatMod(nn.Module):
             return False
 
     def get_softmax_cat_mods(self, cat_mod_scores):
-        """ Get categorical modified base tensors
+        """ Get categorical modified base log probabilities from raw neural
+        network outputs.
 
         Note:
             When a base has no associated mods the value is represented
-        by a constant Tensor.
+                by a constant Tensor.
 
         Example:
             Layer that includes mods 5mC, 5hmC and 6mA would take input:
@@ -1707,8 +1708,7 @@ class GlobalNormFlipFlopCatMod(nn.Module):
             cat_mod_scores (:torch:`Tensor`):
 
         Returns:
-            :torch:`Tensor`:  Tensor of length 4 + nmod
-
+            :torch:`Tensor`: Tensor of length ncan_base + nmod
         """
         mod_layers = []
         for lab_indices in self.can_indices:
@@ -1716,10 +1716,10 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         return torch.cat(mod_layers, dim=2)
 
     def forward(self, x):
-        """  Forward method for layer
+        """ Forward method for layer
 
         Args:
-            x (:torch:`Tensor`):  Input to layer
+            x (:torch:`Tensor`): Input to layer
 
         Returns:
             :torch:`Tensor`: Output of layer
@@ -1749,7 +1749,7 @@ class GlobalNormFlipFlopCatMod(nn.Module):
 
 
 def is_cat_mod_model(net):
-    """  Is model a categorical modified base model
+    """ Is model a categorical modified base model
 
     Args:
         net (:nn:`Module`):  A Taiyaki network
