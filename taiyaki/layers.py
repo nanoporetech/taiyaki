@@ -21,7 +21,15 @@ MODEL_VERSION = 2
 
 
 def init_(param, value):
-    """Set parameter value (inplace) from tensor, numpy array, list or tuple"""
+    """  Set parameter value (inplace)
+
+    Args:
+        param (:torch:`Parameter`): Param to set inplace
+        value (tensor, numpy array, list or tuple): Value to set `param` to
+
+    Returns:
+        None:  `param` set inplace
+    """
     value_as_tensor = torch.tensor(value, dtype=param.data.dtype)
     with torch.no_grad():
         param.set_(value_as_tensor)
@@ -29,20 +37,25 @@ def init_(param, value):
 
 def random_orthonormal(n, m=None):
     """  Generate random orthonormal matrix
-    :param n: rank of matrix to generate
-    :param m: second dimension of matrix, set equal to n if None.
 
     Implementation in scipy.stats.ortho_group is rather slow. We use
     QR decomposition on a matrix of unit-variance Gaussian noise,
     followed by a sign-flipping trick which is a version of the
-    normalisation recommended by Mezzadri for unitary matrices.
-    See https://arxiv.org/pdf/math-ph/0609050v2.pdf.
+    normalisation recommended by `Mezzadri`_ for unitary matrices.
+
+    .. _Mezzadri:
+        https://arxiv.org/pdf/math-ph/0609050v2.pdf.
 
     A square matrix is generated if only one parameter is given, otherwise a
     rectangular matrix is generated.  The number of columns must be greater than
     the number of rows.
 
-    :returns: orthonormal matrix
+    Args:
+        n (int): rank of matrix to generate
+        m (int, optional): second dimension of matrix, set equal to `n` if None.
+
+    Returns:
+        `ndarray`: orthonormal matrix
     """
     m = n if m is None else m
     assert m >= n
@@ -57,7 +70,20 @@ def random_orthonormal(n, m=None):
 
 
 def orthonormal_matrix(nrow, ncol):
-    """ Generate random orthonormal matrix
+    """  Generate random orthonormal matrix
+
+    Note:
+        Retangular matrices where the number of rows exceeds the number of
+    columns are partitioned into square chunks as far as possible and each
+    chunk initialised as a separate orthonormal matrix.  Any remaining columns
+    are then initialised as a retangualr orthogonal matrix.
+
+    Args:
+        nrow (int): number of rows of matrix to generate.
+        ncol (int): number of columns of matrix to generate.
+
+    Returns:
+        `ndarray`: orthonormal matrix
     """
     nrep = nrow // ncol
     out = np.zeros((nrow, ncol), dtype='f4')
@@ -72,52 +98,158 @@ def orthonormal_matrix(nrow, ncol):
 
 
 def truncated_normal(size, sd):
-    """Truncated normal for Xavier style initiation"""
+    """  Truncated normal for Xavier style initiation
+
+    Generates random observations from a normal distribution truncated at
+    +/- 2, scaled so that the standard deviation is `sd`.  The expectation
+    of the distribution is zero.
+
+    Args:
+        size (int):  Number of observations to generate
+        sd (float):  Standard deviation of of distribution
+
+    Returns:
+        `ndarray`: random observations from truncated normal distribution
+    """
     res = sd * truncnorm.rvs(-2, 2, size=size)
     return res.astype('f4')
 
 
 class Reverse(nn.Module):
+    """  Reverse layer in reverse time
 
+    Input and output of enclosed layer are flipped along the time axis.
+
+    Attributes:
+        layer (:nn:Module): Taiyaki layer to reverse.
+    """
     def __init__(self, layer):
+        """  Constructor for `Reverse` layer
+
+        Args:
+            layer (:nn:Module): Taiyaki layer to reverse
+        """
         super().__init__()
         self.layer = layer
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         return torch.flip(self.layer(torch.flip(x, (0,))), (0,))
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         return OrderedDict([('type', "reverse"),
                             ('sublayers', self.layer.json(params))])
 
 
 class Residual(nn.Module):
+    """  Apply a residual connection around a layer
+
+        The enclosed layer is called and its input is added to its output to
+    form a residual connection.  The insize and outsize of the enclosed layer
+    must be the same.
+
+    Attributes:
+        layer (:nn:Module): Taiyaki layer to wrap.
+    """
 
     def __init__(self, layer):
+        """  Constructor for `Residual` layer
+
+        Args:
+            layer (:nn:Module): Taiyaki layer to wrap.  The size of the output
+                of the layer must be equal to its input.
+        """
         super().__init__()
         self.layer = layer
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         return x + self.layer(x)
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         return OrderedDict([('type', "Residual"),
                             ('sublayers', self.layer.json(params))])
 
 
 class GatedResidual(nn.Module):
+    """  Add a tuneable residual connection around a layer
 
+        sigmoid(alpha) * X + (1 - sigmoid(alpha)) * layer(X)
+
+    Attributes:
+        alpha (:nn:`Parameter`, scalar): Gating parameter to apply.
+        layer (:nn:Module): Taiyaki layer to wrap.  The size of the output
+            of the layer must be equal to its input.
+    """
     def __init__(self, layer, gate_init=0.0):
+        """  Constructor for `GatedResidual` layer
+
+        Args:
+            layer (:nn:Module): Taiyaki layer to wrap.  The size of the output
+                of the layer must be equal to its input.
+            gate_init (float, optional):  Initial value for gating parameter,
+                default 0.0 is equal mix of input and output similar to
+                "layer:`Residual`.
+        """
         super().__init__()
         self.layer = layer
         self.alpha = Parameter(torch.tensor([gate_init]))
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         gate = activation.sigmoid(self.alpha)
         y = self.layer(x)
         return gate * x + (1 - gate) * y
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         res = OrderedDict([('type', "GatedResidual"),
                            ('sublayers', self.layer.json(params))])
         if params:
@@ -127,16 +259,32 @@ class GatedResidual(nn.Module):
 
 
 class FeedForward(nn.Module):
-    """  Basic feedforward layer
-         out = f( inMat W + b )
+    """  Basic feedforward layer with activation and bias
 
-    :param insize: Size of input to layer
-    :param size: Layer size
-    :param has_bias: Whether layer has bias
-    :param fun: The activation function.
+         out = fun( inMat W + b )
+
+    Attributes:
+        insize (int):  Size (number of neurons) expected in layer input.
+        size (int):  Size (number of neurons) of layer output.
+        has_bias (bool, optional): Whether layer has bias.  If `False`, bias
+            is initialised to zero and not trained.
+        linear (:nn:`Module`):  Pytorch module implementing linear
+            transform.
+        activation (<function>, optional):  Activation function to apply to
+            output linear transform.
     """
-
     def __init__(self, insize, size, has_bias=True, fun=activation.linear):
+        """  Constructor for `FeedForward` layer
+
+        Args:
+            insize (int):  Size (number of neurons) of layer input.
+            size (int):  Size(number of neurons) of layer output.
+            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
+                is initialised to zero and not trained.
+            fun (<function>, optional):  Activation function to apply to output
+                of layer.
+
+        """
         super().__init__()
         self.insize = insize
         self.size = size
@@ -146,6 +294,14 @@ class FeedForward(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
+        """  Initialise parameters for layer
+
+        Performs orthogonal initialisation for matrix parameters and truncated
+        normal ('Xavier') initialisation for vector parameters.
+
+        Returns:
+            None:  Parameters for weight and bias of `linear` altered in place.
+        """
         winit = orthonormal_matrix(self.size, self.insize)
         init_(self.linear.weight, winit)
         if self.has_bias:
@@ -153,9 +309,26 @@ class FeedForward(nn.Module):
             init_(self.linear.bias, binit)
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         return self.activation(self.linear(x))
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         res = OrderedDict([('type', "feed-forward"),
                            ('activation', self.activation.__name__),
                            ('size', self.size),
@@ -168,16 +341,30 @@ class FeedForward(nn.Module):
 
 
 class Softmax(nn.Module):
-    """  Softmax layer
+    """  (Log) Softmax layer with initial linear transform
+
          tmp = exp( inmat W + b )
          out = log( row_normalise( tmp ) )
 
-    :param insize: Size of input to layer
-    :param size: Layer size
-    :param has_bias: Whether layer has bias
+    Attributes:
+        insize (int):  Size (number of neurons) expected in layer input.
+        size (int):  Size (number of neurons) of layer output.
+        has_bias (bool, optional): Whether layer has bias.  If `False`, bias
+            is initialised to zero and not trained.
+        linear (:nn:`Module`):  Pytorch module implementing linear
+            output linear transform.
+        activation (:nn:`Module`): Pytorch module implementing log-softmax over
+            the final (feature) dimension of input.
     """
-
     def __init__(self, insize, size, has_bias=True):
+        """  Constructor for `Softmax` layer
+
+        Args:
+            insize (int):  Size (number of neurons) of layer input.
+            size (int):  Size (number of neurons) of layer output.
+            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
+                is initialised to zero and not trained.
+        """
         super().__init__()
         self.insize = insize
         self.size = size
@@ -187,6 +374,14 @@ class Softmax(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
+        """  Initialise parameters for layer
+
+        Performs orthogonal initialisation for matrix parameters and truncated
+        normal ('Xavier') initialisation for vector parameters.
+
+        Returns:
+            None:  Parameters for weight and bias of `linear` altered in place.
+        """
         winit = orthonormal_matrix(self.size, self.insize)
         init_(self.linear.weight, winit)
         if self.has_bias:
@@ -194,9 +389,26 @@ class Softmax(nn.Module):
             init_(self.linear.bias, binit)
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         return self.activation(self.linear(x))
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         res = OrderedDict([('type', "softmax"),
                            ('size', self.size),
                            ('insize', self.insize),
@@ -208,14 +420,26 @@ class Softmax(nn.Module):
 
 
 class CudnnGru(nn.Module):
-    """ Gated Recurrent Unit compatable with cudnn
+    """   Gated Recurrent Unit compatable with CUDNN
 
-    :param insize: Size of input to layer
-    :param size: Layer size
-    :param has_bias: Whether layer has bias
+    GRU with "linear_before_reset" formulation used in CUDNN
+
+    Attributes:
+        cudnn_gru (:nn:`Module`): Pytorch GRU module
+        insize (int):  Size (number of neurons) expected in layer input.
+        size (int):  Size (number of neurons) of layer output.
+        has_bias (bool, optional): Whether layer has bias.  If `False`, bias
+            is initialised to zero and not trained.
     """
-
     def __init__(self, insize, size, bias=True):
+        """  Constructor for `CudnnGru` layer
+
+        Args:
+            insize (int):  Size (number of neurons) of layer input.
+            size (int):  Size (number of neurons) of layer output.
+            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
+                is initialised to zero and not trained.
+        """
         super().__init__()
         self.cudnn_gru = nn.GRU(insize, size, bias=bias)
         self.insize = insize
@@ -224,6 +448,15 @@ class CudnnGru(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
+        """  Initialise parameters for layer
+
+        Performs orthogonal initialisation for matrix parameters and truncated
+        normal ('Xavier') initialisation for vector parameters.
+
+        Returns:
+            None:  Parameters for weight and bias of `cudnn_gru` altered
+                in-place.
+        """
         for name, param in self.named_parameters():
             shape = list(param.shape)
             if 'weight_hh' in name:
@@ -236,10 +469,27 @@ class CudnnGru(nn.Module):
                 init_(param, truncated_normal(shape, sd=0.5))
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         y, hy = self.cudnn_gru.forward(x)
         return y
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         res = OrderedDict([('type', "CudnnGru"),
                            ('activation', "tanh"),
                            ('gate', "sigmoid"),
@@ -261,25 +511,27 @@ class CudnnGru(nn.Module):
 
 
 class Lstm(nn.Module):
-    """ LSTM layer wrapper around the cudnn LSTM kernel
+    """  LSTM layer wrapper around the cudnn LSTM kernel
+
     See http://colah.github.io/posts/2015-08-Understanding-LSTMs/ for a good
     introduction to LSTMs.
 
-    Step:
-        v = [ input_new, output_old ]
-        Pforget = gatefun( v W2 + b2 + state * p1)
-        Pupdate = gatefun( v W1 + b1 + state * p0)
-        Update  = fun( v W0 + b0 )
-        state_new = state_old * Pforget + Update * Pupdate
-        Poutput = gatefun( v W3 + b3 + state * p2)
-        output_new = fun(state) * Poutput
-
-    :param insize: Size of input to layer
-    :param size: Layer size
-    :param has_bias: Whether layer has bias
+    Attributes:
+        lstm (:nn:`Module`): Pytorch LSTM module
+        insize (int):  Size (number of neurons) expected in layer input.
+        size (int):  Size (number of neurons) of layer output.
+        has_bias (bool, optional): Whether layer has bias.  If `False`, bias
+            is initialised to zero and not trained.
     """
-
     def __init__(self, insize, size, has_bias=True):
+        """  Constructor for `Lstm` layer
+
+        Args:
+            insize (int):  Size (number of neurons) of layer input.
+            size (int):  Size (number of neurons) of layer output.
+            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
+                is initialised to zero and not trained.
+        """
         super().__init__()
         self.lstm = nn.LSTM(insize, size, bias=has_bias)
         self.insize = insize
@@ -289,12 +541,30 @@ class Lstm(nn.Module):
         self.reset_parameters()
 
     def _disable_state_bias(self):
+        """  Disable training of redundant bias parameter and initialise to zero
+
+        Returns:
+            None:  Redundant parameter "bias_hh" of `lstm` is set to zero and
+                training is disable.
+        """
         for name, param in self.lstm.named_parameters():
             if 'bias_hh' in name:
                 param.requires_grad = False
                 param.zero_()
 
     def reset_parameters(self):
+        """  Initialise parameters for layer
+
+        Performs orthogonal initialisation for matrix parameters and truncated
+        normal ('Xavier') initialisation for vector parameters.
+
+        Note:
+            The redundant bias parameter `bias_hh` is not generated by
+        `named_parameters` and so is not initialised.
+
+        Returns:
+            None:  Parameters for weight and bias of `lstm` altered in-place.
+        """
         for name, param in self.named_parameters():
             shape = list(param.shape)
             if 'weight_hh' in name:
@@ -308,15 +578,43 @@ class Lstm(nn.Module):
                 init_(param, truncated_normal(shape, sd=0.5))
 
     def named_parameters(self, prefix='', recurse=True):
+        """  Iterator over trainable parameters  of `lstm`
+
+        Args:
+            prefix (str, optional):  Prefix for parameters to search.
+            recurse (bool, optional):  Whether to recursively descend into
+                `lstm` module.
+
+        Yields:
+            tuple of str and :nn:`Parameter`: name of `lstm` parameter and the
+                parameter.
+        """
         for name, param in self.lstm.named_parameters(prefix=prefix, recurse=recurse):
             if 'bias_hh' not in name:
                 yield name, param
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         y, hy = self.lstm.forward(x)
         return y
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         res = OrderedDict([('type', "LSTM"),
                            ('activation', "tanh"),
                            ('gate', "sigmoid"),
@@ -332,17 +630,28 @@ class Lstm(nn.Module):
 
 
 class GruMod(nn.Module):
-    """ Gated Recurrent Unit compatable with guppy
+    """  Gated Recurrent Unit compatable with guppy
 
     This version of the Gru should be compatable with guppy. It differs from the
     CudnnGru in that the CudnnGru has an additional bias parameter.
 
-    :param insize: Size of input to layer
-    :param size: Layer size
-    :param has_bias: Whether layer has bias
+    Attributes:
+        cudnn_gru (:nn:`Module`): Pytorch GRU module
+        insize (int):  Size (number of neurons) expected in layer input.
+        size (int):  Size (number of neurons) of layer output.
+        has_bias (bool, optional): Whether layer has bias.  If `False`, bias
+            is initialised to zero and not trained.
     """
 
     def __init__(self, insize, size, has_bias=True):
+        """  Constructor for `GruMod` layer
+
+        Args:
+            insize (int):  Size (number of neurons) of layer input.
+            size (int):  Size (number of neurons) of layer output.
+            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
+                is initialised to zero and not trained.
+        """
         super().__init__()
         self.cudnn_gru = nn.GRU(insize, size, bias=has_bias)
         self.insize = insize
@@ -352,6 +661,19 @@ class GruMod(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
+        """  Initialise parameters for layer
+
+        Performs orthogonal initialisation for matrix parameters and truncated
+        normal ('Xavier') initialisation for vector parameters.
+
+        Note:
+            The redundant bias parameter `bias_hh` is not generated by
+        `named_parameters` and so is not initialised.
+
+        Returns:
+            None:  Parameters for weight and bias of `cudnn_gru` altered
+                in-place.
+        """
         for name, param in self.named_parameters():
             shape = list(param.shape)
             if 'weight_hh' in name:
@@ -364,22 +686,56 @@ class GruMod(nn.Module):
                 init_(param, truncated_normal(shape, sd=0.5))
 
     def _disable_state_bias(self):
+        """  Disable training of redundant bias parameter and initialise to zero
+
+        Returns:
+            None:  Redundant parameter "bias_hh" of `cudnn_gru` is set to zero and
+                training is disable.
+        """
         for name, param in self.cudnn_gru.named_parameters():
             if 'bias_hh' in name:
                 param.requires_grad = False
                 param.zero_()
 
     def named_parameters(self, prefix='', recurse=True):
+        """  Iterator over trainable parameters  of `lstm`
+
+        Args:
+            prefix (str, optional):  Prefix for parameters to search.
+            recurse (bool, optional):  Whether to recursively descend into
+                `cudnn_gru` module.
+
+        Yields:
+            tuple of str and :nn:`Parameter`: name of `lstm` parameter and the
+                parameter.
+        """
         prefix = prefix + ('.' if prefix else '')
         for name, param in self.cudnn_gru.named_parameters(recurse=recurse):
             if not 'bias_hh' in name:
                 yield prefix + name, param
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         y, hy = self.cudnn_gru.forward(x)
         return y
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         res = OrderedDict([('type', "GruMod"),
                            ('activation', "tanh"),
                            ('gate', "sigmoid"),
@@ -398,7 +754,17 @@ class GruMod(nn.Module):
 
 
 def _cudnn_to_guppy_gru(p):
-    """Reorder GRU params from order expected by CUDNN to that required by guppy"""
+    """  Reorder GRU params from CUDNN to Guppy ordering
+
+    The GRU implemented in CUDNN and that implement in Guppy have the gating
+    matrix stored in a different order.
+
+    Args:
+        p (:torch:`Tensor`): GRU weights in CUDNN order.
+
+    Returns:
+        :torch:`Tensor`: GRU weight in Guppy order.
+    """
     x, y, z = torch.chunk(p, 3)
     return torch.cat([y, x, z], 0)
 
@@ -409,19 +775,41 @@ class Convolution(nn.Module):
     Takes input of shape [time, batch, features] and produces output of shape
     [ceil((time + padding) / stride), batch, features]
 
-    :param insize: number of features on input
-    :param size: number of output features
-    :param winlen: size of window over input
-    :param stride: step size between successive windows
-    :param has_bias: whether layer has bias
-    :param fun: the activation function
-    :param pad: (int, int) of padding applied to start and end, or None in which
-        case the padding used is (winlen // 2, (winlen - 1) // 2) which ensures
-        that the output length does not depend on winlen
+    Attributes:
+        has_bias (bool): Whether layer has bias.  If `False`, bias is
+            initialised to zero and not trained.
+        insize (int):  number of features in expected input tensor
+        size (int): number of feature in output tensor
+        winlen (int): size of window over input
+        stride (int): step size between successive windows.
+        padding (tuple of int and int): padding applied to start and
+            end of input.
+        pad (:nn:`Module`):  Pytorch module applying `padding` to time
+            dimension of input Tensor.
+        conv (:nn:`Module`):  Pytorch module applying 1D convolution to input.
+        activation (<function>): function applying activation elementwise to
+            result of convolution.
     """
 
     def __init__(self, insize, size, winlen, stride=1, pad=None,
                  fun=activation.tanh, has_bias=True):
+        """  Constructor for `Convolution` layer
+
+        Args:
+            insize (int):  number of features in expected input tensor
+            size (int): number of feature in output tensor
+            winlen (int): size of window over input
+            stride (int, optional): step size between successive windows.
+                Default stride 1 does not down-sample output.
+            pad (tuple of int and int,optional): padding applied to start and
+                end of input, or None in which case the padding is set to ensure
+                that output length does not depend on `winlen` -- padding is
+                (winlen // 2, (winlen - 1) // 2).
+            fun (<function>): function applying activation elementwise to
+                result of convolution.
+            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
+                is initialised to zero and not trained.
+        """
         super().__init__()
         self.has_bias = has_bias
         self.insize = insize
@@ -438,6 +826,14 @@ class Convolution(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
+        """  Initialise parameters for layer
+
+        Performs orthogonal initialisation for matrix parameters and truncated
+        normal ('Xavier') initialisation for vector parameters.
+
+        Returns:
+            None:  Parameters for weight and bias of `conv` altered in-place.
+        """
         winit = orthonormal_matrix(self.conv.weight.shape[0],
                                    np.prod(self.conv.weight.shape[1:]))
         init_(self.conv.weight, winit.reshape(self.conv.weight.shape))
@@ -446,11 +842,32 @@ class Convolution(nn.Module):
             init_(self.conv.bias, binit)
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Note:
+            Tensor is stored in TBF order, but `conv` requires BFT order, so
+        the input tensor is wrapped between two permutations.
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         x = x.permute(1, 2, 0)
         out = self.activation(self.conv(self.pad(x)))
         return out.permute(2, 0, 1)
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         res = OrderedDict([("type", "convolution"),
                            ("insize", self.insize),
                            ("size", self.size),
@@ -466,16 +883,47 @@ class Convolution(nn.Module):
 
 
 class Parallel(nn.Module):
+    """  Apply several layers to same input and concatenate results
 
+    Example:
+        Simple bidirectional GRU
+
+        >>> Parallel( GRU(size, size), Reverse( GRU(size, size) )
+
+    Attributes:
+        sublayers (list of :nn:`Module`): Layers to apply to input tensor.
+    """
     def __init__(self, layers):
+        """  Constructor for `Parallel` layer
+
+        Args:
+            layers (list of :nn:`Module`): Taiyaki layers to apply
+        """
         super().__init__()
         self.sublayers = nn.ModuleList(layers)
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         ys = [layer(x) for layer in self.sublayers]
         return torch.cat(ys, 2)
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         return OrderedDict([('type', "parallel"),
                             ('sublayers', [layer.json(params)
                                            for layer in self.sublayers])])
@@ -484,56 +932,140 @@ class Parallel(nn.Module):
 class Product(nn.Module):
     """  Element-wise product of list of input layers
 
-         E.g. Simple gated feed-forward layer
-         Product([FeedForward(insize, size, fun=sigmoid), FeedForward(insize, size, fun=linear)])
+    Example:
+        Simple gated feed-forward layer
+
+        >>> Product([FeedForward(insize, size, fun=sigmoid),
+                     FeedForward(insize, size, fun=linear)])
+
+    Attributes:
+        sublayers (list of :nn:`Module`): Layers to apply to input tensor.
     """
 
     def __init__(self, layers):
+        """  Constructor for `Product` layer
+
+        Args:
+            layers (list of :nn:`Module`): Taiyaki layers to apply
+        """
         super().__init__()
         self.sublayers = nn.ModuleList(layers)
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         ys = self.sublayers[0](x)
         for layer in self.sublayers[1:]:
             ys *= layer(x)
         return ys
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         return OrderedDict([('type', "Product"),
                             ('sublayers', [layer.json(params)
                                            for layer in self.sublayers])])
 
 
 class Serial(nn.Module):
+    """  Apply several layers one after the other in Serial fashion
 
+
+    Attributes:
+        sublayers (list of :nn:`Module`): Layers to apply to input tensor.
+    """
     def __init__(self, layers):
+        """  Constructor for `Serial` layer
+
+        Args:
+            layers (list of :nn:`Module`): Taiyaki layers to apply
+        """
         super().__init__()
         self.sublayers = nn.ModuleList(layers)
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         for layer in self.sublayers:
             x = layer(x)
         return x
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         return OrderedDict([
             ('type', "serial"),
             ('sublayers', [layer.json(params) for layer in self.sublayers])])
 
 
 class SoftChoice(nn.Module):
+    """  Weighted selection from a list of layers
 
+    Apply several layers to input and combine in a weighted fashion.
+
+    Attributes:
+        alpha (:nn:`Parameter`): Vector valued weights for layer selection.
+        sublayers (list of :nn:`Module`): Layers to choose from.
+    """
     def __init__(self, layers):
+        """  Constructor for `Serial` layer
+
+        Args:
+            layers (list of :nn:`Module`): Taiyaki layers to choose from.
+        """
         super().__init__()
         self.sublayers = nn.ModuleList(layers)
         self.alpha = Parameter(torch.zeros(len(layers)))
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         ps = torch.nn.Softmax(0)(self.alpha)
         ys = [p * layer(x) for p, layer in zip(ps, self.sublayers)]
         return torch.stack(ys).sum(0)
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         res = OrderedDict([('type', "softchoice"),
                            ('sublayers', [layer.json(params) for layer in self.sublayers])])
         if params:
@@ -542,46 +1074,108 @@ class SoftChoice(nn.Module):
 
 
 def zeros(size):
+    """  Create a numpy vector zeros with compatible dtype
+
+    Args:
+        size (int): length of vector
+    """
     return np.zeros(size, dtype=taiyaki_dtype)
 
 
 def _reshape(x, shape):
+    """  Convert a Pytorch tensor to numpy format and reshape
+
+    Args:
+        x (:torch:`Tensor`): Pytorch Tensor to reshape
+        shape (tuple of int): New shape
+    """
     return x.detach_().numpy().reshape(shape)
 
 
 class Identity(nn.Module):
     """  Apply activation function elementwise
 
-    :param fun:  Elementwise activation function
-
+    Attributes:
+        fun (<function>): Function that applies an element-wise activation to
+            output tensor.
     """
 
     def __init__(self, fun=activation.linear):
+        """  Constructor for `Identity` layer
+
+        Args:
+            fun (<function>, optional): A function that applies an element-wise
+                activation to output tensor, default `linear` does no
+                transformation.
+        """
         super().__init__()
         self.fun = fun
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         return OrderedDict([('type', 'Identity'),
                             ('activation', self.activation.__name__)])
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         return self.fun(x)
 
 
 class Studentise(nn.Module):
-    """ Normal all features in batch
+    """  Normalize all features in batch
 
-    :param epsilon: Stabilsation layer
+        Studentize features by subtracting mean (over time) and dividing by
+    their standard deviation.  A small `espilon` constant is added to the
+    standard deviation in order to prevent divide by zero.
+
+    Attributes:
+        epsilon (float): Small value to stabilise calculation.
     """
-
     def __init__(self, epsilon=1e-4):
+        """  Constructor for `Studentise` layer
+
+        Args:
+            epsilon (float): Small value to stabilise calculation.
+        """
         super().__init__()
         self.epsilon = epsilon
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         return {'type': "studentise"}
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         features = x.shape[-1]
         m = x.view(-1, features).mean(0)
         v = x.view(-1, features).var(0, unbiased=False)
@@ -589,15 +1183,32 @@ class Studentise(nn.Module):
 
 
 class DeltaSample(nn.Module):
-    """ Returns difference between neighbouring features
+    """  Returns difference between neighbouring features
 
-    Right is padded with zero
+    Note:
+        Right-hand side is padded with zero to maintain input shape.
     """
-
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         return OrderedDict([('type', "DeltaSample")])
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         output = x[1:] - x[:-1]
         padding = torch.zeros_like(x[:1])
         return torch.cat((output, padding), dim=0)
@@ -606,22 +1217,44 @@ class DeltaSample(nn.Module):
 class Window(nn.Module):
     """  Create a sliding window over input
 
-    :param w: Size of window
+    Attributes:
+        w (int): Size of window.
     """
-
     def __init__(self, w):
+        """  Constructor for `Window` layer
+
+        Args:
+            w (int):  Size of window
+        """
         super().__init__()
         assert w > 0, "Window size must be positive"
         assert w % 2 == 1, 'Window size should be odd'
         self.w = w
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         res = OrderedDict([('type', "window")])
         if params:
             res['params'] = OrderedDict([('w', self.w)])
         return res
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         length = x.shape[0]
         pad = self.w // 2
         zeros = x.new_zeros((pad,) + x.shape[1:])
@@ -634,21 +1267,45 @@ class Window(nn.Module):
 def birnn(forward, backward):
     """  Creates a bidirectional RNN from two RNNs
 
-    :param forward: A layer to run forwards
-    :param backward: A layer to run backwards
+    Args:
+        forward (:nn:`Module`):  A layer to run forwards
+        backward (:nn:`Module`): A layer to run backwards
+
+    Returns:
+        :nn:`Module`:  Layer wrapping `forward` and `backward`
     """
     return Parallel([forward, Reverse(backward)])
 
 
 @torch.jit.script
 def logaddexp(x, y):
-    #  NB:  use torch.logsigmoid rather than softplus since softplus allows
-    # a scaling factor and hence more operations.
+    """  Element-wise logsumexp
+
+    Performs log( exp(x) + exp(y)) element-wise in a stable manner.
+
+    Args:
+        x (:torch:`Tensor`):  Tensor
+        y (:torch:`Tensor`):  Tensor, shape must be same as `x`
+
+    Returns:
+        :torch:`Tensor`: result of calculation, with same shape as `x`
+    """
     return torch.max(x, y) + nn.functional.softplus(-torch.abs(x - y))
 
 
 @torch.jit.script
 def global_norm_flipflop_step(scores_t, fwd_t, nbase):
+    """  Single step of flip-flop global normalization
+
+    Args:
+        scores_t (:torch:`Tensor`):  Transition scores for time step.
+        fwd_t (:torch:`Tensor`): Input state.
+        nbase (:torch:`Tensor`): Number of bases
+
+    Returns:
+        tuple of :torch:`Tensor` and :torch:`Tensor`: scaling factor for time
+            step and new state following time step.
+    """
     nbase = int(nbase)
     curr_scores = fwd_t.unsqueeze(1) + scores_t.reshape(
         (-1, nbase + 1, 2 * nbase))
@@ -662,6 +1319,14 @@ def global_norm_flipflop_step(scores_t, fwd_t, nbase):
 
 
 def log_partition_flipflop(scores):
+    """  Calculate the log of the partition function for flip-flop model
+
+    Args:
+        scores (:torch:`Tensor`):  Transition scores for all time steps
+
+    Returns:
+        :torch:`Tensor`: log-partition function for each batch.
+    """
     T, N, C = scores.shape
     nbase = flipflopfings.nbase_flipflop(C)
 
@@ -680,15 +1345,61 @@ def log_partition_flipflop(scores):
 
 
 def global_norm_flipflop(scores):
+    """  Globally normalize scores for flip-flop model.
+
+    Args:
+        scores (:torch:`Tensor`):  Transition scores for all time steps
+
+    Returns:
+        :torch:`Tensor`: scores after global normalization.
+    """
     T = scores.shape[0]
     logZ = log_partition_flipflop(scores)
     return scores - logZ / np.float32(T)
 
 
 class GlobalNormFlipFlop(nn.Module):
+    """  Globally normalize scores for flip-flop model.
+
+        Global normalisation is performed after transforming input "x" by
+            scale * activation( x W + b)
+
+    Attributes:
+        insize (int):  Size (number of features) expected for input tensor
+        nbase (int):  Number bases
+        size (int):  Size of output tensor
+        activation (<function>):  Function that applies elementwise activation
+            to output of linear transform (before global normalisation).
+        has_bias (bool):  Whether layer has bias.  If `False`, bias is
+            initialised to zero and not trained.
+        linear (:nn:`Module`):  PyTorch module implementing linear
+            transformation.
+        scale (float):  Scaling factor to apply.
+        _never_use_cupy (bool):  If True, never use accelerated cupy routine
+            even if it is available.
+
+    Returns:
+        :torch:`Tensor`: scores after global normalization.
+    """
 
     def __init__(self, insize, nbase, has_bias=True, _never_use_cupy=False,
                  fun=activation.tanh, scale=5.0):
+        """  Constructor for `GlobalNormFlipFlop` layer
+
+        Args:
+            insize (int):  Size (number of features) expected for input tensor
+            nbase (int):  Number bases
+            has_bias (bool, optional):  Whether layer has bias.  If `False`,
+                bias is initialised to zero and not trained.
+            _never_use_cupy (bool, optional):  If True, never use accelerated
+                cupy routine even if it is available.  Default will use cupy if
+                available.
+            fun (<function>, optional):  Function that applies elementwise
+                activation to output of linear transform (before global
+                normalisation).  Default tanh.
+            scale (float, optional):  Scaling factor to apply, default 5.0
+
+        """
         super().__init__()
         self.insize = insize
         self.nbase = nbase
@@ -701,6 +1412,15 @@ class GlobalNormFlipFlop(nn.Module):
         self._never_use_cupy = _never_use_cupy
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         res = OrderedDict([
             ('type', 'GlobalNormTwoState'),
             ('size', self.size),
@@ -716,6 +1436,14 @@ class GlobalNormFlipFlop(nn.Module):
         return res
 
     def reset_parameters(self):
+        """  Initialise parameters for layer
+
+        Performs orthogonal initialisation for matrix parameters and truncated
+        normal ('Xavier') initialisation for vector parameters.
+
+        Returns:
+            None:  Parameters for weight and bias of `linear` altered in-place.
+        """
         winit = orthonormal_matrix(*list(self.linear.weight.shape))
         init_(self.linear.weight, winit)
         if self.has_bias:
@@ -723,6 +1451,18 @@ class GlobalNormFlipFlop(nn.Module):
             init_(self.linear.bias, binit)
 
     def _use_cupy(self, x):
+        """  Determine whether cupy should be used
+
+        Note:
+            getattr used instead of simple look-up for backwards compatibility
+
+        Args:
+            x (:torch:`Tensor`): Sample input.
+
+        Returns:
+            bool: True if cupy available and `_never_use_cupy` is False.  False
+                otherwise.
+        """
         # getattr in stead of simple look-up for backwards compatibility
         if self._never_use_cupy:
             return False
@@ -737,6 +1477,14 @@ class GlobalNormFlipFlop(nn.Module):
             return False
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         y = self.scale * self.activation(self.linear(x))
 
         if self._use_cupy(x):
@@ -748,11 +1496,6 @@ class GlobalNormFlipFlop(nn.Module):
 
 class GlobalNormFlipFlopCatMod(nn.Module):
     """ Flip-flop layer with additional modified base output stream
-
-    :param insize: Size of input to layer (should be 1)
-    :param alphabet_info: `taiyaki.alphabet.AlphabetInfo` instance
-    :param has_bias: Whether layer has bias
-    :param _never_use_cupy: Force use of CPU implementation of flip-flop loss
 
     Attributes (can_nmods, output_alphabet and modified_base_long_names) define
     a modified base model and their names and structure is stable.
@@ -771,10 +1514,12 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         order and NOT cat_mod order. Using the example alphabet above,
         mod_labels would be `[0, 0, 0, 0, 1, 1, 2, 1]`
     """
-
     def compute_label_conversions(self):
         """ Compute conversion arrays from input label to canonical base and
         modified training label values
+
+        Returns:
+            None:  Layer adjusted in-place
         """
         # create table of mod label offsets within each canonical label group
         can_labels, mod_labels = [], []
@@ -793,8 +1538,11 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         return
 
     def compute_layer_mods_info(self):
-        # sort alphabet into canonical grouping and reagange mod_long_names
-        # accordingly
+        """  Sort alphabet into canonical grouping and rearrange mod_long_names
+
+        Returns:
+            None:  Layer adjusted in-place
+        """
         self.output_alphabet = ''.join(b[1] for b in sorted(zip(
             self.collapse_alphabet, self.alphabet)))
         self.ordered_mod_long_names = (
@@ -824,6 +1572,19 @@ class GlobalNormFlipFlopCatMod(nn.Module):
 
     def __init__(self, insize, alphabet_info, has_bias=True,
                  _never_use_cupy=False):
+        """  Constructor for `GlobalNormFlipFlopCatMod` layer
+
+        Args:
+            insize (int):  Size (number of features) expected for input tensor
+            alphabet_info (:class:`alphabet.AlphabetInfo`):  Alphabet for layer,
+                containing description of modified bases and their cannonical
+                equivalents.
+            has_bias (bool, optional):  Whether layer has bias.  If `False`,
+                bias is initialised to zero and not trained.
+            _never_use_cupy (bool, optional):  If True, never use accelerated
+                cupy routine even if it is available.  Default will use cupy if
+                available.
+        """
         # IMPORTANT these attributes (can_nmods, output_alphabet and
         # modified_base_long_names) are stable and depended upon by external
         # applications. Their names or data structure should remain stable.
@@ -858,11 +1619,23 @@ class GlobalNormFlipFlopCatMod(nn.Module):
 
     @property
     def nbase(self):
-        """ For consistency with GlobalNormFlipFlop
+        """  Number of canonical bases
+
+        Returns:
+            int: Number of canonical bases
         """
         return self.ncan_base
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         res = OrderedDict([
             ('type', 'GlobalNormTwoStateCatMod'),
             ('size', self.size),
@@ -878,6 +1651,14 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         return res
 
     def reset_parameters(self):
+        """  Initialise parameters for layer
+
+        Performs orthogonal initialisation for matrix parameters and truncated
+        normal ('Xavier') initialisation for vector parameters.
+
+        Returns:
+            None:  Parameters for weight and bias of `linear` altered in-place.
+        """
         winit = orthonormal_matrix(*list(self.linear.weight.shape))
         init_(self.linear.weight, winit)
         if self.has_bias:
@@ -885,7 +1666,18 @@ class GlobalNormFlipFlopCatMod(nn.Module):
             init_(self.linear.bias, binit)
 
     def _use_cupy(self, x):
-        # getattr in stead of simple look-up for backwards compatibility
+        """  Determine whether cupy should be used
+
+        Note:
+            getattr used instead of simple look-up for backwards compatibility
+
+        Args:
+            x (:torch:`Tensor`): Sample input.
+
+        Returns:
+            bool: True if cupy available and `_never_use_cupy` is False.  False
+                otherwise.
+        """
         if self._never_use_cupy or not x.is_cuda:
             return False
 
@@ -901,16 +1693,22 @@ class GlobalNormFlipFlopCatMod(nn.Module):
     def get_softmax_cat_mods(self, cat_mod_scores):
         """ Get categorical modified base tensors
 
+        Note:
+            When a base has no associated mods the value is represented
+        by a constant Tensor.
+
         Example:
             Layer that includes mods 5mC, 5hmC and 6mA would take input:
             [Can, A_6mA, C_5mC, C_5hmC]
             and output:
             [A_can, A_6mA, C_can, C_5mC, C_5hmC, G_can, T_can]
 
-        Outout length is (4 + nmod)
+        Args:
+            cat_mod_scores (:torch:`Tensor`):
 
-        When a base has no associated mods the value is represented
-        by a constant Tensor
+        Returns:
+            :torch:`Tensor`:  Tensor of length 4 + nmod
+
         """
         mod_layers = []
         for lab_indices in self.can_indices:
@@ -918,6 +1716,14 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         return torch.cat(mod_layers, dim=2)
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         y = self.linear(x)
 
         trans_scores = 5.0 * activation.tanh(y[:, :, :self.ntrans_states])
@@ -945,26 +1751,45 @@ class GlobalNormFlipFlopCatMod(nn.Module):
 def is_cat_mod_model(net):
     """  Is model a categorical modified base model
 
-    :param net: A network
+    Args:
+        net (:nn:`Module`):  A Taiyaki network
 
-    :raises: Outer later of network is not :class:`taiyaki.layers.Serial`
-    :return: True if final layer is categorical mod base, False otherwise
+    Raises:
+        AssertionError: Outer later of network is not :class:`Serial`
+
+    Returns:
+        bool: True if final layer is categorical mod base, False otherwise
     """
     assert isinstance(net, Serial)
     return isinstance(net.sublayers[-1], GlobalNormFlipFlopCatMod)
 
 
 class TimeLinear(nn.Module):
-    """  Basic feedforward layer over time dimension
-         out = f( inMat W + b )
+    """  Basic feedforward layer applied over time dimension
 
-    :param insize: Size of input to layer
-    :param size: Layer size
-    :param has_bias: Whether layer has bias
-    :param fun: The activation function.
+         out = fun( inMat W + b )
+
+    Attributes:
+        insize (int):  Size (number of neurons) expected in layer input.
+        size (int):  Size (number of neurons) of layer output.
+        has_bias (bool): Whether layer has bias.  If `False`, bias is
+            initialised to zero and not trained.
+        linear (:nn:`Module`):  Pytorch module implementing linear
+            transform.
+        activation (<function>, optional):  Activation function to apply to
+            output linear transform.
     """
-
     def __init__(self, insize, size, has_bias=True, fun=activation.linear):
+        """  Constructor for `TimeLinear` layer
+
+        Args:
+            insize (int):  Size (number of neurons) of layer input.
+            size (int):  Size(number of neurons) of layer output.
+            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
+                is initialised to zero and not trained.
+            fun (<function>, optional):  Activation function to apply to output
+                of layer.
+        """
         super().__init__()
         self.insize = insize
         self.size = size
@@ -974,6 +1799,14 @@ class TimeLinear(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
+        """  Initialise parameters for layer
+
+        Performs orthogonal initialisation for matrix parameters and truncated
+        normal ('Xavier') initialisation for vector parameters.
+
+        Returns:
+            None:  Parameters for weight and bias of `linear` altered in-place.
+        """
         winit = orthonormal_matrix(self.size, self.insize)
         init_(self.linear.weight, winit)
         if self.has_bias:
@@ -981,11 +1814,28 @@ class TimeLinear(nn.Module):
             init_(self.linear.bias, binit)
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         xp = x.permute(1, 2, 0)
         y = self.activation(self.linear(xp))
         return y.permute(2, 0, 1)
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         res = OrderedDict([('type', "TimeLinear"),
                            ('activation', self.activation.__name__),
                            ('size', self.size),
@@ -998,22 +1848,45 @@ class TimeLinear(nn.Module):
 
 
 class UpSample(nn.Module):
-    """  Reshape tensor on time--feature axis
+    """  Upsample time by reshaping on time--feature axis
 
-    Reshapes a tensor from (nt, nb, nf) to (nt * nfold, nb, nf / nfold)
+        Upsample time by folding around features.  Reshapes a tensor from
+    (nt, nb, nf) to (nt * nfold, nb, nf / nfold)
 
-    :param n: N-fold scaling
+    Attributes:
+        nfold (int): Factor to upsample by.
     """
-
     def __init__(self, nfold):
+        """  Constructor for `UpSample` layer
+
+        Args:
+            nfold (int):  Factor to up-sample by.
+        """
         super().__init__()
         self.nfold = nfold
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         return OrderedDict([('type', "UpSample"),
                             ('nfold', self.nfold)])
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         nt, nb, nf = x.shape
         y = x.transpose(1, 0)
         assert nf % self.nfold == 0, "Number of features must be divisible by nfold"
@@ -1024,22 +1897,45 @@ class UpSample(nn.Module):
 
 
 class DownSample(nn.Module):
-    """  Reshape tensor on time--feature axis
+    """  Downsampletime by reshaping on time--feature axis
 
-    Reshapes a tensor from (nt, nb, nf) to (nt / nfold, nb, nf * nfold)
+        Downsample time by concatenating features.  Reshapes a tensor from
+    (nt, nb, nf) to (nt / nfold, nb, nf * nfold)
 
-    :param n: N-fold scaling
+    Attributes:
+        nfold (int): Factor to downsample by.
     """
-
     def __init__(self, nfold):
+        """  Constructor for `DownSample` layer
+
+        Args:
+            nfold (int):  Factor to down-sample by.
+        """
         super().__init__()
         self.nfold = nfold
 
     def json(self, params=False):
+        """  Create structured output describing layer for converting to json
+
+        Args:
+            params (bool, optional):  Whether to include parameter values in
+                output.
+
+        Returns:
+            :collections:`OrderedDict`: Structured description of layer.
+        """
         return OrderedDict([('type', "DownSample"),
                             ('nfold', self.nfold)])
 
     def forward(self, x):
+        """  Forward method for layer
+
+        Args:
+            x (:torch:`Tensor`):  Input to layer
+
+        Returns:
+            :torch:`Tensor`: Output of layer
+        """
         nt, nb, nf = x.shape
         y = x.transpose(1, 0)
         assert nt % self.nfold == 0, "Number of time points must be divisible by nfold"
@@ -1054,14 +1950,17 @@ def DownUpSample(layer, nfold):
 
     For input nt x nb x nf,
         Reshapes to (nt / nfold) x nb x (nf * nfold) == nt2 x nb x nf2
-        Runs :layer:  nt2  x nb x nf2 => nt2 x nb x nf3
+        Runs `layer`  nt2  x nb x nf2 => nt2 x nb x nf3
         Reshapes to nt2 x nb x nf3  => nt x nb x (nf3 / nfold)
-    The output size of :layer: should be divisible by nfold
+    The output size of `layer` should be divisible by nfold
 
-    :param layer:  Layer to wrap
-    :param nfold:  N-fold scaling of time
+    Args:
+        layer (:nn:`Module`):  Layer to wrap
+        nfold (int):  N-fold scaling of time
 
-    :returns: A Serial layer wrapping the internal layer between down & up sampling
+    Returns:
+        :nn:`Module`: `taiyaki`:Serial: layer wrapping `layer` between layers
+            that down-sample and up-sample by a factor of `nfold`.
     """
     assert layer.size % nfold == 0, "Output of layer not divisible by nfold"
     return Serial([DownSample(nfold), layer, UpSample(nfold)])
