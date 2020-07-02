@@ -59,14 +59,33 @@ parser.add_argument("model", action=FileExists,
 
 
 def med_mad_norm(x, dtype='f4'):
-    """ Normalise a numpy array using median and MAD """
+    """ Normalise a numpy array using median and MAD
+
+    Args:
+        x (:class:`ndarray`): 1D array containing values to be normalised.
+        dtype (str or :class:`dtype`): dtype of returned array.
+
+    Returns:
+        :class:`ndarray`:  Array of same shape as `x` and dtype `dtype`
+            contained normalised values.
+    """
     med, mad = med_mad(x)
     normed_x = (x - med) / mad
     return normed_x.astype(dtype)
 
 
 def get_signal(read_filename, read_id):
-    """ Get raw signal from read tuple (as returned by fast5utils.iterate_fast5_reads) """
+    """ Get raw signal from read tuple
+
+    Args:
+        read_filename (str): Name of file from which to read signal.
+        read_id (str): ID of signal to read from `read_filename`
+
+    Returns:
+        class:`ndarray`: 1D array containing signal.
+
+        If unable to read signal from file, `None` is returned.
+    """
     try:
         with fast5_interface.get_fast5_file(read_filename, 'r') as f5file:
             read = f5file.get_read(read_id)
@@ -87,30 +106,43 @@ def process_read(
     """Basecall a read, dividing the samples into chunks before applying the
     basecalling network and then stitching them back together.
 
-    :param read_filename: filename to load data from
-    :param read_id: id used in comment line in fasta or fastq output
-    :param model: pytorch basecalling network
-    :param chunk_size: chunk size, measured in samples
-    :param overlap: overlap between chunks, measured in samples
-    :param read_params: dict of read params including 'shift' and 'scale'
-    :param n_can_state: number of canonical flip-flop transitions (40 for ACGT)
-    :param stride: stride of basecalling network (measured in samples)
-    :param alphabet: python str containing alphabet (e.g. 'ACGT')
-    :param is_cat_mod: bool. True for multi-level categorical mod-base model.
-    :param mods_fp: h5py handle to hdf5 file prepared to accept mod base output
-                    (not used unless is_cat_mod)
-    :param max_concurrent_chunks: max number of chunks to basecall at same time
-              (having this limit prevents running out of memory for long reads)
-    :param fastq: generate fastq file with q scores if this is True. Otherwise
-                  generate fasta.
-    :param qscore_scale: qscore <-- qscore * qscore_scale + qscore_offset
-                         before coding as fastq
-    :param qscore_offset: see qscore_scale above
-    :returns: tuple (basecall, qstring, len(signal))
-              where basecall and qstring are python strings, except when
-              fastq is False: in this case qstring is None.
+    Note:
+        Quality strings are only implemented for models without modified bases
+        (i.e. `is_cat_mod` is False).
 
-    :note: fastq output implemented only for the case is_cat_mod=False
+    Args:
+        read_filename (str): filename to load data from.
+        read_id (str): id used in comment line in fasta or fastq output.
+        model (:class:`nn.Module`): Taiyaki network.
+        chunk_size (int): chunk size, measured in samples.
+        overlap (int): overlap between chunks, measured in samples.
+        read_params (dict str -> T): reads specific scaling parameters,
+            including 'shift' and 'scale'.
+        n_can_state (int): number of canonical flip-flop transitions (40 for
+            ACGT).
+        stride (int): stride of basecalling network (measured in samples)
+        alphabet (str): Alphabet (e.g. 'ACGT').
+        is_cat_mod (bool): True for multi-level categorical mod-base model.
+        mods_fp (:class:`h5py.File`): HDF5 handle prepared to accept mod base
+            output (not used unless is_cat_mod).
+        max_concurrent_chunks (int): max number of chunks to basecall at same
+            time (having this limit prevents running out of memory for long
+            reads).
+        fastq (bool): generate fastq file with q scores if this is True,
+            otherwise generate fasta.
+        qscore_scale (float): Scaling factor for Q score calibration.
+        qscore_offset (float): Offset for Q score calibration.
+
+    Raises:
+        Exception: If `fastq` is True and modified base output is requested
+            (`is_cat_mod` is True).
+
+    Returns:
+        tuple of str and str and int: strings containing the called bases and
+            their associated Phred-encoded quality scores, and the number of
+            samples in the read (before chunking).
+
+        When `fastq` is False, `None` is returned instead of a quality string.
     """
     if is_cat_mod and fastq:
         raise Exception("fastq output not implemented for mod bases")

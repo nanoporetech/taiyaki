@@ -25,7 +25,22 @@ parser.add_argument('--trim', default=(200, 50), nargs=2, type=NonNegative(int),
 
 
 def one_read_shift_scale(read_tuple):
+    """  Read signal from fast5 and perform medmad scaling
 
+    Args:
+        read_tuple (tuple of str and str): A filename and the read_id to read
+            from it.
+
+    Returns:
+        tuple of str and float and float: read_id of the read and the calculated
+            shift and scale parameters.
+
+        If the signal is unable to be read from the file, the read_id is not
+        present for example, then (None, , None, None) is returned.
+
+        When a signal is read, but has zero length, the shift and scale returned
+        are `np.NaN`
+    """
     read_filename, read_id = read_tuple
 
     try:

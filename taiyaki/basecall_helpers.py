@@ -9,7 +9,23 @@ _DEFAULT_OVERLAP = 100
 
 
 def chunk_read(signal, chunk_size, overlap):
-    """ Divide signal into overlapping chunks """
+    """ Divide signal into overlapping chunks, trim if necessary
+
+    Args:
+        signal (:class:`ndarray`): Signal to split into chunks
+        chunk_size (int): Length of chunks into which `signal` will be split.
+        overlap (int): Overlap between one chunk and the next.
+
+    Returns:
+        tuple of :class:`ndarray` and :class:`ndarray` and :class:`ndarray`:
+            Tensor containing chunked signal (chunk_size x nchunks x 1), an
+            array containing the coordinate of the start position in the signal
+            of each, and an array containing the coordinate of the end position
+            in the signal (exclusive).
+
+        Where the length of `signal` is less than `chunk_size`, then a single
+        chunk of length equal to the length of `signal` is returned.
+    """
     if len(signal) < chunk_size:
         return signal[:, None, None], np.array([0]), np.array([len(signal)])
 
@@ -28,8 +44,22 @@ def chunk_read(signal, chunk_size, overlap):
 
 
 def stitch_chunks(out, chunk_starts, chunk_ends, stride, path_stitching=False):
-    """ Stitch together neural network output or viterbi path
-    from overlapping chunks
+    """ Stitch together neural network output or viterbi path from overlapping
+    chunks
+
+    Args:
+        out (:class:`torch.Tensor`): Tensor containing output of network,
+            dimensions time x batch x features.
+        chunk_starts (:class:`ndarray`): array containing the coordinate of the
+            start position of each chunk in the signal.
+        chunk_ends (:class:`ndarray`): array containing the coordinate of the
+            end position of each chunk in the signal (exclusive).
+        stride (int): Stride of the model used to call `out`.
+        path_stitching (bool): Include last value in stitching, default False.
+
+    Returns:
+        :class:`torch.Tensor`: A block x feature matrix containing the stitched
+            chunks.
     """
     nchunks = out.shape[1]
 
@@ -69,6 +99,38 @@ def run_model(
         overlap=_DEFAULT_OVERLAP, max_concur_chunks=None, return_numpy=True,
         return_tensor_on_device=True):
     """ Hook for megalodon to run network via taiyaki
+
+    Note:
+        The `chunk_size` and `overlap` parameters as multiples of the stride of
+    `model` rather than as number of samples.  This behaviour is consistent with
+    the parameterisation in Guppy.
+
+    Args:
+        normed_signal (:class:`ndarray`): Signal of read, which will be chunked
+            and the result of calling and stitching returned.
+        model (:class:`layers.Serial`): A Taiyaki model, implicitly assumed to
+            to have a :class:`layers.Serial` as its outmost layer and for the
+            first wrapped layer to have parameters.
+        chunk_size (int, optional): Length of chunks into which `signal` will
+            be split.
+        overlap (int, optional): Overlap between one chunk and the next.
+        max_concur_chunks (int, optional): Calculate chunks in batches of size
+            at most `max_concur_chunks`; if None, then all chunks are calculated
+            at once.
+        return_numpy (bool, optional): Return value should be converted
+            :class:`ndarray` (default).
+        return_tensor_on_device (bool, optional):  Return value should be moved
+            back onto same device as model (default).  Overridden by
+            `return_numpy`.
+
+    Returns:
+        :class:`Tensor`: Output of basecalling chunks, stitched together. If
+            `return_tensor_on_device` is True, then the stitched chunks are
+            transferred back on to the GPU device; otherwise, they are returned
+            in host memory ("cpu" device).
+
+        If `return_numpy` is True, the return type is converted to a
+        :class:`ndarray` and remains in host memory.
     """
     device = next(model.parameters()).device
     stride = guess_model_stride(model)
