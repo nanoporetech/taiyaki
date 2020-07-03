@@ -136,7 +136,8 @@ def L1mL2(x):
     """ Activation function inspired by the L1-L2 M-estimator
 
     This is the weight function of the L2-L1 M-estimatorm, given by:
-        x / sqrt(1 + x^2 / 2)
+    .. math::
+        \frac{x}{\sqrt(1 + x^2 / 2)}
 
     For more details see page 22 of
     http://www.audentia-gestion.fr/research.microsoft/ZhangIVC-97-01.pdf
@@ -185,10 +186,11 @@ def sin(x):
 
 
 def cauchy(x):
-    """Activation function inspired by Cauchy M-estimator
+    """ Activation function inspired by Cauchy M-estimator
 
     This is the weight function of a Cauchy M-estimator, given by:
-        x / (1 + (x / c)^2)
+    .. math::
+        \frac{x}{1 + (x / c)^2}
     where c = 2.3849 is a standard choice.
 
     For more details see page 22 of
@@ -198,10 +200,11 @@ def cauchy(x):
 
 
 def geman_mcclure(x):
-    """Activation function based on Geman McClure M-estimator
+    """ Activation function based on Geman McClure M-estimator
 
     This is the weight function of the Geman McClure M-estimator, given by:
-        x / (1 + x^2)^2
+    .. math::
+        \frac{x}{(1 + x^2)^2}
 
     For more details see page 22 of
     http://www.audentia-gestion.fr/research.microsoft/ZhangIVC-97-01.pdf
@@ -210,10 +213,11 @@ def geman_mcclure(x):
 
 
 def welsh(x):
-    """Activation function based on the Welsh M-estimator
+    """ Activation function based on the Welsh M-estimator
 
     This is the weight function of the Welsh M-estimator, given by:
-        x * exp(-(x / c)^2)
+    .. math::
+        x \exp(-(x / c)^2)
     where c = 2.9846 is a standard choice.
 
     For more details see page 22 of
