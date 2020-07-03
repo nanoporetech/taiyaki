@@ -57,6 +57,7 @@ def convert_seq(s, alphabet):
     Args:
         s (str) : base sequence (e.g. 'ACCCTGGA')
         alphabet (str): alphabet of bases for coding (e.g. 'ACGT')
+        
     Returns:
         np i4 array : flip-flop coded sequence (e.g. 01513260)
     """

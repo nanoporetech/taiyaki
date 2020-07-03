@@ -28,14 +28,14 @@ class Signal:
 
         Args:
         
-        read (ont_fast5_api read object) : the read data
-        dacs (np int array) : (only used if first param is None)
-        channel_info (dict) :  containing keys: offset, range, digitisation,
-                                    and sampling_rate.
-        read_id (str): UUID read identifier
-        read_params (dict): dictionary containing keys: trim_start, trim_end,
-                           shift, and scale (as returned from
-                      prepare_mapping_funcs.get_per_read_params_dict_from_tsv)
+            read (ont_fast5_api read object) : the read data
+            dacs (np int array) : (only used if first param is None)
+            channel_info (dict) :  containing keys: offset, range,
+                                   digitisation, and sampling_rate.
+            read_id (str): UUID read identifier
+            read_params (dict): dictionary containing keys: trim_start,
+                                trim_end, shift, and scale (as returned from
+                       prepare_mapping_funcs.get_per_read_params_dict_from_tsv)
                            
         Returns:
             new Signal object.

@@ -112,9 +112,9 @@ def savetsv(fname, X, header=True):
 
     Args:
         fname (str or file handle) : where to save
-                If the filename ends in ``.gz``, the file is automatically
-                saved in compressed gzip format.  `loadtxt` understands
-                gzipped files transparently.
+            If the filename ends in ``.gz``, the file is automatically
+            saved in compressed gzip format.  `loadtxt` understands
+            gzipped files transparently.
         X (array_like) : Data to be saved to a text file.
     """
     if header:
@@ -130,7 +130,7 @@ def readtsv(fname, fields=None, **kwargs):
 
     Args:
         fname (str): filename to read. If the filename extension is
-                        gz or bz2, the file is first decompressed.
+                    gz or bz2, the file is first decompressed.
         fields (list of str) : list of required fields.
         
     Returns:

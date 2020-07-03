@@ -9,8 +9,7 @@ import numpy as np
 
 
 class SignalMapping:
-    """
-    Represents a mapping between a signal and a reference, with attributes
+    """Represents a mapping between a signal and a reference, with attributes
     including the signal and the reference.
 
     We use the trimming parameters from the signal object to set limits on
@@ -38,6 +37,7 @@ class SignalMapping:
         
         Args:
             x : object to be tested
+    
         Returns:
             bool : is it a numpy array?
         """
@@ -48,6 +48,7 @@ class SignalMapping:
         
         Args:
             name (str): name of the attr
+            
         Returns:
             str :  empty string if type matches, , or error string
                    describing the problem if not
