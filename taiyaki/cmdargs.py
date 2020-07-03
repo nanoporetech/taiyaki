@@ -1,3 +1,10 @@
+"""ArgParse extensions.
+
+Contains many actions for parsing arguments into explicit types and
+checking of values are within explicit sets.
+
+"""
+
 import argparse
 from collections import namedtuple
 import multiprocessing
@@ -6,21 +13,16 @@ import os
 import re
 import warnings
 
-"""ArgParse extensions.
-
-Contains many actions for parsing arguments into explicit types and
-checking of values are within explicit sets.
-
-"""
-
 
 class ByteString(argparse.Action):
+    """Parses command line argument to a byte-string"""
 
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, self.dest, values.encode('ascii'))
 
 
 def checkProbabilities(probabilities):
+    """Asserts that values are in range [0, 1]"""
     try:
         for probability in iter(probabilities):
             assert 0.0 <= probability <= 1.0, 'Probability {} not in [0,1]'.format(
@@ -42,7 +44,7 @@ class display_version_and_exit(argparse.Action):
 
 
 class FileExists(argparse.Action):
-    """Check if the input file exist."""
+    """Checks if the input file exists"""
 
     def __call__(self, parser, namespace, values, option_string=None):
         if not os.path.exists(values):
@@ -52,6 +54,7 @@ class FileExists(argparse.Action):
 
 
 class FileExist(FileExists):
+    """Deprecated: use FileExists instead"""
 
     def __init__(self, **kwdargs):
         warnings.warn(
@@ -60,7 +63,7 @@ class FileExist(FileExists):
 
 
 class FileAbsent(argparse.Action):
-    """Check that input file doesn't exist."""
+    """Checks that input file doesn't exist"""
 
     def __call__(self, parser, namespace, values, option_string=None):
         if os.path.exists(values):
@@ -70,7 +73,11 @@ class FileAbsent(argparse.Action):
 
 
 class CheckCPU(argparse.Action):
-    """Make sure people do not overload the machine"""
+    """Make sure people do not overload the machine
+
+    Raises:
+        RuntimeError: if requested number of workers exceeds number of CPUs
+    """
 
     def __call__(self, parser, namespace, values, option_string=None):
         num_cpu = multiprocessing.cpu_count()
@@ -81,7 +88,21 @@ class CheckCPU(argparse.Action):
 
 
 class ParseToNamedTuple(argparse.Action):
-    """Parse to a namedtuple
+    """Parses values to a namedtuple
+
+    Args:
+        metavar: a tuple of field names
+        type: a tuple of field types
+        nargs: the number of fields - must match type and metavar arguments
+
+    Examples:
+        >>> parser = argparse.ArgumentParser()
+        >>> parser.add_argument('--point', default=(0.0, 0.0),
+                nargs=2, metavar=('x', 'y'), action=ParseToNamedTuple,
+                type=(float, float), help='a point in 2D space')
+        >>> args = parser.parse_args(['--point', '2.0', '0.0'])
+        >>> args.point
+        Values(x=2.0, y=0.0)
     """
 
     def __init__(self, **kwdargs):
@@ -108,7 +129,7 @@ class ParseToNamedTuple(argparse.Action):
 
 
 class NegBound(argparse.Action):
-    """Create a negative list bound suitable for trimming arrays."""
+    """Creates a negative list bound suitable for trimming arrays"""
 
     def __call__(self, parser, namespace, values, option_string=None):
         if values == 0:
@@ -137,6 +158,7 @@ class ExpandRanges(argparse.Action):
 
 
 class ChannelList(ExpandRanges):
+    """ChannelList is deprecated. Use ExpandRanges instead"""
 
     def __init__(self, **kwdargs):
         warnings.warn(
@@ -145,10 +167,9 @@ class ChannelList(ExpandRanges):
 
 
 class AutoBool(argparse.Action):
+    """Automagically creates --foo / --no-foo argument pairs"""
 
     def __init__(self, option_strings, dest, default=None, required=False, help=None):
-        """Automagically create --foo / --no-foo argument pairs"""
-
         if default is None:
             raise ValueError('You must provide a default with AutoBool action')
         if len(option_strings) != 1:
@@ -185,7 +206,9 @@ class AutoBool(argparse.Action):
 class Maybe(object):
     """Create an argparse argument type that accepts either given type or 'None'
 
-    :param mytype: Type function for type to accept, e.g. `int` or `float`
+    Args:
+        mytype: function to create value of correct type from string, e.g.
+            `int` or `float`
     """
 
     def __init__(self, mytype):
@@ -207,6 +230,7 @@ class Maybe(object):
 
 
 def TypeOrNone(mytype):
+    """TypeOrNone is deprecated. Use Maybe instead."""
     warnings.warn("TypeOrNone is deprecated. Use Maybe instead.",
                   DeprecationWarning)
     return Maybe(mytype)
@@ -215,7 +239,9 @@ def TypeOrNone(mytype):
 class Bounded(object):
     """Create an argparse argument type that accepts values in [lower, upper]
 
-    :param mytype: Type function for type to accept, e.g. `int` or `float`
+    Args:
+        mytype: function to create value of correct type from string, e.g.
+            `int` or `float`
     """
 
     def __init__(self, mytype, lower=None, upper=None):
@@ -256,7 +282,9 @@ class Bounded(object):
 def NonNegative(mytype):
     """Create an argparse argument type that accepts only non-negative values
 
-    :param mytype: Type function for type to accept, e.g. `int` or `float`
+    Args:
+        mytype: function to create value of correct type from string, e.g.
+            `int` or `float`
     """
     return Bounded(mytype, lower=mytype(0))
 
@@ -264,7 +292,9 @@ def NonNegative(mytype):
 class Positive(object):
     """Create an argparse argument type that accepts only positive values
 
-    :param mytype: Type function for type to accept, e.g. `int` or `float`
+    Args:
+        mytype: function to create value of correct type from string, e.g.
+            `int` or `float`
     """
 
     def __init__(self, mytype):
@@ -282,23 +312,34 @@ class Positive(object):
 
 
 def proportion(p):
-    """Type function for proportion"""
+    """An argparse Action accepting floats in range [0, 1]"""
     return Bounded(float, 0.0, 1.0)(p)
 
 
 def probability(p):
+    """Probability if deprecated. Use proportion instead."""
     warnings.warn(
         "probability is deprecated. Use proportion instead.", DeprecationWarning)
     return proportion(p)
 
 
 def Vector(mytype):
-    """Return an argparse.Action that will convert a list of values into a numpy
+    """Creates an argparse.Action that converts a list of values into a numpy
     array of given type
+
+    Args:
+        mytype: data-type of the resulting numpy array
+
+    Examples:
+        >>> parser = argparse.ArgumentParser()
+        >>> parser.add_argument('data', nargs='+', action=Vector(np.float32))
+        >>> args = parser.parse_args(['1e-4', '3.14', '18', '2.0', '0.0'])
+        >>> args.data
+        array([1.00e-04, 3.14e+00, 1.80e+01, 2.00e+00, 0.00e+00], dtype=float32)
     """
 
     class MyNumpyAction(argparse.Action):
-        """Parse a list of values into numpy array"""
+        """Parses a list of values into numpy array"""
 
         def __call__(self, parser, namespace, values, option_string=None):
             try:
@@ -314,7 +355,7 @@ def Vector(mytype):
 
 
 def str_to_numeric(x):
-    """Up-type a str to either int or float, or leave alone."""
+    """Converts a str to int or float, if possible, otherwise leave alone."""
     if not isinstance(x, str):
         return x
     try:
@@ -327,7 +368,7 @@ def str_to_numeric(x):
 
 
 class DeviceAction(argparse.Action):
-    """Parse string specifying a device (either CPU or GPU) and return a normalised version
+    """Parses string specifying a device (either CPU or GPU) and returns a normalised version
 
     Converts None to 'cpu'
     Converts a string like '2' to int 2
@@ -363,9 +404,11 @@ str_to_type = {
     'true': True, 'false': False,
     'TRUE': True, 'FALSE': False
 }
+"""Deprecated: rules to convert a string to a boolean"""
 
 bool_actions = {
     AutoBool,
     argparse._StoreTrueAction,
     argparse._StoreFalseAction
 }
+"""Deprecated: a list of boolean-related actions"""
