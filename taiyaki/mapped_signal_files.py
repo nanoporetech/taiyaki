@@ -33,15 +33,16 @@ class AbstractMappedSignalReader(ABC):
     as much as possible so that changes made there will be propagated to the
     derived classes.
     """
-
     def __enter__(self):
-        """Called when 'with' is used to create an object.
-        Since we always return the instance, no need to override this."""
+        """ Called when 'with' is used to create an object.
+        Since we always return the instance, no need to override this.
+        """
         return self
 
     def __exit__(self, *args):
-        """No need to override this - just override the close() function.
-        Called when 'with' finishes."""
+        """ No need to override this - just override the close() function.
+        Called when 'with' finishes.
+        """
         self.close()
 
     #########################################
@@ -50,54 +51,102 @@ class AbstractMappedSignalReader(ABC):
 
     @abstractmethod
     def __init__(self, filename, mode="a"):
-        """Open file in read-only mode (mode="r") or allowing
-        writing of additional stuff and creating if empty
-        (default mode "a") """
+        """ Open file
+
+        Note:
+            File open `mode` is assumed to be consistent with Python `File`
+        objects, but implementation is defined by the derived class.
+
+        Args:
+            filename (str): name of file to open.
+            mode (str, optional): mode to open file.  Default "a" is to append,
+                creating file if necessary.
+        """
         pass
 
     @abstractmethod
     def close(self):
-        """Close file"""
+        """ Close file
+        """
         pass
 
     @abstractmethod
     def get_read(self, read_id):
-        """Return a read object containing all elements of the read."""
+        """ Return a read object containing all elements of the read.
+
+        Args:
+            read_id (str): ID of read to get from object.
+
+        Returns:
+            :class:`signal_mapping.SignalMapping`: information about read
+                mapping.
+        """
         pass
 
     @abstractmethod
     def get_read_ids(self):
-        """Return list of read ids, or empty list if none present"""
+        """ Return read IDs present in file
+
+        Returns:
+            list of str: List of read ids present in file, empty list if no
+                reads are present.
+        """
         pass
 
     @property
     @abstractmethod
     def version(self):
-        """Return integer version number"""
+        """ Return integer version number
+
+        Returns:
+            int: version number of file
+        """
         pass
 
     @abstractmethod
     def get_alphabet_information(self):
-        """Return taiyaki.alphabet.AlphabetInfo object"""
+        """  Get information about alphabet of mapping
+
+        Modified base information is returned if present.
+
+        Returns:
+            :class:`alphabet.AlphabetInfo`
+        """
         pass
 
     def get_multiple_reads(self, read_id_list, max_reads=None):
-        """Get list of signal_mapping.SignalMapping objects from file.
-        If read_id_list=="all" then get them all.
-        If a read_id in the list is not present in the file, then just skip.
-        Don't raise an exception."""
+        """ Get signal_mapping.SignalMapping objects from file.
+
+        Args:
+            read_id_list (list of str):  read IDs for which mapping information
+                should be returned.  If `read_id_list` == "all" then all reads
+                are returned.
+
+        Returns:
+            list of :class:`signal_mapping.SignalMapping`: mapping information
+                for reads requested in `read_id_list,`, if present in file.
+                Missing reads are skipped.
+        """
         read_ids_in_file = self.get_read_ids()
         if read_id_list == "all":
             read_ids_used = read_ids_in_file
         else:
             read_ids_used = set(read_id_list).intersection(read_ids_in_file)
+
         if max_reads is not None and max_reads < len(read_ids_used):
             read_ids_used = list(read_ids_used)[:max_reads]
+
         return [self.get_read(read_id) for read_id in read_ids_used]
 
     def check_read(self, read_id):
-        """Check a read in the currently open file, returning "pass" or a report
-        on errors."""
+        """Check a read in the currently open file.
+
+        Args:
+            read_id (str): ID of read to check
+
+        Returns:
+            str: "pass" if correct, or a report on errors.
+        """
         try:
             read = self.get_read(read_id)
         except:
@@ -105,12 +154,21 @@ class AbstractMappedSignalReader(ABC):
         return read.check()
 
     def check(self, limit_report_lines=100):
-        """Check the whole file, returning report in the form of a string"""
+        """Check the whole file
+
+        Args:
+            limit_report_lines (int, optional): maximum number of lines in error
+                report.
+
+        Returns:
+            str: "pass" or report of any errors
+        """
         return_string = ""
         try:
             version_number = self.version
         except:
             return_string += "Can't get version number\n"
+
         if not np.issubdtype(type(version_number), np.integer):
             return_string += (
                 'Type of attribute "version" is "{}" and should be ' +
@@ -119,6 +177,7 @@ class AbstractMappedSignalReader(ABC):
         read_ids = self.get_read_ids()
         if len(read_ids) == 0:
             return_string += "No reads in file\n"
+
         for read_id in read_ids:
             if return_string.count('\n') >= limit_report_lines:
                 return_string += (
@@ -129,8 +188,10 @@ class AbstractMappedSignalReader(ABC):
                 read_check = self.check_read(read_id)
                 if read_check != "pass":
                     return_string += "Read " + read_id + ":\n" + read_check
+
         if len(return_string) == 0:
             return "pass"
+
         return return_string
 
 
@@ -154,41 +215,60 @@ class AbstractMappedSignalWriter(ABC):
     """
 
     def __enter__(self):
-        """Called when 'with' is used to create an object.
-        Since we always return the instance, no need to override this."""
+        """ Called when 'with' is used to create an object.
+        Since we always return the instance, no need to override this.
+        """
         return self
 
     def __exit__(self, *args):
-        """No need to override this - just override the close() function.
-        Called when 'with' finishes."""
+        """ No need to override this - just override the close() function.
+        Called when 'with' finishes.
+        """
         self.close()
 
     @abstractmethod
     def write_read(self, readdict):
-        """Write a read to the appropriate place in the file, starting from
+        """ Write a read to the appropriate place in the file, starting from
         a read dictionary
+
+        Args:
+            readdict (dict):
         """
         pass
 
     @abstractmethod
     def _write_version(self):
-        """Write version number of file format"""
+        """Write version number of file format
+        """
         pass
 
     @abstractmethod
     def _write_alphabet_info(self, alphabet_info):
-        """Write alphabet information to file"""
+        """ Write alphabet information to file
+
+        Args:
+            alphabet_info (:class:`alphabet.AlphabetInfo`):  Alphabet to write
+
+        """
         pass
 
 
 def _get_hdf5_read_path(read_id):
-    """Returns string giving path within HDF5 file to data for a read"""
+    """ Returns string giving path within HDF5 file to data for a read
+
+    Args:
+        read_id (str): ID of read for which path is required.
+
+    Returns:
+        str: path of read in POSIX format.
+    """
     return posixpath.join(READS_ROOT_TEXT, read_id)
 
 
 class HDF5Reader(AbstractMappedSignalReader):
     """A file storing mapped data in an HDF5 in the simplest
     possible way.
+
     NOT using a derivative of the fast5 format.
     This is an HDF5 file with structure below
     There can be as many read_ids as you like.
@@ -202,19 +282,36 @@ class HDF5Reader(AbstractMappedSignalReader):
              collapse_alphabet  |                {(All the read data for read 1)
              mod_long_names     |
 
+    Attributes:
+        hdf5 (:class:`h5py.File`): File handle of HDF5 file
+        version (int): Version of file
     """
-
     def __init__(self, filename):
+        """ Open file and initialise
+
+        Args:
+            filename (str): name of file to open.
+        """
         self.hdf5 = h5py.File(filename, 'r')
         assert self.version == _version, (
             'Incorrect file version, got {} expected {}').format(
                 self.version, _version)
 
     def close(self):
+        """ Close file handle.
+        """
         self.hdf5.close()
 
     def get_read(self, read_id):
-        """Return a read object (see class definition above)."""
+        """ Return a read object containing all elements of the read.
+
+        Args:
+            read_id (str): ID of read to get from object.
+
+        Returns:
+            :class:`signal_mapping.SignalMapping`: information about read
+                mapping.
+        """
         h = self.hdf5[_get_hdf5_read_path(read_id)]
         d = {}
         # Iterate over datasets (the read group should have no subgroups)
@@ -226,7 +323,12 @@ class HDF5Reader(AbstractMappedSignalReader):
         return signal_mapping.SignalMapping(**d)
 
     def get_read_ids(self):
-        """Return list of read ids, or empty list if none present"""
+        """ Return read IDs present in file
+
+        Returns:
+            list of str: List of read ids present in file, empty list if no
+                reads are present.
+        """
         try:
             return self.hdf5['read_ids'][()].tolist()
         except KeyError:
@@ -237,6 +339,13 @@ class HDF5Reader(AbstractMappedSignalReader):
             return []
 
     def get_alphabet_information(self):
+        """  Get information about alphabet of mapping
+
+        Modified base information is returned if present.
+
+        Returns:
+            :class:`alphabet.AlphabetInfo`
+        """
         mod_long_names = self.hdf5.attrs['mod_long_names'].splitlines()
         return alphabet.AlphabetInfo(
             self.hdf5.attrs['alphabet'], self.hdf5.attrs['collapse_alphabet'],
@@ -244,6 +353,11 @@ class HDF5Reader(AbstractMappedSignalReader):
 
     @property
     def version(self):
+        """ Return integer version number
+
+        Returns:
+            int: version number of file
+        """
         return self.hdf5.attrs['version']
 
 
@@ -263,9 +377,17 @@ class HDF5Writer(AbstractMappedSignalWriter):
              collapse_alphabet  |                {(All the read data for read 1)
              mod_long_names     |
 
+    Attributes:
+       hdf5 (:class:`h5py.File`):  File handle of HDF5 file to write to
+       read_ids (list): Read ID written to file.
     """
-
     def __init__(self, filename, alphabet_info):
+        """ Open file and initialise
+
+        Args:
+            filename (str): name of file to open.
+            alphabet_info (:class:`alphabet.AlphabetInfo`):  Alphabet to write
+        """
         # mode 'w' to preserve behaviour, 'x' would be more appropraite
         self.hdf5 = h5py.File(filename, 'w')
         self._write_version()
@@ -276,6 +398,8 @@ class HDF5Writer(AbstractMappedSignalWriter):
         self.read_ids = []
 
     def close(self):
+        """ Finalise HDF5 file and close
+        """
         if len(self.read_ids) > 0:
             # special variable length string h5py data type
             dt = h5py.special_dtype(vlen=str)
@@ -290,6 +414,9 @@ class HDF5Writer(AbstractMappedSignalWriter):
     def write_read(self, readdict):
         """Write a read to the appropriate place in the file, starting from
         a read object
+
+        Args:
+            readdict (dict): information about read
         """
         read_id = readdict['read_id']
         self.read_ids.append(read_id)
@@ -301,10 +428,17 @@ class HDF5Writer(AbstractMappedSignalWriter):
                 g.attrs[k] = v
 
     def _write_alphabet_info(self, alphabet_info):
+        """  Write information about alphabet to file
+
+        Args:
+            alphabet_info (:class:`alphabet.AlphabetInfo`):  Alphabet to write
+        """
         self.hdf5.attrs['alphabet'] = alphabet_info.alphabet
         self.hdf5.attrs['collapse_alphabet'] = alphabet_info.collapse_alphabet
         self.hdf5.attrs['mod_long_names'] = '\n'.join(
             alphabet_info.mod_long_names)
 
     def _write_version(self):
+        """  Write file version
+        """
         self.hdf5.attrs['version'] = _version
