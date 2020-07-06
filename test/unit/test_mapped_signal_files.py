@@ -24,8 +24,11 @@ def vectorprint(x):
 
 
 def construct_mapped_read_dict():
-    """Test data for a mapped read file.
-    Returns a dictionary containing the data"""
+    """Constructs test data for a mapped read file
+
+    Returns:
+        dictionary containing the test data
+    """
     Nsig = 20
     Nref = 16
     reftosigstart = np.concatenate((
@@ -68,8 +71,9 @@ class TestMappedReadFiles(unittest.TestCase):
             print("No previous test file to remove")
 
     def test_HDF5_mapped_read_file(self):
-        """Test that we can save a mapped read file, open it again and
-        use some methods to get data from it. Plot a picture for diagnostics.
+        """Test that we can save a mapped read file and open it again
+
+        Also produces a plot for diagnostic purposes
         """
 
         print("Creating Read object from test data")
@@ -145,9 +149,7 @@ class TestMappedReadFiles(unittest.TestCase):
             print("Saved plot to", self.plotfilepath)
 
     def test_check_HDF5_mapped_read_file(self):
-        """Check that constructing a read object which doesn't conform
-        leads to errors.
-        """
+        """Checks that non-conforming read object leads to errors"""
         print("Creating flawed Read object from test data")
         read_dict = construct_mapped_read_dict()
         # set reference to incorrect length
