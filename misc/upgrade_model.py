@@ -19,10 +19,11 @@ parser.add_argument('input', action=FileExists,
 
 
 def convert_0_to_1(model):
-    """ Convert version 0 to version 1
-        * Add metadata
-        * Convolution model has `has_bias` field
-        * GlobalNormFlipFlop has `_never_use_cupy` field
+    """ Converts model from version 0 to version 1
+
+    - Adds model metadata (with default values)
+    - Adds `has_bias` field to Convolution layers
+    - Adds `_never_use_cupy` field to GlobalNormFlipFlop layers
     """
     if hasattr(model, 'metadata'):
         #  Version already at least 1
@@ -55,8 +56,9 @@ def convert_0_to_1(model):
 
 
 def convert_1_to_2(model):
-    """ Convert version 1 to version 2
-        * GlobalNormFlipFlop has `activation` and `scale` fields
+    """ Converts model from version 1 to version 2
+    
+    - Adds `activation` and `scale` fields to GlobalNormFlipFlop layers
     """
     if model.metadata['version'] >= 2:
         return False
