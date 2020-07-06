@@ -6,9 +6,10 @@ import util
 
 
 class AcceptanceTest(unittest.TestCase):
-
+    """Acceptance test for squiggle training"""
     @classmethod
     def setUpClass(self):
+        """Set up directories and files"""
         test_directory = os.path.splitext(__file__)[0]
         testset_name = os.path.basename(test_directory)
 
@@ -17,15 +18,26 @@ class AcceptanceTest(unittest.TestCase):
         self.script = os.path.join(util.BIN_DIR, "train_squiggle.py")
 
     def work_dir(self, test_name):
+        """Set up directory for a single test.
+        
+        Args:
+            test_name (str): name of test (will be taken from stem of the
+            name of the current file - see setupClass())
+            
+        Returns:
+            str : directory path for files"""
         directory = os.path.join(self.testset_work_dir, test_name)
         util.maybe_create_dir(directory)
         return directory
 
     def test_usage(self):
+        """Run a test of the script with no command line args to see if we
+        get the usage message"""
         cmd = [self.script]
         util.run_cmd(self, cmd).expect_exit_code(2)
 
     def test_squiggle_training(self):
+        """Run a test of the script with example data"""
         test_work_dir = self.work_dir(os.path.join("test_squiggle_training"))
 
         output_directory = os.path.join(test_work_dir, "training_output")

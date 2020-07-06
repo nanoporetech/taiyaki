@@ -17,7 +17,12 @@ _fval['b'] = 'i'
 def _numpyfmt(a):
     """Return a list of formats with which to output a numpy array
 
-    :param a:  :class:`ndrecarray`
+    Args:
+        a (numpy recarray) : numpy structured array
+        
+    Returns:
+        list of strs : each is a format string to be used when
+                       printing one of the columns of a
     """
     fmt = (np.dtype(s[1]).kind.lower() for s in a.dtype.descr)
     return ['%' + _fval.get(f, f) for f in fmt]
@@ -26,11 +31,13 @@ def _numpyfmt(a):
 def file_has_fields(fname, fields=None):
     """Check that a tsv file has given fields
 
-    :param fname: filename to read. If the filename extension is
-        gz or bz2, the file is first decompressed.
-    :param fields: list of required fields.
+    Args:
+        fname (str): filename to read. If the filename extension is
+                     gz or bz2, the file is first decompressed.
+        fields (list of str): list of required fields.
 
-    :returns: boolean
+    Returns:
+        bool : does the file have the fields?
     """
 
     # Allow a quick return
@@ -57,11 +64,15 @@ def file_has_fields(fname, fields=None):
 
 def read_chunks(fname, n_lines, n_chunks=None, header=True):
     """Yield successive chunks of a file
-
-    :param fname: file to read
-    :param n_lines: number of lines per chunk
-    :param n_chunks: number of chunks to read
-    :param header: if True one line is added to first chunk
+    
+    Args:
+        fname (str): file to read
+        n_lines (int): number of lines per chunk
+        n_chunks (int): number of chunks to read
+        header (bool): if True one line is added to first chunk
+        
+    Yields:
+        str : a chunk of the file
     """
     with open(fname) as fh:
         first = True
@@ -84,8 +95,12 @@ def read_chunks(fname, n_lines, n_chunks=None, header=True):
 def take_a_peak(fname, n_lines=4):
     """Read the head of a file
 
-    :param fname: file to read
-    :param n_lines: number of lines to read
+    Args:
+        fname (str): file to read
+        n_lines (int): number of lines to read
+        
+    Yields:
+        str : line of the file
     """
     with open(fname, 'r') as fh:
         for l in islice(fh, n_lines):
@@ -95,11 +110,12 @@ def take_a_peak(fname, n_lines=4):
 def savetsv(fname, X, header=True):
     """Save a structured array to a .tsv file
 
-    :param fname: filename or file handle
-        If the filename ends in ``.gz``, the file is automatically saved in
-        compressed gzip format.  `loadtxt` understands gzipped files
-        transparently.
-    :param X: array_like, Data to be saved to a text file.
+    Args:
+        fname (str or file handle) : where to save
+            If the filename ends in ``.gz``, the file is automatically
+            saved in compressed gzip format.  `loadtxt` understands
+            gzipped files transparently.
+        X (array_like) : Data to be saved to a text file.
     """
     if header:
         header = '\t'.join(X.dtype.names)
@@ -112,9 +128,13 @@ def savetsv(fname, X, header=True):
 def readtsv(fname, fields=None, **kwargs):
     """Read a tsv file into a numpy array with required field checking
 
-    :param fname: filename to read. If the filename extension is
-        gz or bz2, the file is first decompressed.
-    :param fields: list of required fields.
+    Args:
+        fname (str): filename to read. If the filename extension is
+                    gz or bz2, the file is first decompressed.
+        fields (list of str) : list of required fields.
+        
+    Returns:
+        numpy recarray : structured array containing data
     """
 
     if not file_has_fields(fname, fields):
@@ -132,9 +152,13 @@ def readtsv(fname, fields=None, **kwargs):
 def readchunkedtsv(fname, chunk_size=100, **kwargs):
     """Read chunks of a .tsv file at a time.
 
-    :param fname: file to read
-    :param chunk_size: length of resultant chunks
-    :param **kwargs: kwargs of np.genfromtxt
+    Args:
+        fname (str): file to read
+        chunk_size (int): length of resultant chunks
+        **kwargs (dict): kwargs passed on to np.genfromtxt
+        
+    Yields:
+        numpy recarray : structured array
     """
     for k in ['names', 'delimiter', 'dtype']:
         kwargs.pop(k, None)

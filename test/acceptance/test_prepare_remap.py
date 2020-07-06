@@ -7,9 +7,10 @@ from taiyaki import mapped_signal_files
 
 
 class AcceptanceTest(unittest.TestCase):
-    """Test on a single fast5 file runs the first part of the workflow
-    Makefile to make the per-read-params file and reference file
-    and then do remapping"""
+    """Tests the prepare_mapped_reads.py script on a single fast5 file
+
+    Uses cached per-read-params and references files
+    """
 
     @classmethod
     def setUpClass(self):
@@ -36,6 +37,7 @@ class AcceptanceTest(unittest.TestCase):
             self.taiyakidir, "bin/prepare_mapped_reads.py")
 
     def test_prepare_remap(self):
+        """Tests the prepare_mapped_reads.py script"""
         print("Current directory is", os.getcwd())
         print("Taiyaki dir is", self.taiyakidir)
         print("Data dir is ", self.datadir)
@@ -73,6 +75,7 @@ class AcceptanceTest(unittest.TestCase):
         return
 
     def test_mod_prepare_remap(self):
+        """Tests the prepare_mapped_reads.py script with modified bases"""
         print("Current directory is", os.getcwd())
         print("Taiyaki dir is", self.taiyakidir)
         print("Data dir is ", self.datadir)

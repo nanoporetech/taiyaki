@@ -13,6 +13,7 @@ from taiyaki.fileio import readtsv
 
 
 class RemapResult(enum.Enum):
+    """Enumerates possible results from remapping a read""" 
     SUCCESS = 'Success!'
     READ_ID_INFO_NOT_FOUND = 'No information for read id found in file.'
     NO_REF_FOUND = 'No fasta reference found.'
@@ -25,19 +26,23 @@ def oneread_remap(
         read_tuple, model, per_read_params_dict, alphabet_info,
         max_read_length, device='cpu', localpen=0.0):
     """ Worker function for remapping reads using flip-flop model on raw signal
-    :param read_tuple : read, identified by a tuple (filepath, read_id,
-        read reference)
-    :param model : pytorch model (the torch data structure, not a filename)
-    :param device : integer specifying which GPU to use for remapping, or
-        'cpu' to use CPU
-    :param per_read_params_dict : dictionary where keys are UUIDs, values are
-        dicts containing keys trim_start trim_end shift scale
-    :param alphabet_info : AlphabetInfo object for basecalling
-    :param max_read_length : Don't attempt to remap reads with references
-        longer than this
-    :param localpen : Penalty for local mapping
+    
+    Args:
+        read_tuple (tuple) : read, identified by a tuple
+                                  (filepath, read_id, read reference)
+        model (pytorch Module): pytorch model
+        device (int or float): integer specifying which GPU to use for
+                                remapping, or 'cpu' to use CPU
+        per_read_params_dict (dict) : dictionary where keys are UUIDs,
+                                      values are dicts containing keys
+                                      trim_start trim_end shift scale
+        alphabet_info (AlphabetInfo object):  for basecalling
+        max_read_length (int) : Don't attempt to remap reads with references
+                                longer than this
+        localpen (float): Penalty for local mapping
 
-    :returns: tuple of
+    Returns:
+        tuple :(dict,str) containing
         1. dictionary as specified in
             signal_mapping.SignalMapping.get_read_dictionary
         2. message string indicating an error if one occured
@@ -104,12 +109,14 @@ def generate_output_from_results(results, output, alphabet_info, verbose=True):
     """
     Given an iterable of dictionaries, each representing the results of mapping
     a single read, output a mapped-read file.
+    
     This version outputs to the V8 'chunk' file format (actually containing
     mapped reads, not chunks)
 
-    param: results : an iterable of read dictionaries (with mappings)
-    param: output : output filename
-    param: alphabet_info : taiyaki.alphabet.AlphabetInfo instance
+    Args:
+        results (iterable): an iterable of read dictionaries (with mappings)
+        output (str): output filename
+        alphabet_info (AlphabetInfo object): alphabet
     """
     progress = helpers.Progress(quiet=not verbose)
     err_types = defaultdict(int)
@@ -134,8 +141,12 @@ def generate_output_from_results(results, output, alphabet_info, verbose=True):
 
 def get_per_read_params_dict_from_tsv(input_file):
     """Load per read parameter .tsv into a np array and parse into a dictionary
-    :param input_file : filename including path for the tsv file
-    :returns: dictionary with keys being UUIDs, values being named
+    
+    Args:
+        input_file (str): filename including path for the tsv file
+    
+    Returns:
+        dict : dictionary with keys being UUIDs, values being named
         tuple('per_read_params', 'trim_start trim_end shift scale')"""
     try:
         per_read_params_array = readtsv(

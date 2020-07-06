@@ -18,6 +18,9 @@ class TestFlipFlopMapping(unittest.TestCase):
 
         All transition scores are set to 1 (on best path) and 0
         otherwise so the score for the best path should be exactly 6.
+
+        Returns:
+            None
         """
         sequence = 'AABA'
         alphabet = 'AB'
@@ -58,6 +61,9 @@ class TestFlipFlopMapping(unittest.TestCase):
         All transition scores are set to 1 (on best path) and 0
         otherwise. Scores in the local state are set to 0.5, so the
         best path should have a score of 3.5.
+
+        Returns:
+            None
         """
         sequence = 'BA'
         alphabet = 'AB'
@@ -84,7 +90,10 @@ class TestFlipFlopMapping(unittest.TestCase):
         self.assertEqual(path.tolist(), path2.tolist())
 
     def test_mapping_reftosignal(self):
-        """Test the conversion from remapped path to reftosignal output
+        """ Test the conversion from remapped path to reftosignal output
+
+        Returns:
+            None
         """
         sig = signal.Signal(dacs=np.zeros(12))
         # testing path with a single skip (over 3rd base; first "T")
@@ -116,7 +125,10 @@ class TestFlipFlopMapping(unittest.TestCase):
         return
 
     def test_mapping_reftosignal_stride_2(self):
-        """Test the conversion from remapped path to reftosignal output
+        """ Test the conversion from remapped path to reftosignal output
+
+        Returns:
+            None
         """
         sig = signal.Signal(dacs=np.zeros(24))
         # testing path with a single skip (over 3rd base; first "T")

@@ -20,19 +20,25 @@ class Signal:
                                'sampling_rate': 4000},
                  read_id=None, read_params={'trim_start': 0, 'trim_end': 0,
                                             'shift': 0, 'scale': 1}):
-        """Loads data from read in fast5 file.
-        If read is None
-        and dacs is a np array then initialse the untrimmed_dacs to this array.
+        """Constructor for Signal class. Loads data from read in fast5 file.
+        
+        If read is None and dacs is a np array then initialise the
+        untrimmed_dacs to this array.
         (this allows testing with non-fast5 data)
 
-        param read : an ont_fast5_api read object
-        param dacs : np int array (only used if first param is None)
-        param channel_info: dict containing keys: offset, range, digitisation,
-            and sampling_rate.
-        param read_id: UUID read identifier
-        param read_params: dictionary containing keys: trim_start, trim_end,
-            shift, and scale (as returned from
-            prepare_mapping_funcs.get_per_read_params_dict_from_tsv)
+        Args:
+        
+            read (ont_fast5_api read object) : the read data
+            dacs (np int array) : (only used if first param is None)
+            channel_info (dict) :  containing keys: offset, range,
+                                   digitisation, and sampling_rate.
+            read_id (str): UUID read identifier
+            read_params (dict): dictionary containing keys: trim_start,
+                                trim_end, shift, and scale (as returned from
+                       prepare_mapping_funcs.get_per_read_params_dict_from_tsv)
+                           
+        Returns:
+            new Signal object.
         """
         if read is None:
             try:
@@ -71,7 +77,11 @@ class Signal:
     def set_trim_absolute(self, trimstart, trimend):
         """trim trimstart samples from the start and trimend samples from the
         end, starting with the whole stored data set (not starting with the
-        existing trimmed ends)
+        existing trimmed ends).
+        
+        Args:
+            trimstart (int) : number of samples to trim from the start
+            trimend (int)   : number of samples to trim from the end
         """
         untrimmed_len = len(self.untrimmed_dacs)
         if trimstart < 0 or trimend < 0:
@@ -86,22 +96,28 @@ class Signal:
 
     @property
     def dacs(self):
-        """dac numbers, trimmed according to trimming parameters"""
+        """Returns:
+            np int array : dac numbers, trimmed according to trimming params"""
         return self.untrimmed_dacs[self.signalstart:self.signalend_exc].copy()
 
     @property
     def untrimmed_current(self):
-        """Signal measured in pA, untrimmed"""
+        """Returns:
+            np float array : Signal measured in pA, untrimmed"""
         return ((self.untrimmed_dacs + self.offset) *
                 self.range / self.digitisation)
 
     @property
     def current(self):
-        """Signal measured in pA, trimmed according to trimming parameters"""
+        """Returns:
+            np float array: Signal measured in pA, trimmed according to
+                            trimming parameters"""
         return (self.dacs + self.offset) * self.range / self.digitisation
 
     @property
     def standardized_current(self):
-        """Signal measured in standardized units according to read_params,
-        trimmed according to trimming parameters"""
+        """Returns:
+            np float array : Signal measured in standardized units according
+                              to read_params, trimmed according to
+                              trimming parameters"""
         return (self.current - self.shift_from_pA) / self.scale_from_pA

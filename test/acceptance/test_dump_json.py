@@ -8,6 +8,14 @@ import util
 
 
 def is_valid_json(s):
+    """ Tests whether a string can be parsed by json module
+
+    Args:
+        s (str): String containing JSON formatted data
+
+    Returns:
+        bool: True if data is loadable, False otherwise
+    """
     try:
         json.loads(s)
         return True
@@ -27,11 +35,21 @@ class AcceptanceTest(unittest.TestCase):
             util.MODELS_DIR, "mGru_flipflop_remapping_model_r9_DNA.checkpoint")
 
     def work_dir(self, test_name):
+        """  Creates new directory in workspace if doesn't already exist
+
+        Args:
+            test_name (str): name of directory to create
+
+        Returns:
+            str: path of directory created
+        """
         directory = os.path.join(self.testset_work_dir, test_name)
         util.maybe_create_dir(directory)
         return directory
 
     def test_usage(self):
+        """  Run without arguments, expect usage info
+        """
         cmd = [self.script]
         util.run_cmd(self, cmd).expect_exit_code(
             2).expect_stderr(util.any_line_starts_with(u"usage"))
@@ -45,6 +63,12 @@ class AcceptanceTest(unittest.TestCase):
         [["--no-params"], "mLstm_flipflop_model_r103_DNA.checkpoint"],
     ])
     def test_dump_to_stdout(self, options, model_name):
+        """  Try dumping json to stdout
+
+        Args:
+            options (arrayof str): commandline options for command
+            model_name (str): name of file from which to dump json
+        """
         model_file = os.path.join(util.MODELS_DIR, model_name)
         self.assertTrue(os.path.exists(model_file))
         cmd = [self.script, model_file] + options
@@ -58,6 +82,16 @@ class AcceptanceTest(unittest.TestCase):
         [["--no-params"], "mLstm_flipflop_model_r103_DNA.checkpoint"]
     ])
     def test_dump_to_a_file(self, options, model_name):
+        """  Try dumping json to a file
+
+        Notes:
+            JSON for each model is dumped to a temporary file in the the
+        "test_dump_to_a_file" directory.
+
+        Args:
+            options (arrayof str): commandline options for command
+            model_name (str): name of file from which to dump json
+        """
         model_file = os.path.join(util.MODELS_DIR, model_name)
         self.assertTrue(os.path.exists(self.model_file))
 
@@ -83,6 +117,12 @@ class AcceptanceTest(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_json_to_checkpoint(self):
+        """  Try creating a checkpoint from a JSON file
+
+        Notes:
+            Unmaintained and expected to fail.
+
+        """
         subdir = "3"
         self.assertTrue(os.path.exists(self.model_file))
         test_work_dir = self.work_dir("test_json_to_checkpoint")

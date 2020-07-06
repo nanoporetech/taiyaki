@@ -5,7 +5,20 @@ from taiyaki.layers import logaddexp
 
 
 @torch.jit.script
-def ctc_fwd_step(self, prev, xt, seqs):
+def ctc_fwd_step(prev, xt, seqs):
+    """ Forward step of CTC mapping calculation
+
+    Args:
+        prev (:class:`Tensor`): forwards scores for previous step, dimensions
+            batch x position.
+        xt (:class"`Tensor`): scores for each possible feature, dimensions
+            batch x features
+        seq (:class:`Tensor`): index of features occurring at each position of
+            each sequence, dimensions batch x position.
+
+    Returns:
+        :class:`Tensor`: forward scores updated for current step.
+    """
     # Initialise with stay score
     score = xt[:, 4][:, None] + prev
     # Add move score
@@ -16,12 +29,40 @@ def ctc_fwd_step(self, prev, xt, seqs):
 
 
 class CTCLoss(nn.Module):
+    """ Calculate Neg-Log-Likelihood of sequence given CTC output
 
+    Attributes:
+        sharp (float): sharpening factor.
+    """
     def __init__(self, sharp=1.0):
+        """ Constructor for `CTCLoss`
+
+        Args:
+            sharp (float, optional): sharpening factor for mapping.
+        """
         super().__init__()
         self.sharp = sharp
 
     def forward(self, x, seqs, seqlens):
+        """ Forward method for CTC mapping calculation
+
+        Args:
+            x (:class:`Tensor`): Tensor with dimensions TBF containing scores
+                for each possible observation (features) at every time point.
+            seqs (:class"`Tensor`): Tensor with dimensions BP (positions)
+                containing the index of the feature occurring at each position
+                of each sequence.  Tensor is padded to the length of longest
+                sequence.
+            seqlens (:class:`Tensor`): 1D array containing the length of each
+                sequence in `seqs`.
+
+        Raises:
+            AssertError: Dimensions are inconsistent
+
+        Returns:
+            :class:`Tensor`: A 1D array containing mapping score for each batch
+                element.
+        """
         #  x is input tensor  T x B x 5
         #  seqs is list of sequence tensors
         nt, nb, nf = x.shape
@@ -42,6 +83,23 @@ class CTCLoss(nn.Module):
 
 @torch.jit.script
 def flipflop_step(prev, xt, move_idx, stay_idx):
+    """ Forward step of CTC mapping calculation
+
+    Args:
+        prev (:class:`Tensor`): forwards scores for previous step, dimensions
+            batch x position.
+        xt (:class"`Tensor`): scores for each possible transition, dimensions
+            batch x ntransitions
+        move_idx (:class:`Tensor`): index of transions for each position of
+            each sequence that results in moving to the next position,
+            dimensions batch x (position - 1).
+        stay_idx (:class:`Tensor`): index of transions for each position of
+            each sequence that results in staying in the current position,
+            dimensions batch x position.
+
+    Returns:
+        :class:`Tensor`: forward scores updated for current step.
+    """
     #  Initialise with stay score
     score = torch.gather(xt, 1, stay_idx) + prev
     #  Add on move score
@@ -52,12 +110,42 @@ def flipflop_step(prev, xt, move_idx, stay_idx):
 
 
 class FlipFlopLoss(nn.Module):
+    """ Calculate Neg-Log-Likelihood of sequence given Flip-Flop CRF output
 
+    Attributes:
+        sharp (float): sharpening factor.
+    """
     def __init__(self, sharp=1.0):
+        """ Constructor for `FlipFlopLoss`
+
+        Args:
+            sharp (float, optional): sharpening factor for mapping
+        """
         super().__init__()
         self.sharp = sharp
 
     def forward(self, x, move_idx, stay_idx, seqlens):
+        """ Forward method for flip-flop mapping calculation
+
+        Args:
+            x (:class:`Tensor`): Tensor with dimensions TBF containing scores
+                for each possible observation (features) at every time point.
+            move_idx (:class:`Tensor`): Tensor storing index of transions for
+                each position of each sequence that results in moving to the
+                next position, dimensions batch x (position - 1).
+            stay_idx (:class:`Tensor`): Tensor storing index of transions for
+                each position of each sequence that results in staying in the
+                current position, dimensions batch x position.
+            seqlens (:class:`Tensor`): 1D array containing the length of each
+                sequence in `seqs`.
+
+        Raises:
+            AssertError: Dimensions are inconsistent
+
+        Returns:
+            :class:`Tensor`: A 1D array containing mapping score for each batch
+                element.
+        """
         #  x is input tensor  T x B x 5
         #  seqs is list of sequence tensors
         nt, nb, nf = x.shape
