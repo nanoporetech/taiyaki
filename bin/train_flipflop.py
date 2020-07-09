@@ -411,10 +411,12 @@ def main():
             network, device_ids=[args.local_rank],
             output_device=args.local_rank)
     else:
+        log.write('* Loading model onto device\n')
         network = network_save_skeleton.to(device)
         network_metadata = parse_network_metadata(network)
         network_save_skeleton = None
 
+    log.write('* Estimating filter parameters from training data\n')
     stride = guess_model_stride(network)
     # Get parameters for filtering by sampling a subset of the reads
     # Result is a tuple median mean_dwell, mad mean_dwell
