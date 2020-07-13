@@ -36,6 +36,26 @@ def parse_network_metadata(network):
         network.metadata['reverse'], network.metadata['standardize'], False)
 
 
+def compute_grad_norm(network, norm_type=2):
+    """ Compute the norm of the gradients in a network. Code adapted from
+    `torch.nn.utils.clip_grad_norm_`, but without clipping.
+
+    Args:
+        network: A taiyaki neural network object.
+        norm_type: Norm type as defined in `torch.norm`.
+
+    Returns:
+        Float norm computed from network
+    """
+    parameters = list(filter(lambda p: p.grad is not None,
+                             network.parameters()))
+    if len(parameters) == 0:
+        return 0.0
+    return float(torch.norm(
+        torch.stack([torch.norm(p.grad.detach(), norm_type)
+                     for p in parameters]), norm_type))
+
+
 # This is here, not in main to allow documentation to be built
 parser = argparse.ArgumentParser(description='Train flip-flop neural network',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -551,9 +571,11 @@ def main():
                            mod_cat_weights,
                            mod_factor_t, calc_grads=True)
 
-        gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
-            network.parameters(), gradient_cap)
-        if args.gradient_cap_fraction is not None:
+        if args.gradient_cap_fraction is None:
+            gradnorm_uncapped = compute_grad_norm(network)
+        else:
+            gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
+                network.parameters(), gradient_cap)
             gradient_cap = rolling_quantile.update(gradnorm_uncapped)
 
         optimizer.step()
