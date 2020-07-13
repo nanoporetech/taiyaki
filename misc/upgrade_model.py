@@ -57,7 +57,7 @@ def convert_0_to_1(model):
 
 def convert_1_to_2(model):
     """ Converts model from version 1 to version 2
-    
+
     - Adds `activation` and `scale` fields to GlobalNormFlipFlop layers
     """
     if model.metadata['version'] >= 2:

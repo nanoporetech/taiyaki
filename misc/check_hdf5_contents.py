@@ -16,8 +16,9 @@ def main():
     args = parser.parse_args()
     with h5py.File(args.input, 'r') as h5:
         for key in args.keys:
-            testobject = h5[key]
+            assert key in h5
             print("Key ", key, "present in", args.input)
+
     print("All keys present")
 
 

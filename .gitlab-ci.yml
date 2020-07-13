@@ -18,6 +18,18 @@ stages:
     - test
     - release
 
+format:
+    stage: build
+    script:
+        - source $TEST_ENV && pip uninstall --yes flake8 && pip install 'autopep8>1.5'
+        - source $TEST_ENV && find bin/ misc/ taiyaki/ test/ -name \*.py | xargs -P 1 autopep8 -j 2 --diff | tee pep8_differences.txt
+        - if [ -s pep8_differences.txt ]; then false; fi
+    artifacts:
+        paths:
+            - pep8_differences.txt
+        expire_in: 1 week
+        when: on_failure
+
 flake8:
     stage: build
     script:
@@ -26,7 +38,7 @@ flake8:
           flake8 -j 2 --exit-zero --show-source --statistics --tee --output-file=flake_results.txt
     artifacts:
         paths:
-        - flake_results.txt
+            - flake_results.txt
         expire_in: 1 week
 
 unit_test:

@@ -7,8 +7,8 @@ import sys
 from taiyaki import alphabet, mapped_signal_files
 
 parser = argparse.ArgumentParser(
-    description='Combine HDF5 mapped-signal files into a single file. Checks ' +
-    'that alphabets are compatible.')
+    description='Combine HDF5 mapped-signal files into a single file. ' +
+    'Checks that alphabets are compatible.')
 parser.add_argument('output', help='Output filename')
 parser.add_argument('input', nargs='+', help='One or more input files')
 parser.add_argument(
@@ -20,8 +20,8 @@ parser.add_argument(
 parser.add_argument(
     '--allow_mod_merge', action='store_true',
     help='Allow merging of data sets with different modified bases. While ' +
-    'alphabets may differ, note that incompatible alphabets are not allowed ' +
-    '(e.g. same single letter code corresponding to different canonical base).')
+    'alphabets may differ, incompatible alphabets are not allowed ' +
+    '(e.g. same single letter code used for different canonical bases).')
 
 
 # To convert to any new mapped read format (e.g. mapped_signal_files.SQL)
@@ -142,8 +142,8 @@ def create_alphabet_conversion(hin, merge_alphabet_info):
     file_alphabet_info = hin.get_alphabet_information()
     file_alphabet_conv = np.zeros(file_alphabet_info.nbase, dtype=np.int16) - 1
     for file_base_code, file_base in enumerate(file_alphabet_info.alphabet):
-        file_alphabet_conv[file_base_code] = merge_alphabet_info.alphabet.index(
-            file_base)
+        file_alphabet_conv[file_base_code] = \
+            merge_alphabet_info.alphabet.index(file_base)
     return file_alphabet_conv
 
 
@@ -175,7 +175,8 @@ def add_file_reads(
         reads_written.add(read_id)
         file_num_reads_added += 1
         # check if either global or per-file reads limit has been achieved
-        if ((global_limit is not None and len(reads_written) >= global_limit) or
+        if ((global_limit is not None and len(reads_written) >= global_limit)
+            or
             (per_file_limit is not None and
              file_num_reads_added >= per_file_limit)):
             break
@@ -208,6 +209,7 @@ def main():
     sys.stderr.write("Copied {} reads in total.\n".format(len(reads_written)))
 
     return
+
 
 if __name__ == '__main__':
     main()

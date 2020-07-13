@@ -123,6 +123,7 @@ class Reverse(nn.Module):
     Attributes:
         layer (:nn:Module): Taiyaki layer to reverse.
     """
+
     def __init__(self, layer):
         """  Constructor for `Reverse` layer
 
@@ -213,6 +214,7 @@ class GatedResidual(nn.Module):
         layer (:nn:Module): Taiyaki layer to wrap.  The size of the output
             of the layer must be equal to its input.
     """
+
     def __init__(self, layer, gate_init=0.0):
         """  Constructor for `GatedResidual` layer
 
@@ -273,6 +275,7 @@ class FeedForward(nn.Module):
         activation (<function>, optional):  Activation function to apply to
             output linear transform.
     """
+
     def __init__(self, insize, size, has_bias=True, fun=activation.linear):
         """  Constructor for `FeedForward` layer
 
@@ -356,6 +359,7 @@ class Softmax(nn.Module):
         activation (:nn:`Module`): Pytorch module implementing log-softmax over
             the final (feature) dimension of input.
     """
+
     def __init__(self, insize, size, has_bias=True):
         """  Constructor for `Softmax` layer
 
@@ -431,6 +435,7 @@ class CudnnGru(nn.Module):
         has_bias (bool, optional): Whether layer has bias.  If `False`, bias
             is initialised to zero and not trained.
     """
+
     def __init__(self, insize, size, bias=True):
         """  Constructor for `CudnnGru` layer
 
@@ -523,6 +528,7 @@ class Lstm(nn.Module):
         has_bias (bool, optional): Whether layer has bias.  If `False`, bias
             is initialised to zero and not trained.
     """
+
     def __init__(self, insize, size, has_bias=True):
         """  Constructor for `Lstm` layer
 
@@ -893,6 +899,7 @@ class Parallel(nn.Module):
     Attributes:
         sublayers (list of :nn:`Module`): Layers to apply to input tensor.
     """
+
     def __init__(self, layers):
         """  Constructor for `Parallel` layer
 
@@ -987,6 +994,7 @@ class Serial(nn.Module):
     Attributes:
         sublayers (list of :nn:`Module`): Layers to apply to input tensor.
     """
+
     def __init__(self, layers):
         """  Constructor for `Serial` layer
 
@@ -1033,6 +1041,7 @@ class SoftChoice(nn.Module):
         alpha (:nn:`Parameter`): Vector valued weights for layer selection.
         sublayers (list of :nn:`Module`): Layers to choose from.
     """
+
     def __init__(self, layers):
         """  Constructor for `Serial` layer
 
@@ -1146,6 +1155,7 @@ class Studentise(nn.Module):
     Attributes:
         epsilon (float): Small value to stabilise calculation.
     """
+
     def __init__(self, epsilon=1e-4):
         """  Constructor for `Studentise` layer
 
@@ -1188,6 +1198,7 @@ class DeltaSample(nn.Module):
     Note:
         Right-hand side is padded with zero to maintain input shape.
     """
+
     def json(self, params=False):
         """  Create structured output describing layer for converting to json
 
@@ -1220,6 +1231,7 @@ class Window(nn.Module):
     Attributes:
         w (int): Size of window.
     """
+
     def __init__(self, w):
         """  Constructor for `Window` layer
 
@@ -1514,6 +1526,7 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         order and NOT cat_mod order. Using the example alphabet above,
         mod_labels would be `[0, 0, 0, 0, 1, 1, 2, 1]`
     """
+
     def compute_label_conversions(self):
         """ Compute conversion arrays from input label to canonical base and
         modified training label values
@@ -1779,6 +1792,7 @@ class TimeLinear(nn.Module):
         activation (<function>, optional):  Activation function to apply to
             output linear transform.
     """
+
     def __init__(self, insize, size, has_bias=True, fun=activation.linear):
         """  Constructor for `TimeLinear` layer
 
@@ -1856,6 +1870,7 @@ class UpSample(nn.Module):
     Attributes:
         nfold (int): Factor to upsample by.
     """
+
     def __init__(self, nfold):
         """  Constructor for `UpSample` layer
 
@@ -1905,6 +1920,7 @@ class DownSample(nn.Module):
     Attributes:
         nfold (int): Factor to downsample by.
     """
+
     def __init__(self, nfold):
         """  Constructor for `DownSample` layer
 

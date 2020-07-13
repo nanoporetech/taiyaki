@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-
 import argparse
-import matplotlib as mpl
-mpl.use('Agg')  # So we don't need an x server
-import numpy as np
 import os
+
+if True:
+    #  Protect in block to prevent autopep8 refactoring
+    import matplotlib
+    matplotlib.use('Agg')
+
 from Bio import SeqIO
 import matplotlib.pyplot as plt
+import numpy as np
 import statsmodels.api as sm
+
 from taiyaki import fileio
 
 
@@ -268,7 +272,7 @@ def single_read_accuracy_scatter(accuracies, meanqs, max_alignment_score):
     x = meanqs
 
     plt.scatter(x, y, s=2)
-    #m_OLS,c_OLS, r_value, p_value, mstd_OLS = linregress(x,y)
+    # m_OLS,c_OLS, r_value, p_value, mstd_OLS = linregress(x,y)
     c, m = calculate_regression(x, y)
 
     xx = np.array([np.min(x), np.max(x)])
@@ -368,19 +372,15 @@ if __name__ == "__main__":
     align_ids, align_accuracies, align_lens = get_alignment_data(
         alignment_summary_file)
 
-    fastq_accuracies, fastq_align_lens = merge_align_fastq_data(fastq_ids,
-                                                                align_ids, align_accuracies, align_lens)
+    fastq_accuracies, fastq_align_lens = merge_align_fastq_data(
+        fastq_ids, align_ids, align_accuracies, align_lens)
 
-    fastq_accuracies, fastq_meanqs = filter_data(fastq_accuracies,
-                                                 fastq_meanqs,
-                                                 fastq_lens,
-                                                 fastq_align_lens,
-                                                 args.coverage_threshold,
-                                                 args.min_fastqscore)
+    fastq_accuracies, fastq_meanqs = filter_data(
+        fastq_accuracies, fastq_meanqs, fastq_lens, fastq_align_lens,
+        args.coverage_threshold, args.min_fastqscore)
 
-    slope, intercept = single_read_accuracy_scatter(fastq_accuracies,
-                                                    fastq_meanqs,
-                                                    args.max_alignment_score)
+    slope, intercept = single_read_accuracy_scatter(
+        fastq_accuracies, fastq_meanqs, args.max_alignment_score)
 
     print("\n\nBest-fit:", args.plot_title)
     print("Best-fit slope (qscore_scale) = {:3.4f}".format(slope))

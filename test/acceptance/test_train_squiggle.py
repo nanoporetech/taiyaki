@@ -19,11 +19,11 @@ class AcceptanceTest(unittest.TestCase):
 
     def work_dir(self, test_name):
         """Set up directory for a single test.
-        
+
         Args:
             test_name (str): name of test (will be taken from stem of the
             name of the current file - see setupClass())
-            
+
         Returns:
             str : directory path for files"""
         directory = os.path.join(self.testset_work_dir, test_name)

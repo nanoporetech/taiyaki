@@ -53,11 +53,11 @@ parser.add_argument('reference', action=FileExists,
 
 def convert_seq(s, alphabet):
     """Convert str sequence to flip-flop integer codes
-    
+
     Args:
         s (str) : base sequence (e.g. 'ACCCTGGA')
         alphabet (str): alphabet of bases for coding (e.g. 'ACGT')
-        
+
     Returns:
         np i4 array : flip-flop coded sequence (e.g. 01513260)
     """
@@ -72,7 +72,7 @@ def convert_seq(s, alphabet):
 
 def save_model(network, outdir, index=None):
     """ Save a model with name indicating how far we have got with training.
-    
+
     Args:
         network (pytorch Module) : model to be saved
         outdir (str) : directory to save in

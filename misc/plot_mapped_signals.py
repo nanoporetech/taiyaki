@@ -1,30 +1,39 @@
 #!/usr/bin/env python3
 import argparse
-import matplotlib as mpl
-mpl.use('Agg')  # So we don't need an x server
+import sys
+
+if True:
+    #  Protect in block to prevent autopep8 refactoring
+    import matplotlib
+    matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 import numpy as np
-import sys
+
 from taiyaki.cmdargs import Positive
 from taiyaki import mapped_signal_files
 
+
 parser = argparse.ArgumentParser(
-    description='Plot graphs of reference-to-signal maps from mapped signal files. Also dump one-line summary of each read to stdout',
+    description='Plot reference-to-signal maps from mapped signal files. ' +
+    'Also dump one-line summary of each read to stdout',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 parser.add_argument('mapped_read_files',  nargs='+',
                     help='Inputs: one or more mapped read files')
 
-parser.add_argument(
-    '--output', help='Output PNG filename. Default: only output per-read summaries.')
+parser.add_argument('--output', help='Output PNG filename. ' +
+                    'Default: only output per-read summaries.')
 parser.add_argument('--maxlegendsize', type=Positive(int), default=10,
                     help='Maximum number of reads to list in the legend.')
 
 
 parser.add_argument('--nreads', type=Positive(int), default=10,
-                    help='Max number of reads to read from each file. Not used if read_ids are given')
+                    help='Max number of reads to read from each file. ' +
+                    'Not used if read_ids are given')
 parser.add_argument('--read_ids',  nargs='+', default=[],
-                    help='One or more read_ids. If not present, plots the first NREADS in each file')
+                    help='One or more read_ids. ' +
+                    'If not present, plots the first NREADS in each file')
 
 parser.add_argument('--xmin', default=None, type=float,
                     help='Minimum x for plot')

@@ -39,7 +39,7 @@ if __name__ == '__main__':
         readname = readname.decode('ascii')
         if pos < args.down:
             continue
-        if not readname in refdict:
+        if readname not in refdict:
             continue
         ref = refdict[readname]
         if pos + args.up > len(ref):
@@ -66,5 +66,6 @@ if __name__ == '__main__':
     position_counts = np.concatenate(count_array) / len(frags)
     relative_abundence = position_counts / background_counts
 
-    for pos, logodds in zip(range(-args.down, args.up), np.log(relative_abundence)):
+    for pos, logodds in zip(range(-args.down, args.up),
+                            np.log(relative_abundence)):
         print(pos, logodds)

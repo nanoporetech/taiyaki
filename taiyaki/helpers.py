@@ -14,11 +14,11 @@ from taiyaki.layers import MODEL_VERSION
 
 def _load_python_model(model_file, **model_kwargs):
     """Load network model structure from python file.
-    
+
     Args:
         model_file (str) : where to get the model
         **model_kwargs   : passed on to the model's constructor
-        
+
     Returns:
         pytorch Module : the network object
     """
@@ -74,14 +74,14 @@ def save_model(network, output, index=None, model_skeleton=None):
 
 def load_model(model_file, params_file=None, **model_kwargs):
     """Load model from either python or checkpoint file.
-    
+
     Args:
         model_file (str)  : where to load from
         params_file (str) : if this is supplied, then load a parameter
                             dict from this location and fill in the
                             parameters in the model.
         **model_kwargs : passed on to the constructor of a python model.
-        
+
     Returns :
         pytorch Module : the network model
     """
@@ -109,11 +109,11 @@ def load_model(model_file, params_file=None, **model_kwargs):
 
 def guess_model_stride(net, input_shape=(720, 1, 1)):
     """Infer the stride of a pytorch network by running it on some test input.
-    
+
     Args:
         net (pytorch Module) : the network model
         input_shape (tuple)  : shape of input used for testing
-        
+
     Returns:
         int : stride of the network model
     """
@@ -124,12 +124,12 @@ def guess_model_stride(net, input_shape=(720, 1, 1)):
 
 def get_kwargs(args, names):
     """Get specified args from an ArgParse argument namespace, return as dict.
-    
+
     Args:
         args (Namespace object) : object with attributes : e.g. result of
                                   parsing an Argparse parser.
         names (list of str)     : list of attributes to extract
-    
+
     Returns:
         dict : where keys are the specified names and values are the attrs
                that go with them.
@@ -142,12 +142,12 @@ def get_kwargs(args, names):
 
 def trim_array(x, from_start, from_end):
     """Trim the ends off a numpy 1D array.
-    
+
     Args:
         x (numpy ndarray) : array to trim
         from_start (int)  : number of elements to remove from start
         from_end (int)    : number of elements to remove from end
-        
+
     Returns:
         numpy ndarray : trimmed array
     """
@@ -160,11 +160,11 @@ def trim_array(x, from_start, from_end):
 
 def subsample_array(x, length):
     """Return a random (continuous) subsection of an array, of the given length.
-    
+
     Args:
         x (numpy ndarray) : input array
         length (int)      : desired length
-        
+
     Returns:
         numpy ndarray : x[n:n+length] where n is chosen randomly
     """
@@ -177,11 +177,11 @@ def subsample_array(x, length):
 
 def get_column_from_tsv(tsv_file_name, column):
     """Load a column from a csv file
-    
+
     Args:
         tsv_file_name (str) : filename
         column (str) : the column we want
-        
+
     Returns:
         list : the data from the column
     """
@@ -194,10 +194,10 @@ def get_column_from_tsv(tsv_file_name, column):
 
 def get_file_names(csv_file_name):
     """Load strand file names from a csv file
-    
+
     Args:
         csv_file_name (str) : the filename
-        
+
     Returns:
         list of strs : filenames.
     """
@@ -206,10 +206,10 @@ def get_file_names(csv_file_name):
 
 def get_read_ids(tsv_file_name):
     """Load strand read ids from a tsv file
-    
+
     Args:
         tsv_file_name (str) : the filename
-        
+
     Returns:
         list of strs : read ids
     """
@@ -218,17 +218,18 @@ def get_read_ids(tsv_file_name):
 
 class ExponentialSmoother(object):
     """Exponentially weighted rolling average of time series"""
+
     def __init__(self, factor, val=0.0, weight=1e-30):
         """Set up exponentially weighted rolling averager.
-        
+
         Args:
             factor (float) : weight of value from n steps ago is factor^n
             val (float) : start val used to initialise from previous smoother
             weight (float) : start weight used to initialise
-                
+
         Returns:
             ExponentialSmoother object.
-            
+
         Note:
             To start from the end of a previous ExponentialSmoother object s
             we do ExponentialSmoother(factor, s.val, s.weight).
@@ -242,7 +243,7 @@ class ExponentialSmoother(object):
     @property
     def value(self):
         """Exponentially smoothed value.
-        
+
         Returns:
             float : smoothed value over all previous updates
         """
@@ -250,7 +251,7 @@ class ExponentialSmoother(object):
 
     def update(self, val, weight=1.0):
         """Add value in to exponentially weighted rolling average.
-        
+
         Args:
             val (float) : value to add
             weight (float) : weight
@@ -265,11 +266,11 @@ class WindowedExpSmoother(object):
 
     def __init__(self, alpha=0.95, n_vals=100):
         """Set up exponentially weighted windowed rolling averager
-        
+
         Args:
             alpha  : weight of value from n steps ago is alpha^n
             n_vals : maximum number of terms in sum (=window size)
-        
+
         Returns:
             WindowedExponentialSmoother object
         """
@@ -285,7 +286,7 @@ class WindowedExpSmoother(object):
     @property
     def value(self):
         """Exponentially smoothed value.
-        
+
         Returns:
             float : smoothed value over previous n_vals updates
         """
@@ -297,7 +298,7 @@ class WindowedExpSmoother(object):
 
     def update(self, val):
         """Add value in to exponentially weighted windowed rolling average.
-        
+
         Args:
             val (float) : value to add
         """
@@ -309,13 +310,14 @@ class WindowedExpSmoother(object):
 
 class Logger(object):
     """Logs training results to file and stdout"""
+
     def __init__(self, log_file_name=None, quiet=False):
         """Open file for logging training results.
 
         Args:
             log_file_name (str) : If log_file_name is None, then no file used.
             quiet (bool) : If quiet = False, then log entries also go to stdout
-            
+
         Returns:
             Logger object
         """
@@ -332,7 +334,7 @@ class Logger(object):
 
     def write(self, message):
         """Write something to the log.
-        
+
         Args:
             message (str) : what to write
         """
@@ -369,7 +371,7 @@ class BatchLog:
 
     def write(self, s):
         """Write a string to the log.
-        
+
         Args:
             s (str) : what to write
         """
@@ -379,7 +381,7 @@ class BatchLog:
         """Write loss, gradient and cap to a row of the log.
 
         If gradientcap is None, then write nonestring in its place.
-        
+
         Args:
             loss (float) : training loss
             gradientnorm (float) : L1 norm of gradient
@@ -396,11 +398,11 @@ class BatchLog:
 
 def file_md5(filename, nblock=1024):
     """Get md5 string from file.
-    
+
     Args:
         filename (str) : the file
         nblock (int) : number of blocks to use
-        
+
     Returns:
         str : md5 string
     """
@@ -420,13 +422,13 @@ class Progress(object):
 
     def __init__(self, fh=sys.stderr, every=1, maxlen=50, quiet=False):
         """Set up progress dots.
-        
+
         Args:
             fh (output pipe object or file handle) : where to send the output
             every (int) : write dot once for each <every> calls to step()
             maxlen (int) : max length of a line of dots
             quiet (bool) : don't write anything at all.
-            
+
         Returns:
             Progress object
         """
@@ -472,7 +474,7 @@ class Progress(object):
     @property
     def is_newline(self):
         """Are we at the point where we need to start a new line?
-        
+
         Returns:
             bool : True if we need to start a new line."""
         return self.count % (self.dotcount * self.line_len) == 0
@@ -485,10 +487,10 @@ class open_file_or_stdout():
 
     def __init__(self, filename):
         """Set up context manager
-        
+
         Args:
             filename: Name or file to open, or None for stdout
-            
+
         Returns:
             open_file_or_stdout object
         """
@@ -514,7 +516,7 @@ def set_torch_device(device):
     Args:
         device (str or int): device string or cuda device number.
                              E.g. 'cpu', 1, 'cuda:1'
-                             
+
     Note:
         Raises exception if cuda device requested but cuda is not available
     """
@@ -530,7 +532,7 @@ def set_torch_device(device):
 
 def prepare_outdir(outdir, overwrite=False):
     """  Creates output directory, overwriting if overwrite is true
-    
+
     Args:
         outdir (str) : directory to create
         overwrite (bool) : if overwrite==False and directory exists, raise
@@ -562,6 +564,6 @@ def formatted_env_info(device):
                                                     torch.cuda.get_device_name(device))
             if device.type == 'cuda' else '* Running on CPU',
             '* Command line:',
-            '* "' + ' '.join(sys.argv),
+            '* "{}"'.format(' '.join(sys.argv)),
             '* Started on {}'.format(datetime.datetime.now())]
     return '\n'.join(info) + '\n'

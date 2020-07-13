@@ -1,11 +1,17 @@
-import numpy as np
 import tempfile
 import os
 import unittest
 
-import matplotlib as mpl
-mpl.use("Agg")
+if True:
+    #  Protect in block to prevent autopep8 refactoring
+    import matplotlib
+    matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+from taiyaki.constants import DEFAULT_ALPHABET
+from taiyaki import alphabet, mapped_signal_files, signal_mapping
 
 # To run as a  single test, in taiyaki dir and in venv do
 # pytest test/unit/test_mapped_signal_files.py
@@ -14,9 +20,6 @@ import matplotlib.pyplot as plt
 # with result of searches to obtain sig_to_ref
 # and with chunk limits are commented out with an 'if False'
 # may be useful in debugging
-
-from taiyaki import alphabet, mapped_signal_files, signal_mapping
-from taiyaki.constants import DEFAULT_ALPHABET
 
 
 def vectorprint(x):

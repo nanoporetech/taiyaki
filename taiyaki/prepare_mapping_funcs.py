@@ -13,7 +13,7 @@ from taiyaki.fileio import readtsv
 
 
 class RemapResult(enum.Enum):
-    """Enumerates possible results from remapping a read""" 
+    """Enumerates possible results from remapping a read"""
     SUCCESS = 'Success!'
     READ_ID_INFO_NOT_FOUND = 'No information for read id found in file.'
     NO_REF_FOUND = 'No fasta reference found.'
@@ -26,7 +26,7 @@ def oneread_remap(
         read_tuple, model, per_read_params_dict, alphabet_info,
         max_read_length, device='cpu', localpen=0.0):
     """ Worker function for remapping reads using flip-flop model on raw signal
-    
+
     Args:
         read_tuple (tuple) : read, identified by a tuple
                                   (filepath, read_id, read reference)
@@ -109,7 +109,7 @@ def generate_output_from_results(results, output, alphabet_info, verbose=True):
     """
     Given an iterable of dictionaries, each representing the results of mapping
     a single read, output a mapped-read file.
-    
+
     This version outputs to the V8 'chunk' file format (actually containing
     mapped reads, not chunks)
 
@@ -141,10 +141,10 @@ def generate_output_from_results(results, output, alphabet_info, verbose=True):
 
 def get_per_read_params_dict_from_tsv(input_file):
     """Load per read parameter .tsv into a np array and parse into a dictionary
-    
+
     Args:
         input_file (str): filename including path for the tsv file
-    
+
     Returns:
         dict : dictionary with keys being UUIDs, values being named
         tuple('per_read_params', 'trim_start trim_end shift scale')"""

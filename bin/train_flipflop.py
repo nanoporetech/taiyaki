@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import argparse
 from collections import defaultdict, namedtuple
 import numpy as np
 import os
@@ -9,20 +8,41 @@ import time
 
 import torch
 
-
-from taiyaki import (chunk_selection, constants, ctc, flipflopfings, helpers,
-                     layers, mapped_signal_files, maths, optim, signal_mapping)
-from taiyaki.cmdargs import (AutoBool, FileExists, Maybe, NonNegative,
-                             ParseToNamedTuple, Positive)
-from taiyaki.common_cmdargs import add_common_command_args
+from taiyaki import (
+    chunk_selection, constants, ctc, flipflopfings, helpers, layers,
+    mapped_signal_files, maths, optim, signal_mapping)
 from taiyaki.constants import DOTROWLENGTH
 from taiyaki.helpers import guess_model_stride
+from _bin_argparse import get_train_flipflop_parser
 
+
+# Note also set flag in taiyaki/ctc/ctc.pyx when profiling code
+_DO_PROFILE = False
+_DEBUG_MULTIGPU = False
+
+RESOURCE_INFO = namedtuple('RESOURCE_INFO', (
+    'is_multi_gpu', 'is_lead_process', 'device'))
+
+MOD_INFO = namedtuple('MOD_INFO', ('mod_factor', 'mod_cat_weights'))
 
 NETWORK_METADATA = namedtuple('NETWORK_METADATA', (
     'reverse', 'standardize', 'is_cat_mod', 'can_mods_offsets',
     'can_labels', 'mod_labels'))
 NETWORK_METADATA.__new__.__defaults__ = (None, None, None)
+NETWORK_INFO = namedtuple('NETWORK_INFO', (
+    'net', 'net_clone', 'metadata', 'stride'))
+
+OPTIM_INFO = namedtuple('OPTIM_INFO', (
+    'optimiser', 'lr_warmup', 'lr_scheduler', 'rolling_quantile'))
+
+TRAIN_PARAMS = namedtuple('TRAIN_PARAMS', (
+    'niteration', 'sharpen', 'chunk_len_min', 'chunk_len_max',
+    'min_sub_batch_size', 'sub_batches', 'save_every',
+    'outdir', 'full_filter_status'))
+
+LOG_POLKA_TMPLT = (
+    ' {:5d} {:7.5f} {:7.5f}  {:5.2f}s ({:.2f} ksample/s {:.2f} ' +
+    'kbase/s) lr={:.2e}')
 
 
 def parse_network_metadata(network):
@@ -178,7 +198,7 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
                            network, network_metadata, log,
                            select_strands_randomly=True, first_strand_index=0):
     total_sub_batches = 0
-    if network_metadata.reverse:
+    if net_info.metadata.reverse:
         revop = np.flip
     else:
         revop = np.array
@@ -188,13 +208,14 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         # Chunk_batch is a list of dicts
         chunk_batch, batch_rejections = chunk_selection.sample_chunks(
             read_data, sub_batch_size, batch_chunk_len, filter_params,
-            standardize=network_metadata.standardize,
+            standardize=net_info.metadata.standardize,
             select_strands_randomly=select_strands_randomly,
             first_strand_index=first_strand_index)
         first_strand_index += sum(batch_rejections.values())
         if len(chunk_batch) < sub_batch_size:
-            log.write('* Warning: only {} chunks passed filters (asked for {}).\n'.format(
-                len(chunk_batch), sub_batch_size))
+            log.write(('* Warning: only {} chunks passed filters ' +
+                       '(asked for {}).\n').format(
+                           len(chunk_batch), sub_batch_size))
 
         if not all(chunk.seq_len > 0.0 for chunk in chunk_batch):
             raise Exception('Error: zero length sequence')
@@ -210,17 +231,17 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
 
         # Prepare seqs, seqlens and (if necessary) mod_cats
         seqs, seqlens = [], []
-        mod_cats = [] if network_metadata.is_cat_mod else None
+        mod_cats = [] if net_info.metadata.is_cat_mod else None
         for chunk in chunk_batch:
             chunk_labels = revop(chunk.sequence)
             seqlens.append(len(chunk_labels))
-            if network_metadata.is_cat_mod:
+            if net_info.metadata.is_cat_mod:
                 chunk_mod_cats = np.ascontiguousarray(
-                    network_metadata.mod_labels[chunk_labels])
+                    net_info.metadata.mod_labels[chunk_labels])
                 mod_cats.append(chunk_mod_cats)
                 # convert chunk_labels to canonical base labels
                 chunk_labels = np.ascontiguousarray(
-                    network_metadata.can_labels[chunk_labels])
+                    net_info.metadata.can_labels[chunk_labels])
             chunk_seq = flipflopfings.flipflop_code(
                 chunk_labels, alphabet_info.ncan_base)
             seqs.append(chunk_seq)
@@ -228,7 +249,7 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         seqs = torch.tensor(
             np.concatenate(seqs), dtype=torch.float32, device=device)
         seqlens = torch.tensor(seqlens, dtype=torch.long, device=device)
-        if network_metadata.is_cat_mod:
+        if net_info.metadata.is_cat_mod:
             mod_cats = torch.tensor(
                 np.concatenate(mod_cats), dtype=torch.long, device=device)
 
@@ -237,18 +258,12 @@ def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
         yield indata, seqs, seqlens, mod_cats, sub_batch_size, batch_rejections
 
 
-def calculate_loss(network, network_metadata, batch_gen, sharpen,
-                   mod_cat_weights=None,
-                   mod_factor_t=None, calc_grads=False):
-
-    total_chunk_count = 0
-    total_fval = 0
-    total_samples = 0
-    total_bases = 0
-
+def calculate_loss(
+        net_info, batch_gen, sharpen, mod_cat_weights=None,
+        mod_factor_t=None, calc_grads=False):
+    total_chunk_count = total_fval = total_samples = total_bases = \
+        n_subbatches = 0
     rejection_dict = defaultdict(int)
-
-    n_subbatches = 0
     for (indata, seqs, seqlens, mod_cats, sub_batch_size,
          batch_rejections) in batch_gen:
         n_subbatches += 1
@@ -259,11 +274,11 @@ def calculate_loss(network, network_metadata, batch_gen, sharpen,
         total_chunk_count += sub_batch_size
 
         with torch.set_grad_enabled(calc_grads):
-            outputs = network(indata)
-            if network_metadata.is_cat_mod:
+            outputs = net_info.net(indata)
+            if net_info.metadata.is_cat_mod:
                 lossvector = ctc.cat_mod_flipflop_loss(
                     outputs, seqs, seqlens, mod_cats,
-                    network_metadata.can_mods_offsets,
+                    net_info.metadata.can_mods_offsets,
                     mod_cat_weights, mod_factor_t, sharpen)
             else:
                 lossvector = ctc.crf_flipflop_loss(
@@ -284,7 +299,7 @@ def calculate_loss(network, network_metadata, batch_gen, sharpen,
             loss.backward()
 
     if calc_grads:
-        for p in network.parameters():
+        for p in net_info.net.parameters():
             if p.grad is not None:
                 p.grad /= n_subbatches
 
@@ -292,8 +307,7 @@ def calculate_loss(network, network_metadata, batch_gen, sharpen,
         total_samples, total_bases, rejection_dict
 
 
-def main():
-    args = parser.parse_args()
+def parse_init_args(args):
     is_multi_gpu = (args.local_rank is not None)
     is_lead_process = (not is_multi_gpu) or args.local_rank == 0
 
@@ -301,12 +315,13 @@ def main():
         # Use distributed parallel processing to run one process per GPU
         try:
             torch.distributed.init_process_group(backend='nccl')
-        except:
-            raise Exception("Unable to start multiprocessing group. " +
-                            "The most likely reason is that the script is running with " +
-                            "local_rank set but without the set-up for distributed " +
-                            "operation. local_rank should be used " +
-                            "only by torch.distributed.launch. See the README.")
+        except Exception:
+            raise Exception(
+                'Unable to start multiprocessing group. The most likely ' +
+                'reason is that the script is running with local_rank set ' +
+                'but without the set-up for distributed operation. ' +
+                'local_rank should be used only by torch.distributed.' +
+                'launch. See the README.')
         device = helpers.set_torch_device(args.local_rank)
         if args.seed is not None:
             args.seed = args.seed + args.local_rank
@@ -327,11 +342,14 @@ def main():
         batchlog = helpers.BatchLog(args.outdir)
         logfile = os.path.join(args.outdir, 'model.log')
     else:
-        logfile = None
-
+        logfile = batchlog = None
     log = helpers.Logger(logfile, args.quiet)
     log.write(helpers.formatted_env_info(device))
 
+    return RESOURCE_INFO(is_multi_gpu, is_lead_process, device), log, batchlog
+
+
+def load_data(args, log, res_info):
     log.write('* Loading data from {}\n'.format(args.input))
     log.write('* Per read file MD5 {}\n'.format(helpers.file_md5(args.input)))
 
@@ -348,11 +366,9 @@ def main():
 
     with mapped_signal_files.HDF5Reader(args.input) as per_read_file:
         alphabet_info = per_read_file.get_alphabet_information()
+        # load list of signal_mapping.SignalMapping objects
         read_data = per_read_file.get_multiple_reads(
             read_ids, max_reads=args.limit)
-        # read_data now contains a list of reads
-        # (each an instance of the Read class defined in
-        # mapped_signal_files.py, based on dict)
     log.write('* Using alphabet definition: {}\n'.format(str(alphabet_info)))
 
     if len(read_data) == 0:
@@ -360,51 +376,65 @@ def main():
         exit(1)
     log.write('* Loaded {} reads.\n'.format(len(read_data)))
 
+    # prepare modified base paramter tensors
+    mod_factor_t = torch.tensor(
+        args.mod_factor, dtype=torch.float32).to(res_info.device)
+    # mod cat inv freq weighting is currently disabled. Compute and set this
+    # value to enable mod cat weighting
+    mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
+    mod_info = MOD_INFO(mod_factor_t, mod_cat_weights)
+
+    return read_data, alphabet_info, mod_info
+
+
+def load_network(args, alphabet_info, res_info, log):
     log.write('* Reading network from {}\n'.format(args.model))
     model_kwargs = {
         'stride': args.stride,
         'winlen': args.winlen,
-        # Number of input features to model e.g. was >1 for event-based
-        # models (level, std, dwell)
         'insize': 1,
         'size': args.size,
         'alphabet_info': alphabet_info
     }
 
-    if is_lead_process:
+    if res_info.is_lead_process:
         # Under pytorch's DistributedDataParallel scheme, we
         # need a clone of the start network to use as a template for saving
         # checkpoints. Necessary because DistributedParallel makes the class
         # structure different.
-        network_save_skeleton = helpers.load_model(args.model, **model_kwargs)
+        net_clone = helpers.load_model(args.model, **model_kwargs)
         log.write('* Network has {} parameters.\n'.format(
-                  sum([p.nelement() for p in network_save_skeleton.parameters()])))
-        if hasattr(network_save_skeleton, 'metadata'):
+            sum(p.nelement()
+                for p in net_clone.parameters())))
+        if hasattr(net_clone, 'metadata'):
             #  Check model metadata is consistent with command-line options
-            if network_save_skeleton.metadata['reverse'] != args.reverse:
-                sys.stderr.write('* WARNING: Commandline specifies {} orientation ' +
-                                 'but model trained in opposite direction!\n'.format(
-                                     'reverse' if args.reverse else 'forward'))
-                network_save_skeleton.metadata['reverse'] = args.reverse
-            if network_save_skeleton.metadata['standardize'] != args.standardize:
+            if net_clone.metadata['reverse'] != args.reverse:
+                sys.stderr.write((
+                    '* WARNING: Commandline specifies {} orientation ' +
+                    'but model trained in opposite direction!\n').format(
+                        'reverse' if args.reverse else 'forward'))
+                net_clone.metadata['reverse'] = args.reverse
+            if net_clone.metadata['standardize'] != \
+               args.standardize:
                 sys.stderr.write('* WARNING: Model and command-line ' +
                                  'standardization are inconsistent.\n')
-                network_save_skeleton.metadata[
+                net_clone.metadata[
                     'standardize'] = args.standardize
 
         else:
-            network_save_skeleton.metadata = {
+            net_clone.metadata = {
                 'reverse': args.reverse,
                 'standardize': args.standardize,
                 'version': layers.MODEL_VERSION
             }
 
-        if not alphabet_info.is_compatible_model(network_save_skeleton):
+        if not alphabet_info.is_compatible_model(net_clone):
             sys.stderr.write(
-                '* ERROR: Model and mapped signal files contain incompatible ' +
-                'alphabet definitions (including modified bases).')
+                '* ERROR: Model and mapped signal files contain ' +
+                'incompatible alphabet definitions (including modified ' +
+                'bases).')
             sys.exit(1)
-        if layers.is_cat_mod_model(network_save_skeleton):
+        if layers.is_cat_mod_model(net_clone):
             log.write('* Loaded categorical modified base model.\n')
             if not alphabet_info.contains_modified_bases():
                 sys.stderr.write(
@@ -420,17 +450,19 @@ def main():
                     'modified bases.')
                 sys.exit(1)
         log.write('* Dumping initial model\n')
-        helpers.save_model(network_save_skeleton, args.outdir, 0)
+        helpers.save_model(net_clone, args.outdir, 0)
+    else:
+        net_clone = None
 
-    if is_multi_gpu:
+    if res_info.is_multi_gpu:
         # so that processes 1,2,3.. don't try to load before process 0 has
         # saved
         torch.distributed.barrier()
         log.write('* MultiGPU process {}'.format(args.local_rank))
         log.write(': loading initial model saved by process 0\n')
-        saved_startmodel_path = os.path.join(args.outdir,
-                                             'model_checkpoint_00000.checkpoint')
-        network = helpers.load_model(saved_startmodel_path).to(device)
+        saved_startmodel_path = os.path.join(
+            args.outdir, 'model_checkpoint_00000.checkpoint')
+        network = helpers.load_model(saved_startmodel_path).to(res_info.device)
         network_metadata = parse_network_metadata(network)
         # Wrap network for training in the DistributedDataParallel structure
         network = torch.nn.parallel.DistributedDataParallel(
@@ -438,32 +470,15 @@ def main():
             output_device=args.local_rank)
     else:
         log.write('* Loading model onto device\n')
-        network = network_save_skeleton.to(device)
+        network = net_clone.to(res_info.device)
         network_metadata = parse_network_metadata(network)
-        network_save_skeleton = None
+        net_clone = None
 
     log.write('* Estimating filter parameters from training data\n')
     stride = guess_model_stride(network)
-    # Get parameters for filtering by sampling a subset of the reads
-    # Result is a tuple median mean_dwell, mad mean_dwell
-    # Choose a chunk length in the middle of the range for this, forcing
-    # to be multiple of stride
-    sampling_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
-    sampling_chunk_len = (sampling_chunk_len // stride) * stride
-    filter_params = chunk_selection.sample_filter_parameters(
-        read_data, args.sample_nreads_before_filtering, sampling_chunk_len,
-        args.filter_mean_dwell, args.filter_max_dwell)
-
-    log.write("* Sampled {} chunks".format(args.sample_nreads_before_filtering))
-    log.write(": median(mean_dwell)={:.2f}".format(
-        filter_params.median_meandwell))
-    log.write(", mad(mean_dwell)={:.2f}\n".format(
-        filter_params.mad_meandwell))
-
-    optimizer = torch.optim.AdamW(network.parameters(), lr=args.lr_max,
-                                  betas=args.adam,
-                                  weight_decay=args.weight_decay,
-                                  eps=args.eps)
+    optimiser = torch.optim.AdamW(
+        network.parameters(), lr=args.lr_max, betas=args.adam,
+        weight_decay=args.weight_decay, eps=args.eps)
 
     if args.lr_warmup is None:
         lr_warmup = args.lr_min
@@ -471,29 +486,61 @@ def main():
         lr_warmup = args.lr_warmup
 
     if args.lr_frac_decay is not None:
-        lr_scheduler = optim.ReciprocalLR(optimizer, args.lr_frac_decay,
-                                          args.warmup_batches, lr_warmup)
+        lr_scheduler = optim.ReciprocalLR(
+            optimiser, args.lr_frac_decay, args.warmup_batches, lr_warmup)
         log.write('* Learning rate schedule lr_max*k/(k+t)')
         log.write(', k={}, t=iterations.\n'.format(args.lr_frac_decay))
     else:
-        lr_scheduler = optim.CosineFollowedByFlatLR(optimizer, args.lr_min,
-                                                    args.lr_cosine_iters,
-                                                    args.warmup_batches,
-                                                    lr_warmup)
+        lr_scheduler = optim.CosineFollowedByFlatLR(
+            optimiser, args.lr_min, args.lr_cosine_iters, args.warmup_batches,
+            lr_warmup)
         log.write('* Learning rate goes like cosine from lr_max to lr_min ')
         log.write('over {} iterations.\n'.format(args.lr_cosine_iters))
     log.write('* At start, train for {} '.format(args.warmup_batches))
     log.write('batches at warm-up learning rate {:3.2}\n'.format(lr_warmup))
 
-    score_smoothed = helpers.WindowedExpSmoother()
+    if args.gradient_cap_fraction is None:
+        log.write('* No gradient capping\n')
+        rolling_quantile = None
+    else:
+        rolling_quantile = maths.RollingQuantile(args.gradient_cap_fraction)
+        log.write('* Gradient L2 norm cap will be upper' +
+                  ' {:3.2f} quantile of the last {} norms.\n'.format(
+                      args.gradient_cap_fraction, rolling_quantile.window))
 
-    # prepare modified base paramter tensors
-    mod_factor_t = torch.tensor(
-        args.mod_factor, dtype=torch.float32).to(device)
-    # mod cat inv freq weighting is currently disabled. Compute and set this
-    # value to enable mod cat weighting
-    mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
+    net_info = NETWORK_INFO(
+        net=network, net_clone=net_clone, metadata=network_metadata,
+        stride=stride)
+    optim_info = OPTIM_INFO(
+        optimiser=optimiser, lr_warmup=lr_warmup, lr_scheduler=lr_scheduler,
+        rolling_quantile=rolling_quantile)
 
+    return net_info, optim_info
+
+
+def compute_filter_params(args, net_info, read_data, log):
+    # Get parameters for filtering by sampling a subset of the reads
+    # Result is a tuple median mean_dwell, mad mean_dwell
+    # Choose a chunk length in the middle of the range for this, forcing
+    # to be multiple of stride
+    sampling_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
+    sampling_chunk_len = (
+        sampling_chunk_len // net_info.stride) * net_info.stride
+    filter_params = chunk_selection.sample_filter_parameters(
+        read_data, args.sample_nreads_before_filtering, sampling_chunk_len,
+        args.filter_mean_dwell, args.filter_max_dwell)
+    log.write((
+        '* Sampled {} chunks: median(mean_dwell)={:.2f}, mad(mean_dwell)=' +
+        '{:.2f}\n').format(
+            args.sample_nreads_before_filtering,
+            filter_params.median_meandwell, filter_params.mad_meandwell))
+
+    return filter_params
+
+
+def extract_reporting_data(
+        args, read_data, res_info, alphabet_info, filter_params, net_info,
+        log):
     # Generate list of batches for standard loss reporting
     all_read_ids = [read.read_id for read in read_data]
     if args.reporting_strand_list is not None:
@@ -517,54 +564,61 @@ def main():
                    'held out of training. \n').format(len(report_read_data)))
     reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
     reporting_batch_list = list(prepare_random_batches(
-        device, report_read_data, reporting_chunk_len, args.min_sub_batch_size,
-        args.reporting_sub_batches, alphabet_info, filter_params, network,
-        network_metadata, log, select_strands_randomly=False))
-    log.write(('* Standard loss report: chunk length = {} & sub-batch size ' +
-               '= {} for {} sub-batches. \n').format(reporting_chunk_len,
-                                                     args.min_sub_batch_size, args.reporting_sub_batches))
+        res_info.device, report_read_data, reporting_chunk_len,
+        args.min_sub_batch_size, args.reporting_sub_batches, alphabet_info,
+        filter_params, net_info, log, select_strands_randomly=False))
+    log.write((
+        '* Standard loss report: chunk length = {} & sub-batch size = {} ' +
+        'for {} sub-batches. \n').format(
+            reporting_chunk_len, args.min_sub_batch_size,
+            args.reporting_sub_batches))
 
+    return reporting_batch_list
+
+
+def parse_train_params(args):
+    train_params = TRAIN_PARAMS(
+        args.niteration, args.sharpen, args.chunk_len_min, args.chunk_len_max,
+        args.min_sub_batch_size, args.sub_batches, args.save_every,
+        args.outdir, args.full_filter_status)
+    return train_params
+
+
+def train_model(
+        train_params, net_info, optim_info, res_info, read_data, alphabet_info,
+        filter_params, mod_info, reporting_batch_list, log, batchlog):
     # Set cap at very large value (before we have any gradient stats).
     gradient_cap = constants.LARGE_VAL
-    if args.gradient_cap_fraction is None:
-        log.write('* No gradient capping\n')
-    else:
-        rolling_quantile = maths.RollingQuantile(args.gradient_cap_fraction)
-        log.write('* Gradient L2 norm cap will be upper' +
-                  ' {:3.2f} quantile of the last {} norms.\n'.format(
-                      args.gradient_cap_fraction, rolling_quantile.window))
-
-    total_bases = 0
-    total_samples = 0
-    total_chunks = 0
+    score_smoothed = helpers.WindowedExpSmoother()
+    total_bases = total_samples = total_chunks = 0
     # To count the numbers of different sorts of chunk rejection
     rejection_dict = defaultdict(int)
-
-    t0 = time.time()
+    time_last = time.time()
     log.write('* Training\n')
-
-    for i in range(args.niteration):
-        sharpen = args.sharpen.min + (args.sharpen.max - args.sharpen.min) * \
-            min(1.0, i / args.sharpen.niter)
+    for curr_iter in range(train_params.niteration):
+        sharpen = train_params.sharpen.min + (
+            train_params.sharpen.max - train_params.sharpen.min) * \
+            min(1.0, curr_iter / train_params.sharpen.niter)
 
         # Chunk length is chosen randomly in the range given but forced to
         # be a multiple of the stride
-        batch_chunk_len = (np.random.randint(
-            args.chunk_len_min, args.chunk_len_max + 1) // stride) * stride
-
+        batch_chunk_len = (
+            np.random.randint(train_params.chunk_len_min,
+                              train_params.chunk_len_max + 1) //
+            net_info.stride) * net_info.stride
         # We choose the size of a sub-batch so that the size of the data in
         # the sub-batch is about the same as args.min_sub_batch_size chunks of
         # length args.chunk_len_max
-        sub_batch_size = int(args.min_sub_batch_size * args.chunk_len_max /
-                             batch_chunk_len + 0.5)
-
-        optimizer.zero_grad()
-
+        sub_batch_size = int(
+            train_params.min_sub_batch_size * train_params.chunk_len_max /
+            batch_chunk_len + 0.5)
         main_batch_gen = prepare_random_batches(
-            device, read_data, batch_chunk_len, sub_batch_size,
-            args.sub_batches, alphabet_info, filter_params, network,
-            network_metadata, log)
+            res_info.device, read_data, batch_chunk_len, sub_batch_size,
+            train_params.sub_batches, alphabet_info, filter_params, net_info,
+            log)
 
+        # take optimiser step
+        optim_info.optimiser.zero_grad()
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
             calculate_loss(network, network_metadata,
                            main_batch_gen, sharpen,
@@ -586,70 +640,94 @@ def main():
         total_chunks += chunk_count
         total_samples += chunk_samples
         total_bases += chunk_bases
-
+        score_smoothed.update(fval)
         # Update counts of reasons for rejection
         for k, v in batch_rejections.items():
             rejection_dict[k] += v
-
-        score_smoothed.update(fval)
-
-        if (i + 1) % args.save_every == 0 and is_lead_process:
-            helpers.save_model(network, args.outdir,
-                               (i + 1) // args.save_every,
-                               network_save_skeleton)
+        if (curr_iter + 1) % train_params.save_every == 0 and \
+           res_info.is_lead_process:
+            helpers.save_model(
+                net_info.net, train_params.outdir,
+                (curr_iter + 1) // train_params.save_every,
+                net_info.net_clone)
             log.write('C')
         else:
             log.write('.')
+        if (curr_iter + 1) % DOTROWLENGTH == 0:
+            log_polka(
+                net_info, reporting_batch_list, train_params, mod_info,
+                optim_info, time_last, score_smoothed, curr_iter,
+                total_samples, total_bases, rejection_dict, res_info, log)
+            time_last = time.time()
+            total_bases = total_samples = 0
 
-        if (i + 1) % DOTROWLENGTH == 0:
+        # step learning rate scheduler
+        optim_info.lr_scheduler.step()
 
-            _, rloss, _, _, _ = calculate_loss(
-                network, network_metadata, reporting_batch_list,
-                args.sharpen.max, mod_cat_weights, mod_factor_t)
+    if res_info.is_lead_process:
+        helpers.save_model(
+            net_info.net, train_params.outdir,
+            model_skeleton=net_info.net_clone)
 
-            # In case of super batching, additional functionality must be
-            # added here
-            learning_rate = lr_scheduler.get_lr()[0]
-            tn = time.time()
-            dt = tn - t0
-            t = (' {:5d} {:7.5f} {:7.5f}  {:5.2f}s ({:.2f} ksample/s {:.2f} ' +
-                 'kbase/s) lr={:.2e}')
-            log.write(t.format((i + 1) // DOTROWLENGTH,
-                               score_smoothed.value, rloss, dt,
-                               total_samples / 1000.0 / dt,
-                               total_bases / 1000.0 / dt, learning_rate))
-            # Write summary of chunk rejection reasons
-            if args.full_filter_status:
-                for k, v in rejection_dict.items():
-                    log.write(" {}:{} ".format(k, v))
-            else:
-                n_tot = n_fail = 0
-                for k, v in rejection_dict.items():
-                    n_tot += v
-                    if k != signal_mapping.Chunk.rej_str_pass:
-                        n_fail += v
-                log.write("  {:.1%} chunks filtered".format(n_fail / n_tot))
-            log.write("\n")
-            total_bases = 0
-            total_samples = 0
-            t0 = tn
 
-            # Uncomment the lines below to check synchronisation of models
-            # between processes in multi-GPU operation
-            # for p in network.parameters():
-            #    v = p.data.reshape(-1)[:5].to('cpu')
-            #    u = p.data.reshape(-1)[-5:].to('cpu')
-            #    break
-            # if args.local_rank is not None:
-            #    log.write("* GPU{} params:".format(args.local_rank))
-            # log.write("{}...{}\n".format(v,u))
+if _DO_PROFILE:
+    train_model_wrapper = train_model
 
-        lr_scheduler.step()
+    def train_model(*args):
+        import cProfile
+        cProfile.runctx('train_model_wrapper(*args)', globals(), locals(),
+                        filename='train_flipflop.prof')
 
-    if is_lead_process:
-        helpers.save_model(network, args.outdir,
-                           model_skeleton=network_save_skeleton)
+
+def log_polka(
+        net_info, reporting_batch_list, train_params, mod_info, optim_info,
+        time_last, score_smoothed, curr_iter, total_samples, total_bases,
+        rejection_dict, res_info, log):
+    # compute validation loss and log polka information
+    _, rloss, _, _, _ = calculate_loss(
+        net_info, reporting_batch_list, train_params.sharpen.max,
+        mod_info.mod_cat_weights, mod_info.mod_factor)
+    time_delta = time.time() - time_last
+    log.write(LOG_POLKA_TMPLT.format(
+        (curr_iter + 1) // DOTROWLENGTH, score_smoothed.value, rloss,
+        time_delta, total_samples / 1000.0 / time_delta,
+        total_bases / 1000.0 / time_delta,
+        optim_info.lr_scheduler.get_lr()[0]))
+    # Write summary of chunk rejection reasons
+    if train_params.full_filter_status:
+        for k, v in rejection_dict.items():
+            log.write(" {}:{} ".format(k, v))
+    else:
+        n_tot = n_fail = 0
+        for k, v in rejection_dict.items():
+            n_tot += v
+            if k != signal_mapping.Chunk.rej_str_pass:
+                n_fail += v
+        log.write("  {:.1%} chunks filtered".format(n_fail / n_tot))
+    log.write("\n")
+
+    if _DEBUG_MULTIGPU:
+        for p in net_info.net.parameters():
+            v = p.data.reshape(-1)[:5].to('cpu')
+            u = p.data.reshape(-1)[-5:].to('cpu')
+            break
+        if res_info.local_rank is not None:
+            log.write("* GPU{} params:".format(res_info.local_rank))
+            log.write("{}...{}\n".format(v, u))
+
+
+def main(args):
+    res_info, log, batchlog = parse_init_args(args)
+    read_data, alphabet_info, mod_info = load_data(args, log, res_info)
+    net_info, optim_info = load_network(args, alphabet_info, res_info, log)
+    filter_params = compute_filter_params(args, net_info, read_data, log)
+    reporting_batch_list = extract_reporting_data(
+        args, read_data, res_info, alphabet_info, filter_params, net_info, log)
+    train_params = parse_train_params(args)
+    train_model(
+        train_params, net_info, optim_info, res_info, read_data, alphabet_info,
+        filter_params, mod_info, reporting_batch_list, log, batchlog)
 
 
 if __name__ == '__main__':
-    main()
+    main(get_train_flipflop_parser().parse_args())

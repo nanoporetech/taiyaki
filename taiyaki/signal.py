@@ -21,13 +21,13 @@ class Signal:
                  read_id=None, read_params={'trim_start': 0, 'trim_end': 0,
                                             'shift': 0, 'scale': 1}):
         """Constructor for Signal class. Loads data from read in fast5 file.
-        
+
         If read is None and dacs is a np array then initialise the
         untrimmed_dacs to this array.
         (this allows testing with non-fast5 data)
 
         Args:
-        
+
             read (ont_fast5_api read object) : the read data
             dacs (np int array) : (only used if first param is None)
             channel_info (dict) :  containing keys: offset, range,
@@ -36,7 +36,7 @@ class Signal:
             read_params (dict): dictionary containing keys: trim_start,
                                 trim_end, shift, and scale (as returned from
                        prepare_mapping_funcs.get_per_read_params_dict_from_tsv)
-                           
+
         Returns:
             new Signal object.
         """
@@ -78,7 +78,7 @@ class Signal:
         """trim trimstart samples from the start and trimend samples from the
         end, starting with the whole stored data set (not starting with the
         existing trimmed ends).
-        
+
         Args:
             trimstart (int) : number of samples to trim from the start
             trimend (int)   : number of samples to trim from the end

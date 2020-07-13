@@ -34,10 +34,10 @@ class SignalMapping:
     @staticmethod
     def is_numpy(x):
         """Is this a numpy array?
-        
+
         Args:
             x : object to be tested
-    
+
         Returns:
             bool : is it a numpy array?
         """
@@ -45,10 +45,10 @@ class SignalMapping:
 
     def _typecheck(self, name):
         """Check the type of an attribute is correct.
-        
+
         Args:
             name (str): name of the attr
-            
+
         Returns:
             str :  empty string if type matches, , or error string
                    describing the problem if not
@@ -79,7 +79,7 @@ class SignalMapping:
 
     def check(self):
         """Perform some checks on the attributes of a class instance.
-        
+
         Returns:
             str : "pass" if read info passes some integrity tests.
                    Return failure information as string otherwise."""
@@ -185,11 +185,11 @@ class SignalMapping:
     @staticmethod
     def get_integer_reference(string_reference, alphabet):
         """Get integer-coded reference sequence.
-        
+
         Args:
             string_reference (str) : sequence
             alphabet (str) : alphabet
-            
+
         Returns:
             np int array : integer coded ref
         """
@@ -209,7 +209,7 @@ class SignalMapping:
         Returns:
             np int array : reftosig, giving locations in signal for each point
                             in the ref.
-            
+
         Note:
               Length of reftosig returned is (1 + reflen),
               where reflen = len(reference)
@@ -268,10 +268,10 @@ class SignalMapping:
                                 `signal_mapping.Mapping.get_integer_reference`
             stride (int): model stride
             sig (taiyaki.signal.Signal object) : signal data
-            
+
         Returns:
             SignalMapping object.
-            
+
         Note:
 
         There is a bit of freedom in where to put the signal locations
@@ -311,10 +311,10 @@ class SignalMapping:
 
     def get_read_dictionary(self, check=True):
         """Return a read dict for insertion via AbstractMappedSignalWriter
-        
+
         Args:
             check (bool): if True, do checking on the SignalMapping object.
-        
+
         Returns:
             dict : contains all the attributes of the SignalMapping object.
 
@@ -337,7 +337,7 @@ class SignalMapping:
 
     def get_mapped_reference_region(self):
         """Get a the part of the reference that's mapped.
-        
+
         Returns:
             tuple : (start,end_exc) where
                 read_dict['Reference'][start:end_exc] is the mapped region
@@ -354,7 +354,7 @@ class SignalMapping:
 
     def get_mapped_dacs_region(self):
         """Get the part of the dacs vector that's mapped.
-        
+
         Returns:
             tuple :range where self.Dacs[range[0]:range[1]] is the
                      mapped region of the signal"""
@@ -370,13 +370,13 @@ class SignalMapping:
 
     def get_reference_locations(self, signal_location_vector):
         """Return reference locations that go with given signal locations.
- 
+
         Args:
            signal_location_vector (numpy int vector): locations in the signal.
 
         Returns:
             numpy int vector :reference locations.
-            
+
         Note:
             Feeding in a tuple works too but the result is still a vector
 
@@ -413,7 +413,7 @@ class SignalMapping:
 
     def get_dacs(self, region=None):
         """Get vector of DAC levels
-        
+
         Args:
             region (tuple of two ints or None):
                                 region = (start_inclusive, end_exclusive)
@@ -428,13 +428,13 @@ class SignalMapping:
 
     def get_current(self, region=None, standardize=True):
         """Get current vector and optionally apply standardization factors.
-        
+
         Args:
             region (tuple of two ints or None):
                                 region = (start_inclusive, end_exclusive)
             standardize (bool) : if true, then apply standardisation
                                  factors as stored in the SignalMapping object.
-        
+
         Returns:
             np float array : current[start_inclusive:end_exclusive],
                               normalised if standardize=True.
@@ -498,7 +498,7 @@ class SignalMapping:
             Chunk object : signal and ref data.
 
         Note:
-            
+
         The chunk should have length chunk_len samples, with the number of
         bases determined by the mapping.
         """
@@ -539,7 +539,7 @@ class SignalMapping:
             Chunk object : signal and ref data.
 
         Note:
-            
+
         The chunk should have length chunk_bases bases, with the number of
         samples determined by the mapping.
         """
@@ -595,7 +595,7 @@ class Chunk(object):
             start_sample=None, reject_reason=None):
         """
         Create a chunk object from signal data.
-        
+
         Args:
             read_id (str): Read UUID
             current (np float array): Signal current array
@@ -605,7 +605,7 @@ class Chunk(object):
                                  read SignalMapping current.
             reject_reason (str): Reason for rejecting this chunk. Default of
                                  None indicates that the read is not rejected.
-                                 
+
         Returns:
             Chunk object.
         """
@@ -649,7 +649,7 @@ class Chunk(object):
 
     def apply_filters(self, filter_params):
         """Apply filtering conditions, and set rejected attribute.
-        
+
         Args:
             filter_params (namedtuple as in
                            taiyaki.signal_mappings.FILTER_PARAMETERS)

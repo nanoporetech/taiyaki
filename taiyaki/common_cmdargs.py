@@ -9,12 +9,12 @@ from taiyaki import __version__
 
 def add_common_command_args(parser, arglist):
     """Add common command line args to the parser.
-    
+
     Args:
         parser (argparse parser): parser
         arglist (list of str): list of keys such as
                                  ['input_strand_list', 'jobs']
-                                 
+
     Note:
         Not all command line args used in the package are
         included in this func: only those that are used by more than

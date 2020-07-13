@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
-import matplotlib as mpl
-mpl.use('Agg')  # So we don't need an x server
-import matplotlib.pyplot as plt
 import sys
+
+if True:
+    #  Protect in block to prevent autopep8 refactoring
+    import matplotlib
+    matplotlib.use('Agg')
+
+import matplotlib.pyplot as plt
+
 from taiyaki import fileio
 
 
 def main():
-    print("Plots output of predict_squiggle.py")
-    print("Usage:")
-    print("plot_predict_squiggle_output.py <predict_squiggle_output_file> <output_png_file>")
+    print("""Plots output of predict_squiggle.py
+Usage:
+plot_predict_squiggle_output.py <predict_squiggle_output_file> <output_png_file>
+""")
     if len(sys.argv) < 3:
         print("ERROR: Needs command line arguments!")
     else:

@@ -34,6 +34,7 @@ class CTCLoss(nn.Module):
     Attributes:
         sharp (float): sharpening factor.
     """
+
     def __init__(self, sharp=1.0):
         """ Constructor for `CTCLoss`
 
@@ -115,6 +116,7 @@ class FlipFlopLoss(nn.Module):
     Attributes:
         sharp (float): sharpening factor.
     """
+
     def __init__(self, sharp=1.0):
         """ Constructor for `FlipFlopLoss`
 
