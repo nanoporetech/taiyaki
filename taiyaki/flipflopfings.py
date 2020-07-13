@@ -50,6 +50,34 @@ def flipflop_code(labels, alphabet_length=4):
     return x
 
 
+def move_indices(labels, nbase=len(DEFAULT_ALPHABET)):
+    """  Calculate move indices for flip-flop transitions
+
+    Args:
+        labels (array [nseqpos]): Flip-flop encoded sequence
+        nbase:  Number of canonical bases.
+
+    Returns:
+        array [nseqpos]: Transitions Indices of moves
+    """
+    nstate = nbase + nbase
+    return labels[:-1] + np.minimum(labels[1:], nbase) * nstate
+
+
+def stay_indices(labels, nbase=len(DEFAULT_ALPHABET)):
+    """  Calculate stay indices for flip-flop transitions
+
+    Args:
+        labels (array [nseqpos]): Flip-flop encoded sequence
+        nbase:  Number of canonical bases.
+
+    Returns:
+        array [nseqpos]: Transitions Indices of moves
+    """
+    nstate = nbase + nbase
+    return labels + np.minimum(labels, nbase) * nstate
+
+
 def path_to_str(path, alphabet=DEFAULT_ALPHABET, include_first_source=True):
     """ Convert flipflop path into a basecall string.
 
