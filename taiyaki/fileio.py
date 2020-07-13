@@ -19,7 +19,7 @@ def _numpyfmt(a):
 
     Args:
         a (numpy recarray) : numpy structured array
-        
+
     Returns:
         list of strs : each is a format string to be used when
                        printing one of the columns of a
@@ -64,13 +64,13 @@ def file_has_fields(fname, fields=None):
 
 def read_chunks(fname, n_lines, n_chunks=None, header=True):
     """Yield successive chunks of a file
-    
+
     Args:
         fname (str): file to read
         n_lines (int): number of lines per chunk
         n_chunks (int): number of chunks to read
         header (bool): if True one line is added to first chunk
-        
+
     Yields:
         str : a chunk of the file
     """
@@ -98,7 +98,7 @@ def take_a_peak(fname, n_lines=4):
     Args:
         fname (str): file to read
         n_lines (int): number of lines to read
-        
+
     Yields:
         str : line of the file
     """
@@ -132,7 +132,7 @@ def readtsv(fname, fields=None, **kwargs):
         fname (str): filename to read. If the filename extension is
                     gz or bz2, the file is first decompressed.
         fields (list of str) : list of required fields.
-        
+
     Returns:
         numpy recarray : structured array containing data
     """
@@ -156,7 +156,7 @@ def readchunkedtsv(fname, chunk_size=100, **kwargs):
         fname (str): file to read
         chunk_size (int): length of resultant chunks
         **kwargs (dict): kwargs passed on to np.genfromtxt
-        
+
     Yields:
         numpy recarray : structured array
     """

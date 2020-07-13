@@ -34,7 +34,7 @@ class CtcGradientTest(unittest.TestCase):
         self.grad_dp = 5  # Number of decimal places for gradient check
 
         # Sequence ACC. Flip-flop coded ACc or 015
-        #'sequences' rather than 'sequence' because
+        # 'sequences' rather than 'sequence' because
         # we could have more than one sequence packed together
         self.sequences = {'015': torch.tensor([0, 1, 5]),
                           '237': torch.tensor([2, 3, 7]),

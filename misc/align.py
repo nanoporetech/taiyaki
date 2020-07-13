@@ -2,17 +2,22 @@
 import argparse
 import csv
 from collections import OrderedDict
-import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import os
-import pysam
-from scipy.stats import gaussian_kde
-from scipy.optimize import minimize_scalar
 import subprocess
 import sys
 import traceback
+
+if True:
+    #  Protect in block to prevent autopep8 refactoring
+    import matplotlib
+    matplotlib.use('Agg')
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pysam
+from scipy.stats import gaussian_kde
+from scipy.optimize import minimize_scalar
+
 from taiyaki.cmdargs import AutoBool, proportion
 
 
@@ -21,12 +26,13 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 # TODO: add several named commonly used values for bwa_mem_args
-parser.add_argument('--bwa_mem_args', metavar='args', default='-k14 -W20 -r10 -t 16 -A 1 -B 2 -O 2 -E 1',
+parser.add_argument('--bwa_mem_args', metavar='args',
+                    default='-k14 -W20 -r10 -t 16 -A 1 -B 2 -O 2 -E 1',
                     help="Command line arguments to pass to bwa mem")
-parser.add_argument('--coverage', metavar='proportion', default=0.6, type=proportion,
-                    help='Minimum coverage')
-parser.add_argument('--data_set_name', default=None,
-                    help="Data set name. If not set file name is used.")
+parser.add_argument('--coverage', metavar='proportion', default=0.6,
+                    type=proportion, help='Minimum coverage')
+parser.add_argument('--data_name', default=None,
+                    help="Data name. If not set file name is used.")
 parser.add_argument('--figure_format', default="png",
                     help="Figure file format.")
 parser.add_argument('--fill', default=True, action=AutoBool,
@@ -160,7 +166,7 @@ def acc_plot(acc, mode, median, fill, title):
     return f, ax
 
 
-def summary(acc_dat, data_set_name, fill, show_median):
+def summary(acc_dat, data_name, fill, show_median):
     """Create summary report and plots for accuracy statistics
 
     :param acc_dat: list of row dictionaries of read accuracy metrics
@@ -170,7 +176,7 @@ def summary(acc_dat, data_set_name, fill, show_median):
     if len(acc_dat) == 0:
         res = """*** Summary report for {} ***
 No sequences mapped
-""".format(data_set_name)
+""".format(data_name)
         return res, None, None
 
     acc = np.array([r['accuracy'] for r in acc_dat])
@@ -220,8 +226,9 @@ Accuracy quantiles:
 Proportion with accuracy >90%:  {:.5f}
 Number with accuracy >90%:  {}
 CIscore (Mbits): {:.5f}
-""".format(data_set_name, nmapped, mean, mode, qstring1, qstring2, a90, n_gt_90, sum(ciscore) / 1e6)
-    plot_title = "{} (n = {})".format(data_set_name, nmapped)
+""".format(data_name, nmapped, mean, mode, qstring1, qstring2, a90, n_gt_90,
+           sum(ciscore) / 1e6)
+    plot_title = "{} (n = {})".format(data_name, nmapped)
     f, ax = acc_plot(acc, mode, median, fill, plot_title)
     return res, f, ax
 
@@ -257,9 +264,9 @@ def main():
                         writer.writerow(row)
 
             # write summary file and plot
-            data_set_name = fn if args.data_set_name is None else args.data_set_name
-            report, f, ax = summary(
-                acc_dat, data_set_name, args.fill, args.show_median)
+            data_name = fn if args.data_name is None else args.data_name
+            report, f, ax = summary(acc_dat, data_name, args.fill,
+                                    args.show_median)
             if f is not None:
                 f.savefig(graphfile)
             sys.stdout.write('\n' + report + '\n')

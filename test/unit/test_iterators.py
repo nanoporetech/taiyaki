@@ -35,5 +35,6 @@ class IteratorsTest(unittest.TestCase):
         self.assertEqual(self.f(L, 6), [(1, 2, 3, 4), (1, 2, 3, 4, 5), (1, 2, 3, 4, 5, 6),
                                         (2, 3, 4, 5, 6, 7), (3, 4, 5, 6, 7), (4, 5, 6, 7), (5, 6, 7)])
 
+
 if __name__ == '__main__':
     unittest.main()

@@ -44,6 +44,7 @@ class JsonEncoder(json.JSONEncoder):
           ]
         }
     """
+
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)

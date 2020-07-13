@@ -33,6 +33,7 @@ class AbstractMappedSignalReader(ABC):
     as much as possible so that changes made there will be propagated to the
     derived classes.
     """
+
     def __enter__(self):
         """ Called when 'with' is used to create an object.
         Since we always return the instance, no need to override this.
@@ -286,6 +287,7 @@ class HDF5Reader(AbstractMappedSignalReader):
         hdf5 (:class:`h5py.File`): File handle of HDF5 file
         version (int): Version of file
     """
+
     def __init__(self, filename):
         """ Open file and initialise
 
@@ -381,6 +383,7 @@ class HDF5Writer(AbstractMappedSignalWriter):
        hdf5 (:class:`h5py.File`):  File handle of HDF5 file to write to
        read_ids (list): Read ID written to file.
     """
+
     def __init__(self, filename, alphabet_info):
         """ Open file and initialise
 

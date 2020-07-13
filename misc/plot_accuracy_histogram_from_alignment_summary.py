@@ -1,24 +1,28 @@
 #!/usr/bin/env python3
 import argparse
-import numpy as np
 
-import matplotlib as mpl
-mpl.use('Agg')  # So we don't need an x server
+if True:
+    #  Protect in block to prevent autopep8 refactoring
+    import matplotlib
+    matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 from taiyaki.fileio import readtsv
 from taiyaki.cmdargs import FileExists, Positive
 
-parser = argparse.ArgumentParser(description='Plot an accuracy histogram from a combined read file',
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+parser = argparse.ArgumentParser(
+    description='Plot an accuracy histogram from a combined read file',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('combined_read_file', action=FileExists,
                     help='Combined read file to get data from')
 parser.add_argument('--bins', default=100, type=Positive(int),
                     help='Number of bins for histogram')
 parser.add_argument('--title', default='', help='Figure title')
-parser.add_argument(
-    '--output_name', default='basecaller_histogram.png', help='Output file name')
+parser.add_argument('--output_name', default='basecaller_histogram.png',
+                    help='Output file name')
 
 
 def main():

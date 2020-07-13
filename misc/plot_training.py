@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 import argparse
-import matplotlib as mpl
-mpl.use('Agg')  # So we don't need an x server
+import os
+
+if True:
+    #  Protect in block to prevent autopep8 refactoring
+    import matplotlib
+    matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+
 from taiyaki.cmdargs import Positive
 from taiyaki import fileio
 from taiyaki.constants import DOTROWLENGTH
+
 
 parser = argparse.ArgumentParser(
     description='Plot graphs of training loss',
@@ -15,19 +21,20 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('output', help='Output png file')
 parser.add_argument('input_directories',  nargs='+',
-                    help='One or more directories containing files called model.log and batch.log')
+                    help='One or more directories containing model.log and ' +
+                         'batch.log files')
 parser.add_argument('--mav', default=None,
                     type=int,
                     help='Moving average window applied to batchlog loss.' +
-                         'e.g --mav 10 makes loss curves easier to separate visually')
-parser.add_argument('--upper_y_limit', default=None,
-                    type=Positive(float), help='Upper limit of plot y(loss) axis')
-parser.add_argument('--lower_y_limit', default=None,
-                    type=Positive(float), help='Lower limit of plot y(loss) axis')
-parser.add_argument('--upper_x_limit', default=None,
-                    type=Positive(float), help='Upper limit of plot x(iterations) axis')
-parser.add_argument('--lower_x_limit', default=None,
-                    type=Positive(float), help='Lower limit of plot x(iterations) axis')
+                         'e.g --mav 10 visually separates loss curves')
+parser.add_argument('--upper_y_limit', default=None, type=Positive(float),
+                    help='Upper limit of plot y(loss) axis')
+parser.add_argument('--lower_y_limit', default=None, type=Positive(float),
+                    help='Lower limit of plot y(loss) axis')
+parser.add_argument('--upper_x_limit', default=None, type=Positive(float),
+                    help='Upper limit of plot x(iterations) axis')
+parser.add_argument('--lower_x_limit', default=None, type=Positive(float),
+                    help='Lower limit of plot x(iterations) axis')
 
 
 def moving_average(a, n=3):
@@ -50,8 +57,9 @@ def read_training_log(filepath):
             if not ('*' in line):
                 splitline = line.split()
                 try:
-                    # This try...except is needed in the case where training stops after
-                    # some dots and before the numbers are written to the file
+                    # This try...except is needed in the case where training
+                    # stops after some dots and before the numbers are written
+                    # to the file
                     polkas.append(int(splitline[1]))
                     train_loss.append(float(splitline[2]))
                     val_loss.append(float(splitline[3]))
@@ -93,8 +101,8 @@ def main():
                  color=colour, label=label + ' (training)', alpha=0.5,
                  linewidth=0.5)
         if len(logdata[td]['t']) == 0:
-            print(
-                "No log data for {} - perhaps <{} iterations complete?".format(td, DOTROWLENGTH))
+            print("No log data for {} - perhaps <{} iterations complete?".
+                  format(td, DOTROWLENGTH))
             continue
         plt.plot(logdata[td]['t'], logdata[td]['validation_loss'],
                  color=colour, label=label + ' (validation)',
@@ -120,6 +128,7 @@ def main():
     plt.tight_layout()
     plt.savefig(args.output, dpi=300)
     plt.close()
+
 
 if __name__ == "__main__":
     main()

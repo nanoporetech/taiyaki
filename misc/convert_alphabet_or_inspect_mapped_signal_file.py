@@ -5,13 +5,13 @@ import re
 import sys
 import h5py
 import argparse
-from taiyaki import alphabet, mapped_signal_files
+from taiyaki import mapped_signal_files
 
 
 def get_parser():
     parser = argparse.ArgumentParser(
-        description='Convert (or print) alphabet attributes contained within ' +
-        'a mapped signal file. Attributes will be adjusted inplace. Note ' +
+        description='Convert (or print) alphabet attributes contained within' +
+        ' a mapped signal file. Attributes will be adjusted inplace. Note ' +
         'that association of modified bases to canonical bases cannot be ' +
         'converted with this script.')
     parser.add_argument('input', help='Mapped signal file.')
@@ -135,6 +135,7 @@ def main():
             msf.attrs['mod_long_names'] = '\n'.join(new_mod_long_names)
 
     return
+
 
 if __name__ == '__main__':
     main()
