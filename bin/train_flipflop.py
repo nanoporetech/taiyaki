@@ -76,127 +76,10 @@ def compute_grad_norm(network, norm_type=2):
                      for p in parameters]), norm_type))
 
 
-# This is here, not in main to allow documentation to be built
-parser = argparse.ArgumentParser(description='Train flip-flop neural network',
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-mdl_grp = parser.add_argument_group('Model Arguments')
-mdl_grp.add_argument('--size', default=256, metavar='neurons',
-                     type=Positive(int), help='Base layer size for model')
-mdl_grp.add_argument('--stride', default=5, metavar='samples',
-                     type=Positive(int), help='Stride for model')
-mdl_grp.add_argument('--winlen', default=19, type=Positive(int),
-                     help='Length of window over data')
-
-trn_grp = parser.add_argument_group('Training Arguments')
-add_common_command_args(
-    trn_grp, """adam eps niteration weight_decay""".split())
-trn_grp.add_argument('--gradient_cap_fraction', default=0.05, metavar='f',
-                     type=Maybe(NonNegative(float)),
-                     help='Cap L2 norm of gradient so that a fraction f of ' +
-                     'gradients are capped. ' +
-                     'Use --gradient_cap_fraction None for no capping.')
-trn_grp.add_argument('--lr_cosine_iters', default=90000, metavar='n',
-                     type=Positive(float),
-                     help='Learning rate decreases from max to min ' +
-                     'like cosine function over n batches')
-trn_grp.add_argument('--lr_frac_decay', default=None, metavar='k',
-                     type=Positive(int),
-                     help='If specified, use fractional learning rate ' +
-                     'schedule, rate=lr_max*k/(k+t)')
-trn_grp.add_argument('--lr_max', default=4.0e-3, metavar='rate',
-                     type=Positive(float),
-                     help='Max (and starting) learning rate')
-trn_grp.add_argument('--lr_min', default=1.0e-4, metavar='rate',
-                     type=Positive(float), help='Min (and final) learning rate')
-trn_grp.add_argument('--seed', default=None, metavar='integer',
-                     type=Positive(int),
-                     help='Set random number seed and deterministic flags ' +
-                     'in pytorch.')
-trn_grp.add_argument('--sharpen', default=(1.0, 1.0, 25000), nargs=3,
-                     metavar=('min', 'max', 'niter'), action=ParseToNamedTuple,
-                     type=(Positive(float), Positive(float), Positive(int)),
-                     help='Increase sharpening factor linearly from "min" to ' +
-                          '"max" over "niter" iterations')
-trn_grp.add_argument('--warmup_batches', type=int, default=200,
-                     help='For the first n batches, ' +
-                     'warm up at a low learning rate.')
-trn_grp.add_argument('--lr_warmup', type=float, default=None,
-                     help="Learning rate used for warmup. Defaults to lr_min")
-
-data_grp = parser.add_argument_group('Data Arguments')
-add_common_command_args(data_grp, """filter_max_dwell filter_mean_dwell limit
-                                     reverse sample_nreads_before_filtering""".split())
-data_grp.add_argument('--chunk_len_min', default=3000, metavar='samples',
-                      type=Positive(int),
-                      help='Min length of each chunk in samples' +
-                      ' (chunk lengths are random between min and max)')
-data_grp.add_argument('--chunk_len_max', default=8000, metavar='samples',
-                      type=Positive(int),
-                      help='Max length of each chunk in samples ' +
-                      '(chunk lengths are random between min and max)')
-data_grp.add_argument('--include_reporting_strands',
-                      default=False, action=AutoBool,
-                      help='Include reporting strands in training. Default: ' +
-                      'Hold training strands out of training.')
-data_grp.add_argument('--input_strand_list', default=None, action=FileExists,
-                      help='Strand summary file containing column read_id. ' +
-                      'Filenames in file are ignored.')
-data_grp.add_argument('--min_sub_batch_size', default=128, metavar='chunks',
-                      type=Positive(int),
-                      help='Number of chunks to run in parallel per ' +
-                      'sub-batch for chunk_len = chunk_len_max. Actual ' +
-                      'length of sub-batch used is ' +
-                      '(min_sub_batch_size * chunk_len_max / chunk_len).')
-data_grp.add_argument('--reporting_percent_reads', default=1,
-                      metavar='sub_batches', type=Positive(float),
-                      help='Percent of reads to use for std loss reporting')
-data_grp.add_argument('--reporting_strand_list', action=FileExists,
-                      help='Strand summary file containing column read_id. ' +
-                      'All other fields are ignored. If not provided ' +
-                      'reporting strands will be randomly selected.')
-data_grp.add_argument('--reporting_sub_batches', default=10,
-                      metavar='sub_batches', type=Positive(int),
-                      help='Number of sub-batches to use for std loss reporting')
-data_grp.add_argument('--standardize', default=True, action=AutoBool,
-                      help='Standardize currents for each read')
-data_grp.add_argument('--sub_batches', default=1, metavar='sub_batches',
-                      type=Positive(int),
-                      help='Number of sub-batches per batch')
-
-cmp_grp = parser.add_argument_group('Compute Arguments')
-add_common_command_args(cmp_grp, set(("device",)))
-# Argument local_rank is used only by when the script is run in multi-GPU
-# mode using torch.distributed.launch. See the README.
-cmp_grp.add_argument('--local_rank', type=int, default=None,
-                     help=argparse.SUPPRESS)
-
-out_grp = parser.add_argument_group('Output Arguments')
-add_common_command_args(out_grp, """outdir overwrite quiet
-                                    save_every""".split())
-out_grp.add_argument('--full_filter_status', default=False, action=AutoBool,
-                     help='Output full chunk filtering statistics. ' +
-                     'Default: only proportion of filtered chunks.')
-
-mod_grp = parser.add_argument_group('Modified Base Arguments')
-mod_grp.add_argument('--mod_factor', type=float, default=1.0,
-                     help='Relative modified base weight (compared to ' +
-                     'canonical transitions) in loss/gradient (only ' +
-                     'applicable for modified base models).')
-
-misc_grp = parser.add_argument_group('Miscellaneous  Arguments')
-add_common_command_args(misc_grp, set(("version",)))
-
-parser.add_argument('model', action=FileExists,
-                    help='File to read python model (or checkpoint) from')
-parser.add_argument('input', action=FileExists,
-                    help='file containing mapped reads')
-
-
-def prepare_random_batches(device, read_data, batch_chunk_len, sub_batch_size,
-                           target_sub_batches, alphabet_info, filter_params,
-                           network, network_metadata, log,
-                           select_strands_randomly=True, first_strand_index=0):
+def prepare_random_batches(
+        device, read_data, batch_chunk_len, sub_batch_size, target_sub_batches,
+        alphabet_info, filter_params, net_info, log,
+        select_strands_randomly=True, first_strand_index=0):
     total_sub_batches = 0
     if net_info.metadata.reverse:
         revop = np.flip
@@ -620,22 +503,21 @@ def train_model(
         # take optimiser step
         optim_info.optimiser.zero_grad()
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
-            calculate_loss(network, network_metadata,
-                           main_batch_gen, sharpen,
-                           mod_cat_weights,
-                           mod_factor_t, calc_grads=True)
+            calculate_loss(
+                net_info, main_batch_gen, sharpen, mod_info.mod_cat_weights,
+                mod_info.mod_factor, calc_grads=True)
+        gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
+            net_info.net.parameters(), gradient_cap)
+        if optim_info.rolling_quantile is not None:
+            gradient_cap = optim_info.rolling_quantile.update(
+                gradnorm_uncapped)
+        optim_info.optimiser.step()
 
-        if args.gradient_cap_fraction is None:
-            gradnorm_uncapped = compute_grad_norm(network)
-        else:
-            gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
-                network.parameters(), gradient_cap)
-            gradient_cap = rolling_quantile.update(gradnorm_uncapped)
-
-        optimizer.step()
-        if is_lead_process:
-            batchlog.record(fval, gradnorm_uncapped,
-                            None if args.gradient_cap_fraction is None else gradient_cap)
+        # record step information
+        if res_info.is_lead_process:
+            batchlog.record(
+                fval, gradnorm_uncapped,
+                None if optim_info.rolling_quantile is None else gradient_cap)
 
         total_chunks += chunk_count
         total_samples += chunk_samples
