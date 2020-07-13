@@ -71,7 +71,8 @@ trn_grp.add_argument('--lr_min', default=1.0e-4, metavar='rate',
                      type=Positive(float), help='Min (and final) learning rate')
 trn_grp.add_argument('--seed', default=None, metavar='integer',
                      type=Positive(int),
-                     help='Set random number seed')
+                     help='Set random number seed and deterministic flags ' +
+                     'in pytorch.')
 trn_grp.add_argument('--sharpen', default=(1.0, 1.0, 25000), nargs=3,
                      metavar=('min', 'max', 'niter'), action=ParseToNamedTuple,
                      type=(Positive(float), Positive(float), Positive(int)),
@@ -288,11 +289,16 @@ def main():
                             "only by torch.distributed.launch. See the README.")
         device = helpers.set_torch_device(args.local_rank)
         if args.seed is not None:
-            # Make sure processes get different random picks of training data
-            np.random.seed(args.seed + args.local_rank)
+            args.seed = args.seed + args.local_rank
     else:
         device = helpers.set_torch_device(args.device)
+
+    if args.seed is not None:
         np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        if device.type == 'cuda':
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
 
     if is_lead_process:
         helpers.prepare_outdir(args.outdir, args.overwrite)
