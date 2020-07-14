@@ -23,7 +23,9 @@ _DEBUG_MULTIGPU = False
 RESOURCE_INFO = namedtuple('RESOURCE_INFO', (
     'is_multi_gpu', 'is_lead_process', 'device'))
 
-MOD_INFO = namedtuple('MOD_INFO', ('mod_factor', 'mod_cat_weights'))
+MOD_INFO = namedtuple('MOD_INFO', (
+    'mod_factor', 'mod_cat_weights', 'mod_factor_start', 'mod_factor_final',
+    'mod_factor_niter'))
 
 NETWORK_METADATA = namedtuple('NETWORK_METADATA', (
     'reverse', 'standardize', 'is_cat_mod', 'can_mods_offsets',
@@ -259,13 +261,29 @@ def load_data(args, log, res_info):
         exit(1)
     log.write('* Loaded {} reads.\n'.format(len(read_data)))
 
-    # prepare modified base paramter tensors
-    mod_factor_t = torch.tensor(
-        args.mod_factor, dtype=torch.float32).to(res_info.device)
     # mod cat inv freq weighting is currently disabled. Compute and set this
     # value to enable mod cat weighting
-    mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
-    mod_info = MOD_INFO(mod_factor_t, mod_cat_weights)
+    # prepare modified base paramter tensors
+    final_mod_factor_t = torch.tensor(
+        args.mod_factor.final, dtype=torch.float32).to(res_info.device)
+    if args.mod_prior_factor is None:
+        mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
+    else:
+        mod_cat_weights = alphabet_info.compute_log_odds_weights(
+            read_data, args.num_mod_weight_reads)
+        log.write('* Computed modbase log odds priors:  {}\n'.format(
+            '  '.join('{}:{:.4f}'.format(*x)
+                      for x in zip(alphabet_info.alphabet, mod_cat_weights))))
+        if args.mod_prior_factor != 1.0:
+            mod_cat_weights = np.power(mod_cat_weights, args.mod_prior_factor)
+            log.write('* Applied mod_prior_factor to modbase log odds ' +
+                      'priors:  {}\n'.format(
+                          '  '.join('{}:{:.4f}'.format(*x)
+                                    for x in zip(alphabet_info.alphabet,
+                                                 mod_cat_weights))))
+    mod_info = MOD_INFO(
+        final_mod_factor_t, mod_cat_weights, args.mod_factor.start,
+        args.mod_factor.final, args.mod_factor.niter)
 
     return read_data, alphabet_info, mod_info
 
@@ -482,6 +500,11 @@ def train_model(
         sharpen = train_params.sharpen.min + (
             train_params.sharpen.max - train_params.sharpen.min) * \
             min(1.0, curr_iter / train_params.sharpen.niter)
+        mod_factor_t = torch.tensor(
+            mod_info.mod_factor_final + (
+                mod_info.mod_factor_final - mod_info.mod_factor_start) *
+            min(1.0, curr_iter / mod_info.mod_factor_niter),
+            dtype=torch.float32).to(res_info.device)
 
         # Chunk length is chosen randomly in the range given but forced to
         # be a multiple of the stride
@@ -505,7 +528,7 @@ def train_model(
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
             calculate_loss(
                 net_info, main_batch_gen, sharpen, mod_info.mod_cat_weights,
-                mod_info.mod_factor, calc_grads=True)
+                mod_factor_t, calc_grads=True)
         gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
             net_info.net.parameters(), gradient_cap)
         if optim_info.rolling_quantile is not None:
