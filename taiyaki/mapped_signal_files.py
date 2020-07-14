@@ -33,6 +33,7 @@ class AbstractMappedSignalReader(ABC):
     as much as possible so that changes made there will be propagated to the
     derived classes.
     """
+    pass_str = 'pass'
 
     def __enter__(self):
         """ Called when 'with' is used to create an object.
@@ -146,7 +147,8 @@ class AbstractMappedSignalReader(ABC):
             read_id (str): ID of read to check
 
         Returns:
-            str: "pass" if correct, or a report on errors.
+            str: taiyaki.signal_mapping.SignalMapping.pass_str if correct, or
+                a report on errors.
         """
         try:
             read = self.get_read(read_id)
@@ -162,7 +164,8 @@ class AbstractMappedSignalReader(ABC):
                 report.
 
         Returns:
-            str: "pass" or report of any errors
+            str: taiyaki.mapped_signal_file.AbstractMappedSignalReader.pass_str
+                or report of any errors
         """
         return_string = ""
         try:
@@ -187,11 +190,11 @@ class AbstractMappedSignalReader(ABC):
                 break
             else:
                 read_check = self.check_read(read_id)
-                if read_check != "pass":
+                if read_check != signal_mapping.SignalMapping.pass_str:
                     return_string += "Read " + read_id + ":\n" + read_check
 
         if len(return_string) == 0:
-            return "pass"
+            return self.pass_str
 
         return return_string
 

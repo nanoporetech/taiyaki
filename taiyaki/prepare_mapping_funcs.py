@@ -102,7 +102,11 @@ def oneread_remap(
         read_ref, alphabet_info.alphabet)
     sig_mapping = signal_mapping.SignalMapping.from_remapping_path(
         path, int_ref, model_stride, sig)
-    return sig_mapping.get_read_dictionary(), RemapResult.SUCCESS
+    try:
+        sig_mapping_dict = sig_mapping.get_read_dictionary()
+    except signal_mapping.TaiyakiSigMapError as e:
+        return None, str(e)
+    return sig_mapping_dict, RemapResult.SUCCESS
 
 
 def generate_output_from_results(results, output, alphabet_info, verbose=True):
