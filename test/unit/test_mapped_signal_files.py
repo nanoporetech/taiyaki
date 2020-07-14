@@ -152,37 +152,65 @@ class TestMappedReadFiles(unittest.TestCase):
             print("Saved plot to", self.plotfilepath)
 
     def test_check_HDF5_mapped_read_file(self):
-        """Checks that non-conforming read object leads to errors"""
-        print("Creating flawed Read object from test data")
-        read_dict = construct_mapped_read_dict()
-        # set reference to incorrect length
-        read_dict['Reference'] = np.zeros(len(read_dict['Reference']) - 1,
-                                          dtype=np.int32)
-        read_object = signal_mapping.SignalMapping(**read_dict)
+        """Check that constructing a read object which doesn't conform
+        leads to errors.
+        """
+        print("Creating Read object from test data")
+        valid_read_dict = construct_mapped_read_dict()
+        valid_read_object = signal_mapping.SignalMapping(**valid_read_dict)
         print("Checking contents")
-        check_text = read_object.check()
-        print("Check result on read object: should fail")
+        check_text = valid_read_object.check()
+        print("Check result on valid read object: should pass")
         print(check_text)
-        self.assertNotEqual(check_text, "pass")
+        self.assertEqual(check_text, signal_mapping.SignalMapping.pass_str)
 
-        print("Writing to file")
+        print("Creating flawed Read object from test data")
+        invalid_read_dict = construct_mapped_read_dict()
+        # set reference to incorrect length
+        invalid_read_dict['Reference'] = np.zeros(
+            len(invalid_read_dict['Reference']) - 1, dtype=np.int32)
+        invalid_read_object = signal_mapping.SignalMapping(**invalid_read_dict)
+        print("Checking contents")
+        check_text = invalid_read_object.check()
+        print("Check result on invalid read object: should fail")
+        print(check_text)
+        self.assertNotEqual(check_text, signal_mapping.SignalMapping.pass_str)
+
+        print("Writing invalid read to file")
         alphabet_info = alphabet.AlphabetInfo(
             DEFAULT_ALPHABET, DEFAULT_ALPHABET)
-        with tempfile.NamedTemporaryFile(delete=False, dir=self.testset_work_dir) as fh:
+        with tempfile.NamedTemporaryFile(
+                delete=True, dir=self.testset_work_dir) as fh:
             testfilepath = fh.name
         with mapped_signal_files.HDF5Writer(testfilepath, alphabet_info) as f:
-            f.write_read(read_object.get_read_dictionary())
+            try:
+                f.write_read(invalid_read_object.get_read_dictionary())
+            except signal_mapping.TaiyakiSigMapError:
+                pass
+            else:
+                self.assertTrue(False, 'Invalid read passed checks.')
+
+        print("Writing valid read to file")
+        with tempfile.NamedTemporaryFile(
+                delete=False, dir=self.testset_work_dir) as fh:
+            testfilepath = fh.name
+        with mapped_signal_files.HDF5Writer(testfilepath, alphabet_info) as f:
+            try:
+                f.write_read(valid_read_object.get_read_dictionary())
+            except signal_mapping.TaiyakiSigMapError:
+                self.assertTrue(False, 'Valid read failed checks.')
 
         print("Current dir = ", os.getcwd())
         print("File written to ", testfilepath)
 
-        print("\nOpening file for reading")
+        print("\nOpening valid file for reading")
         with mapped_signal_files.HDF5Reader(testfilepath) as f:
             ids = f.get_read_ids()
             print("Read ids=", ids[0])
             print("Version number = ", f.version)
-            self.assertEqual(ids[0], read_dict['read_id'])
+            self.assertEqual(ids[0], valid_read_dict['read_id'])
 
             file_test_report = f.check()
-            print("Test report (should fail):", file_test_report)
-            self.assertNotEqual(file_test_report, "pass")
+            print("Test report (should pass):", file_test_report)
+            self.assertEqual(
+                file_test_report, signal_mapping.SignalMapping.pass_str)

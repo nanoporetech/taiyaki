@@ -8,6 +8,12 @@ from collections import namedtuple
 import numpy as np
 
 
+class TaiyakiSigMapError(Exception):
+    """ Custom Taiyaki signal mapping error for more graceful error handling
+    """
+    pass
+
+
 class SignalMapping:
     """Represents a mapping between a signal and a reference, with attributes
     including the signal and the reference.
@@ -30,6 +36,7 @@ class SignalMapping:
         int: np.integer,
         bool: np.bool_
     }
+    pass_str = 'pass'
 
     @staticmethod
     def is_numpy(x):
@@ -81,7 +88,7 @@ class SignalMapping:
         """Perform some checks on the attributes of a class instance.
 
         Returns:
-            str : "pass" if read info passes some integrity tests.
+            str : self.pass_str if read info passes some integrity tests.
                    Return failure information as string otherwise."""
         # type checking
         return_string = ''.join(self._typecheck(k)
@@ -94,7 +101,7 @@ class SignalMapping:
         maplen = len(self.Ref_to_signal)
         if self.reflen + 1 != maplen:
             return_string += ("Length of Ref_to_signal ({}) should be 1 + " +
-                              "length of Reference ()\n").format(
+                              "length of Reference ({})\n").format(
                                   maplen, self.reflen)
         # -1 and len(Dacs) + 1 are used as end markers
         if np.min(self.Ref_to_signal) < -1 or \
@@ -105,7 +112,7 @@ class SignalMapping:
             return_string += "Mapping does not increase monotonically\n"
 
         if len(return_string) == 0:
-            return "pass"
+            return self.pass_str
         return return_string
 
     def __init__(
@@ -318,14 +325,19 @@ class SignalMapping:
         Returns:
             dict : contains all the attributes of the SignalMapping object.
 
+        Raises:
+            taiyaki.signal_mapping.TaiyakiSigMapError : if check=True and read
+                fails check method.
+
         Note:
-            We return the dictionary, not the object itself.
-        That's because this method is used inside worker processes which
-        need to pass their results out through the pickling mechanism in
-        imap_mp.
+            We return the dictionary, not the object itself. That's because
+                this method is used inside worker processes which need to pass
+                their results out through the pickling mechanism in imap_mp.
         """
         if check:
-            self.check()
+            check_str = self.check()
+            if check_str != self.pass_str:
+                raise TaiyakiSigMapError(check_str)
 
         # create dictionary with required values and valid optional values
         readDict = dict((k, getattr(self, k))

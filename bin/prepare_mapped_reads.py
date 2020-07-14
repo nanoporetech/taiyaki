@@ -79,9 +79,6 @@ def main():
     kwargs['max_read_length'] = args.max_read_length
     kwargs['localpen'] = args.localpen
 
-    # remaps a single read using flip-flip network
-    workerFunction = prepare_mapping_funcs.oneread_remap
-
     def iter_jobs():
         references = bio.fasta_file_to_dict(
             args.references, alphabet=full_alphabet)
@@ -94,8 +91,9 @@ def main():
     else:
         chunksize = 50
 
-    results = imap_mp(workerFunction, iter_jobs(), threads=args.jobs,
-                      fix_kwargs=kwargs, unordered=True, chunksize=chunksize)
+    results = imap_mp(prepare_mapping_funcs.oneread_remap, iter_jobs(),
+                      threads=args.jobs, fix_kwargs=kwargs, unordered=True,
+                      chunksize=chunksize)
 
     # results is an iterable of dicts
     # each dict is a set of return values from a single read
