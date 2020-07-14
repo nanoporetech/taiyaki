@@ -168,10 +168,22 @@ def get_train_flipflop_parser():
 
     mod_grp = parser.add_argument_group('Modified Base Arguments')
     mod_grp.add_argument(
-        '--mod_factor', type=float, default=1.0,
-        help='Relative modified base weight (compared to canonical ' +
-        'transitions) in loss/gradient (only applicable for modified base ' +
-        'models).')
+        '--mod_factor', default=(8.0, 1.0, 50000), nargs=3,
+        metavar=('start', 'final', 'niter'), action=ParseToNamedTuple,
+        type=(Positive(float), Positive(float), Positive(int)),
+        help='Relative weight applied to modified base transitions in ' +
+        'loss/gradient compared to canonical transitions. Larger values ' +
+        'increase the effective modified base learning rate. Scale factor ' +
+        'linearly from "start" to "final" over first "niter" iterations')
+    mod_grp.add_argument(
+        '--mod_prior_factor', type=float,
+        help='Exponential factor applied to prior mod weights estimated ' +
+        'from training data. Intended to balance modified base scores. ' +
+        'Default: no mod prior')
+    mod_grp.add_argument(
+        '--num_mod_weight_reads', type=int, default=5000,
+        help='Number of reads to sample to compute the modified base prior ' +
+        'weights from the training data.')
 
     misc_grp = parser.add_argument_group('Miscellaneous  Arguments')
     misc_grp.add_argument(

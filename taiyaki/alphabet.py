@@ -65,6 +65,41 @@ class AlphabetInfo(object):
                     lab_counts[can_lab] / lab_counts[mod_lab])
         return np.array(mod_inv_weights, dtype=np.float32)
 
+    def compute_log_odds_weights(self, read_data, N):
+        """ Compute modified base inverse frequency weights (compared to
+        frequency of corresponding canonical base). Weights are intended to
+        be used to scale the cat_mod model loss function to more
+        equally weigh modified base observations from the training data.
+
+        Values are the ratio of canoncial base frequency to modified base
+        frequency within a sample of `read_data`.
+
+        Output is in cat_mod model output ordering.
+
+        :param read_data: list of ReadData objects, as return from
+            mapped_signal_files.HDF5.get_multiple_reads
+        :param N: Number of reads to sample for inverse frequency estimation
+        """
+        N = min(N, len(read_data))
+        # sample N reads
+        labels = np.concatenate([
+            rd.Reference for rd in np.random.choice(
+                read_data, N, replace=False)])
+        lab_counts = np.bincount(labels)
+        if lab_counts.shape[0] < self.nbase or np.any(lab_counts == 0):
+            raise NotImplementedError
+        log_odds_weights = []
+        for can_base in self.can_bases:
+            can_lab = self.alphabet.index(can_base)
+            can_mods_sum = sum(
+                lab_counts[mod_lab] for mod_lab in
+                np.where(self.collapse_labels == can_lab)[0][1:])
+            log_odds_weights.append(can_mods_sum / lab_counts[can_lab])
+            for mod_lab in np.where(self.collapse_labels == can_lab)[0][1:]:
+                log_odds_weights.append(
+                    lab_counts[can_lab] / lab_counts[mod_lab])
+        return np.array(log_odds_weights, dtype=np.float32)
+
     def contains_modified_bases(self):
         return len(self.mod_long_names) > 0
 
