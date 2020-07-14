@@ -529,11 +529,11 @@ def train_model(
             calculate_loss(
                 net_info, main_batch_gen, sharpen, mod_info.mod_cat_weights,
                 mod_factor_t, calc_grads=True)
-        if args.gradient_cap_fraction is None:
-            gradnorm_uncapped = compute_grad_norm(network)
+        if optim_info.rolling_quantile is None:
+            gradnorm_uncapped = compute_grad_norm(net_info.net)
         else:
             gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
-                network.parameters(), gradient_cap)
+                net_info.net.parameters(), gradient_cap)
             gradient_cap = optim_info.rolling_quantile.update(
                 gradnorm_uncapped)
         optim_info.optimiser.step()
