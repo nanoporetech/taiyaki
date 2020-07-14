@@ -4,7 +4,7 @@ numpy >= 1.14.5
 biopython >= 1.63, <=1.76
 Cython >= 0.25.2
 wheel >= 0.29.0
-ont_fast5_api == 1.2.0
+ont_fast5_api
 pysam >=0.15.0,!=0.15.3
 matplotlib >= 2.0.0
 scipy >= 1
