@@ -55,14 +55,11 @@ class AcceptanceTest(unittest.TestCase):
             2).expect_stderr(util.any_line_starts_with(u"usage"))
 
     @parameterized.expand([
-        [["--params"], "mGru_flipflop_remapping_model_r9_DNA.checkpoint"],
-        [["--no-params"], "mGru_flipflop_remapping_model_r9_DNA.checkpoint"],
-        [["--params"], "mLstm_flipflop_model_r941_DNA.checkpoint"],
-        [["--no-params"], "mLstm_flipflop_model_r941_DNA.checkpoint"],
-        [["--params"], "mLstm_flipflop_model_r103_DNA.checkpoint"],
-        [["--no-params"], "mLstm_flipflop_model_r103_DNA.checkpoint"],
+        ["mGru_flipflop_remapping_model_r9_DNA.checkpoint"],
+        ["mLstm_flipflop_model_r941_DNA.checkpoint"],
+        ["mLstm_flipflop_model_r103_DNA.checkpoint"],
     ])
-    def test_dump_to_stdout(self, options, model_name):
+    def test_dump_to_stdout(self, model_name):
         """  Try dumping json to stdout
 
         Args:
@@ -71,49 +68,10 @@ class AcceptanceTest(unittest.TestCase):
         """
         model_file = os.path.join(util.MODELS_DIR, model_name)
         self.assertTrue(os.path.exists(model_file))
-        cmd = [self.script, model_file] + options
+        cmd = [self.script, model_file]
         print(cmd)
         util.run_cmd(self, cmd).expect_exit_code(0).expect_stdout(
             lambda o: is_valid_json('\n'.join(o)))
-
-    @parameterized.expand([
-        [["--no-params"], "mGru_flipflop_remapping_model_r9_DNA.checkpoint"],
-        [["--no-params"], "mLstm_flipflop_model_r941_DNA.checkpoint"],
-        [["--no-params"], "mLstm_flipflop_model_r103_DNA.checkpoint"]
-    ])
-    def test_dump_to_a_file(self, options, model_name):
-        """  Try dumping json to a file
-
-        Notes:
-            JSON for each model is dumped to a temporary file in the the
-        "test_dump_to_a_file" directory.
-
-        Args:
-            options (arrayof str): commandline options for command
-            model_name (str): name of file from which to dump json
-        """
-        model_file = os.path.join(util.MODELS_DIR, model_name)
-        self.assertTrue(os.path.exists(self.model_file))
-
-        test_work_dir = self.work_dir("test_dump_to_a_file")
-        with tempfile.NamedTemporaryFile(dir=test_work_dir, suffix='.json',
-                                         delete=False) as fh:
-            output_file = fh.name
-
-        cmd = [self.script, self.model_file, "--output", output_file] + options
-        error_message = "RuntimeError: File/path for 'output' exists, {}".format(
-            output_file)
-        util.run_cmd(self, cmd).expect_exit_code(1).expect_stderr(
-            util.any_line_starts_with(error_message))
-
-        os.remove(output_file)
-
-        util.run_cmd(self, cmd).expect_exit_code(0)
-
-        self.assertTrue(os.path.exists(output_file))
-        dump = open(output_file, 'r').read()
-
-        self.assertTrue(is_valid_json(dump))
 
     @unittest.expectedFailure
     def test_json_to_checkpoint(self):
@@ -132,7 +90,7 @@ class AcceptanceTest(unittest.TestCase):
         # open and remove file in case it remains from previous test
         open(json_file, "w").close()
         os.remove(json_file)
-        cmd = [self.script, self.model_file, "--output", json_file, "--params"]
+        cmd = [self.script, self.model_file, "--output", json_file]
         util.run_cmd(self, cmd).expect_exit_code(0)
         self.assertTrue(os.path.exists(json_file))
 
@@ -153,7 +111,7 @@ class AcceptanceTest(unittest.TestCase):
         # open and remove file in case it remains from previous test
         open(json_file2, "w").close()
         os.remove(json_file2)
-        cmd = [self.script, re_model_file, "--output", json_file2, "--params"]
+        cmd = [self.script, re_model_file, "--output", json_file2]
         util.run_cmd(self, cmd).expect_exit_code(0)
         self.assertTrue(os.path.exists(json_file2))
 

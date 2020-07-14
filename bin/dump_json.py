@@ -11,9 +11,6 @@ parser = argparse.ArgumentParser(description='Dump JSON representation of model'
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 add_common_command_args(parser, ["output"])
 
-parser.add_argument('--params', default=True, action=AutoBool,
-                    help='Output parameters as well as model structure')
-
 parser.add_argument('model', action=FileExists, help='Model checkpoint')
 
 
@@ -22,7 +19,7 @@ def main():
     model_md5 = file_md5(args.model)
     model = load_model(args.model)
 
-    json_out = model.json(args.params)
+    json_out = model.json()
     json_out['md5sum'] = model_md5
 
     with open_file_or_stdout(args.output) as fh:

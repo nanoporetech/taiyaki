@@ -144,18 +144,14 @@ class Reverse(nn.Module):
         """
         return torch.flip(self.layer(torch.flip(x, (0,))), (0,))
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
         """
         return OrderedDict([('type', "reverse"),
-                            ('sublayers', self.layer.json(params))])
+                            ('sublayers', self.layer.json())])
 
 
 class Residual(nn.Module):
@@ -190,18 +186,14 @@ class Residual(nn.Module):
         """
         return x + self.layer(x)
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
         """
         return OrderedDict([('type', "Residual"),
-                            ('sublayers', self.layer.json(params))])
+                            ('sublayers', self.layer.json())])
 
 
 class GatedResidual(nn.Module):
@@ -242,21 +234,16 @@ class GatedResidual(nn.Module):
         y = self.layer(x)
         return gate * x + (1 - gate) * y
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
         """
         res = OrderedDict([('type', "GatedResidual"),
-                           ('sublayers', self.layer.json(params))])
-        if params:
-            res['params'] = OrderedDict(
-                [('alpha', float(self.alpha.detach_().numpy()[0]))])
+                           ('sublayers', self.layer.json())])
+        res['params'] = OrderedDict(
+            [('alpha', float(self.alpha.detach_().numpy()[0]))])
         return res
 
 
@@ -322,12 +309,8 @@ class FeedForward(nn.Module):
         """
         return self.activation(self.linear(x))
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -337,9 +320,8 @@ class FeedForward(nn.Module):
                            ('size', self.size),
                            ('insize', self.insize),
                            ('bias', self.has_bias)])
-        if params:
-            res['params'] = OrderedDict([('W', self.linear.weight)] +
-                                        [('b', self.linear.bias)] if self.has_bias else [])
+        res['params'] = OrderedDict([('W', self.linear.weight)] +
+                                    [('b', self.linear.bias)] if self.has_bias else [])
         return res
 
 
@@ -403,12 +385,8 @@ class Softmax(nn.Module):
         """
         return self.activation(self.linear(x))
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -417,9 +395,8 @@ class Softmax(nn.Module):
                            ('size', self.size),
                            ('insize', self.insize),
                            ('bias', self.has_bias)])
-        if params:
-            res['params'] = OrderedDict([('W', self.linear.weight)] +
-                                        [('b', self.linear.bias)] if self.has_bias else [])
+        res['params'] = OrderedDict([('W', self.linear.weight)] +
+                                    [('b', self.linear.bias)] if self.has_bias else [])
         return res
 
 
@@ -485,12 +462,8 @@ class CudnnGru(nn.Module):
         y, hy = self.cudnn_gru.forward(x)
         return y
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -502,16 +475,15 @@ class CudnnGru(nn.Module):
                            ('insize', self.insize),
                            ('bias', self.has_bias),
                            ('state0', False)])
-        if params:
-            iW = _cudnn_to_guppy_gru(self.cudnn_gru.weight_ih_l0)
-            sW = _cudnn_to_guppy_gru(self.cudnn_gru.weight_hh_l0)
-            ib = _cudnn_to_guppy_gru(self.cudnn_gru.bias_ih_l0)
-            sb = _cudnn_to_guppy_gru(self.cudnn_gru.bias_hh_l0)
-            res['params'] = OrderedDict([('iW', _reshape(iW, (3, self.size, self.insize))),
-                                         ('sW', _reshape(
-                                             sW, (3, self.size, self.size))),
-                                         ('ib', _reshape(ib, (3, self.size))),
-                                         ('sb', _reshape(sb, (3, self.size)))])
+        iW = _cudnn_to_guppy_gru(self.cudnn_gru.weight_ih_l0)
+        sW = _cudnn_to_guppy_gru(self.cudnn_gru.weight_hh_l0)
+        ib = _cudnn_to_guppy_gru(self.cudnn_gru.bias_ih_l0)
+        sb = _cudnn_to_guppy_gru(self.cudnn_gru.bias_hh_l0)
+        res['params'] = OrderedDict([('iW', _reshape(iW, (3, self.size, self.insize))),
+                                     ('sW', _reshape(
+                                         sW, (3, self.size, self.size))),
+                                     ('ib', _reshape(ib, (3, self.size))),
+                                     ('sb', _reshape(sb, (3, self.size)))])
         return res
 
 
@@ -611,12 +583,8 @@ class Lstm(nn.Module):
         y, hy = self.lstm.forward(x)
         return y
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -627,11 +595,10 @@ class Lstm(nn.Module):
                            ('size', self.size),
                            ('insize', self.insize),
                            ('bias', self.has_bias)])
-        if params:
-            res['params'] = OrderedDict([('iW', _reshape(self.lstm.weight_ih_l0, (4, self.size, self.insize))),
-                                         ('sW', _reshape(self.lstm.weight_hh_l0,
-                                                         (4, self.size, self.size))),
-                                         ('b', _reshape(self.lstm.bias_ih_l0, (4, self.size)))])
+        res['params'] = OrderedDict([('iW', _reshape(self.lstm.weight_ih_l0, (4, self.size, self.insize))),
+                                     ('sW', _reshape(self.lstm.weight_hh_l0,
+                                                     (4, self.size, self.size))),
+                                     ('b', _reshape(self.lstm.bias_ih_l0, (4, self.size)))])
         return res
 
 
@@ -732,12 +699,8 @@ class GruMod(nn.Module):
         y, hy = self.cudnn_gru.forward(x)
         return y
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -748,14 +711,13 @@ class GruMod(nn.Module):
                            ('size', self.size),
                            ('insize', self.insize),
                            ('bias', self.has_bias)])
-        if params:
-            iW = _cudnn_to_guppy_gru(self.cudnn_gru.weight_ih_l0)
-            sW = _cudnn_to_guppy_gru(self.cudnn_gru.weight_hh_l0)
-            b = _cudnn_to_guppy_gru(self.cudnn_gru.bias_ih_l0)
-            res['params'] = OrderedDict([('iW', _reshape(iW, (3, self.size, self.insize))),
-                                         ('sW', _reshape(
-                                             sW, (3, self.size, self.size))),
-                                         ('b', _reshape(b, (3, self.size)))])
+        iW = _cudnn_to_guppy_gru(self.cudnn_gru.weight_ih_l0)
+        sW = _cudnn_to_guppy_gru(self.cudnn_gru.weight_hh_l0)
+        b = _cudnn_to_guppy_gru(self.cudnn_gru.bias_ih_l0)
+        res['params'] = OrderedDict([('iW', _reshape(iW, (3, self.size, self.insize))),
+                                     ('sW', _reshape(
+                                         sW, (3, self.size, self.size))),
+                                     ('b', _reshape(b, (3, self.size)))])
         return res
 
 
@@ -864,12 +826,8 @@ class Convolution(nn.Module):
         out = self.activation(self.conv(self.pad(x)))
         return out.permute(2, 0, 1)
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -882,9 +840,8 @@ class Convolution(nn.Module):
                            ("stride", self.conv.stride[0]),
                            ("padding", self.padding),
                            ("activation", self.activation.__name__)])
-        if params:
-            res['params'] = OrderedDict([("W", self.conv.weight)] +
-                                        [("b", self.conv.bias)] if self.has_bias else [])
+        res['params'] = OrderedDict([("W", self.conv.weight)] +
+                                    [("b", self.conv.bias)] if self.has_bias else [])
         return res
 
 
@@ -921,18 +878,14 @@ class Parallel(nn.Module):
         ys = [layer(x) for layer in self.sublayers]
         return torch.cat(ys, 2)
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
         """
         return OrderedDict([('type', "parallel"),
-                            ('sublayers', [layer.json(params)
+                            ('sublayers', [layer.json()
                                            for layer in self.sublayers])])
 
 
@@ -972,18 +925,14 @@ class Product(nn.Module):
             ys *= layer(x)
         return ys
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
         """
         return OrderedDict([('type', "Product"),
-                            ('sublayers', [layer.json(params)
+                            ('sublayers', [layer.json()
                                            for layer in self.sublayers])])
 
 
@@ -1017,19 +966,15 @@ class Serial(nn.Module):
             x = layer(x)
         return x
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
         """
         return OrderedDict([
             ('type', "serial"),
-            ('sublayers', [layer.json(params) for layer in self.sublayers])])
+            ('sublayers', [layer.json() for layer in self.sublayers])])
 
 
 class SoftChoice(nn.Module):
@@ -1065,20 +1010,15 @@ class SoftChoice(nn.Module):
         ys = [p * layer(x) for p, layer in zip(ps, self.sublayers)]
         return torch.stack(ys).sum(0)
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
         """
         res = OrderedDict([('type', "softchoice"),
-                           ('sublayers', [layer.json(params) for layer in self.sublayers])])
-        if params:
-            res['params'] = OrderedDict([('alpha', self.alpha)])
+                           ('sublayers', [layer.json() for layer in self.sublayers])])
+        res['params'] = OrderedDict([('alpha', self.alpha)])
         return res
 
 
@@ -1120,12 +1060,8 @@ class Identity(nn.Module):
         super().__init__()
         self.fun = fun
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -1165,12 +1101,8 @@ class Studentise(nn.Module):
         super().__init__()
         self.epsilon = epsilon
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -1199,12 +1131,8 @@ class DeltaSample(nn.Module):
         Right-hand side is padded with zero to maintain input shape.
     """
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -1243,19 +1171,14 @@ class Window(nn.Module):
         assert w % 2 == 1, 'Window size should be odd'
         self.w = w
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
         """
         res = OrderedDict([('type', "window")])
-        if params:
-            res['params'] = OrderedDict([('w', self.w)])
+        res['params'] = OrderedDict([('w', self.w)])
         return res
 
     def forward(self, x):
@@ -1423,12 +1346,8 @@ class GlobalNormFlipFlop(nn.Module):
         self.scale = scale
         self._never_use_cupy = _never_use_cupy
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -1440,10 +1359,9 @@ class GlobalNormFlipFlop(nn.Module):
             ('bias', self.has_bias),
             ('scale', self.scale),
             ("activation", self.activation.__name__)])
-        if params:
-            res['params'] = OrderedDict(
-                [('W', self.linear.weight)] +
-                [('b', self.linear.bias)] if self.has_bias else [])
+        res['params'] = OrderedDict(
+            [('W', self.linear.weight)] +
+            [('b', self.linear.bias)] if self.has_bias else [])
 
         return res
 
@@ -1639,12 +1557,8 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         """
         return self.ncan_base
 
-    def json(self, params=False):
+    def json(self):
         """ Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional): Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -1657,10 +1571,9 @@ class GlobalNormFlipFlopCatMod(nn.Module):
             ('can_nmods', self.can_nmods),
             ('output_alphabet', self.output_alphabet),
             ('modified_base_long_names', self.ordered_mod_long_names)])
-        if params:
-            res['params'] = OrderedDict(
-                [('W', self.linear.weight)] +
-                [('b', self.linear.bias)] if self.has_bias else [])
+        res['params'] = OrderedDict(
+            [('W', self.linear.weight)] +
+            [('b', self.linear.bias)] if self.has_bias else [])
         return res
 
     def reset_parameters(self):
@@ -1840,12 +1753,8 @@ class TimeLinear(nn.Module):
         y = self.activation(self.linear(xp))
         return y.permute(2, 0, 1)
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -1855,9 +1764,8 @@ class TimeLinear(nn.Module):
                            ('size', self.size),
                            ('insize', self.insize),
                            ('bias', self.has_bias)])
-        if params:
-            res['params'] = OrderedDict([('W', self.linear.weight)] +
-                                        [('b', self.linear.bias)] if self.has_bias else [])
+        res['params'] = OrderedDict([('W', self.linear.weight)] +
+                                    [('b', self.linear.bias)] if self.has_bias else [])
         return res
 
 
@@ -1880,12 +1788,8 @@ class UpSample(nn.Module):
         super().__init__()
         self.nfold = nfold
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
@@ -1930,12 +1834,8 @@ class DownSample(nn.Module):
         super().__init__()
         self.nfold = nfold
 
-    def json(self, params=False):
+    def json(self):
         """  Create structured output describing layer for converting to json
-
-        Args:
-            params (bool, optional):  Whether to include parameter values in
-                output.
 
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
