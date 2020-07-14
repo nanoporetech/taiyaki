@@ -15,6 +15,7 @@ PY3_MINOR = $(shell $(PYTHON) -c "import sys; print(sys.version_info.minor)")
 TORCH_CUDA_ = http://download.pytorch.org/whl/cpu/torch-1.2.0%2Bcpu-cp3${PY3_MINOR}-cp3${PY3_MINOR}m-manylinux1_x86_64.whl
 TORCH_CUDA_9.2 = http://download.pytorch.org/whl/cu92/torch-1.2.0%2Bcu92-cp3${PY3_MINOR}-cp3${PY3_MINOR}m-manylinux1_x86_64.whl
 TORCH_CUDA_10.0 =  http://download.pytorch.org/whl/cu100/torch-1.2.0-cp3${PY3_MINOR}-cp3${PY3_MINOR}m-manylinux1_x86_64.whl
+TORCH_CUDA_10.1 =  http://download.pytorch.org/whl/cu100/torch-1.2.0-cp3${PY3_MINOR}-cp3${PY3_MINOR}m-manylinux1_x86_64.whl
 TORCH_Linux ?= $(TORCH_CUDA_$(CUDA))
 TORCH_Darwin = torch
 TORCH ?= $(TORCH_$(shell uname -s))
@@ -23,6 +24,7 @@ TORCH ?= $(TORCH_$(shell uname -s))
 # determine correct cupy package to install
 CUPY_9.2 = cupy-cuda92
 CUPY_10.0 = cupy-cuda100
+CUPY_10.1 = cupy-cuda101
 CUPY ?= $(CUPY_$(CUDA))
 
 
