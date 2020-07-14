@@ -29,8 +29,8 @@ def nstate_to_nbase(size_t nstate):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
-                      np.ndarray[np.int32_t, ndim=1, mode="c"] moveidxs,
-                      np.ndarray[np.int32_t, ndim=1, mode="c"] stayidxs,
+                      np.ndarray[np.uintp_t, ndim=1, mode="c"] moveidxs,
+                      np.ndarray[np.uintp_t, ndim=1, mode="c"] stayidxs,
                       np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen,
                       sharpfact):
     """
@@ -63,8 +63,8 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
-                      np.ndarray[np.int32_t, ndim=1, mode="c"] moveidxs,
-                      np.ndarray[np.int32_t, ndim=1, mode="c"] stayidxs,
+                      np.ndarray[np.uintp_t, ndim=1, mode="c"] moveidxs,
+                      np.ndarray[np.uintp_t, ndim=1, mode="c"] stayidxs,
                       np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen,
                       sharpfact):
     """
@@ -113,10 +113,10 @@ class FlipFlopCRF(torch.autograd.Function):
         #  Calculate indices -- seqlen[0:-1] ensures input to split is array
         moveidxs = np.concatenate([
             flipflopfings.move_indices(seq, nbase)
-            for seq in np.split(seqs, np.cumsum(seqlen[:-1]))])
+            for seq in np.split(seqs, np.cumsum(seqlen[:-1]))]).astype(np.uintp)
         stayidxs = np.concatenate([
             flipflopfings.stay_indices(seq, nbase)
-            for seq in np.split(seqs, np.cumsum(seqlen[:-1]))])
+            for seq in np.split(seqs, np.cumsum(seqlen[:-1]))]).astype(np.uintp)
         assert np.all(np.logical_and(moveidxs >=0, moveidxs < ntrans))
         assert np.all(np.logical_and(stayidxs >=0, stayidxs < ntrans))
 
