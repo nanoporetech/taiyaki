@@ -404,7 +404,7 @@ void crf_flipflop_grad_step(float const *restrict fwdcurr,
     const float gradmax = fmaxf_vec(gradtmp, N);
     float Z = 0.0f;
     for (size_t pos = 0; pos < N; pos++) {
-        gradtmp[pos] = expf(gradtmp[pos] - gradmax);
+        gradtmp[pos] = expf(sharpfact * (gradtmp[pos] - gradmax));
         Z += gradtmp[pos];
     }
     for (size_t pos = 0; pos < N; pos++) {
