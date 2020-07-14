@@ -109,7 +109,7 @@ clean:
 pyDirs := taiyaki test bin models misc
 pyFiles := $(shell find *.py ${pyDirs} -type f -name "*.py")
 autopep8:
-	autopep8 --ignore E203 -i --max-line-length=120 ${pyFiles}
+	autopep8 -i ${pyFiles}
 pep8:
 	pep8 --ignore E203,E402 --max-line-length=120 ${pyFiles}
 

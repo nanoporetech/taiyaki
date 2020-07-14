@@ -237,12 +237,12 @@ class LayerTest(metaclass=abc.ABCMeta):
 
     def test_002_json_dumps(self):
         js = json.dumps(self.layer.json(), cls=JsonEncoder)
-        js2 = json.dumps(self.layer.json(params=True), cls=JsonEncoder)
+        js2 = json.dumps(self.layer.json(), cls=JsonEncoder)
 
     def test_003_json_decodes(self):
         props = json.JSONDecoder().decode(json.dumps(self.layer.json(), cls=JsonEncoder))
         props2 = json.JSONDecoder().decode(json.dumps(
-            self.layer.json(params=True), cls=JsonEncoder))
+            self.layer.json(), cls=JsonEncoder))
 
 
 class LstmTest(LayerTest, unittest.TestCase):
