@@ -20,6 +20,22 @@ _FORGET_BIAS = 2.0
 MODEL_VERSION = 2
 
 
+def get_function_name(fun):
+    """  Get function name
+
+    Args:
+        fun (<function>): function for which name is required
+
+    Returns:
+        str: Name of function
+    """
+    if isinstance(fun, torch._C.Function):
+        #  Function is JIT'd by pytorch
+        return fun.name
+
+    return fun.__name__
+
+
 def init_(param, value):
     """  Set parameter value (inplace)
 
@@ -316,7 +332,7 @@ class FeedForward(nn.Module):
             :collections:`OrderedDict`: Structured description of layer.
         """
         res = OrderedDict([('type', "feed-forward"),
-                           ('activation', self.activation.__name__),
+                           ('activation', get_function_name(self.activation)),
                            ('size', self.size),
                            ('insize', self.insize),
                            ('bias', self.has_bias)])
@@ -839,7 +855,7 @@ class Convolution(nn.Module):
                            ("winlen", self.conv.kernel_size[0]),
                            ("stride", self.conv.stride[0]),
                            ("padding", self.padding),
-                           ("activation", self.activation.__name__)])
+                           ("activation", get_function_name(self.activation))])
         res['params'] = OrderedDict([("W", self.conv.weight)] +
                                     [("b", self.conv.bias)] if self.has_bias else [])
         return res
@@ -1067,7 +1083,7 @@ class Identity(nn.Module):
             :collections:`OrderedDict`: Structured description of layer.
         """
         return OrderedDict([('type', 'Identity'),
-                            ('activation', self.activation.__name__)])
+                            ('activation', get_function_name(self.activation))])
 
     def forward(self, x):
         """  Forward method for layer
@@ -1356,7 +1372,7 @@ class GlobalNormFlipFlop(nn.Module):
             ('insize', self.insize),
             ('bias', self.has_bias),
             ('scale', self.scale),
-            ("activation", self.activation.__name__)])
+            ("activation", get_function_name(self.activation))])
         res['params'] = OrderedDict(
             [('W', self.linear.weight)] +
             [('b', self.linear.bias)] if self.has_bias else [])
@@ -1758,7 +1774,7 @@ class TimeLinear(nn.Module):
             :collections:`OrderedDict`: Structured description of layer.
         """
         res = OrderedDict([('type', "TimeLinear"),
-                           ('activation', self.activation.__name__),
+                           ('activation', get_function_name(self.activation)),
                            ('size', self.size),
                            ('insize', self.insize),
                            ('bias', self.has_bias)])

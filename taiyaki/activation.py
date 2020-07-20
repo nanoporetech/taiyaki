@@ -20,6 +20,7 @@ def relu(x):
     return torch.relu(x)
 
 
+@torch.jit.script
 def relu_smooth(x):
     """ Variant of relu that is differentiable everywhere
 
@@ -36,6 +37,7 @@ def relu_smooth(x):
     return sqr(y) - 2.0 * y + x + abs(x)
 
 
+@torch.jit.script
 def softplus(x):
     """ Softplus function log(1 + exp(x))
 
@@ -48,7 +50,7 @@ def softplus(x):
 
     This is equivalent to relu(x) + log1p(exp(-|x|))
     """
-    absx = abs(x)
+    absx = torch.abs(x)
     softplus_neg = torch.log1p(torch.exp(-absx))
     return relu(x) + softplus_neg
 
@@ -66,7 +68,8 @@ def elu(x, alpha=1.0):
     return selu(x, alpha, 1.0)
 
 
-def selu(x, alpha=1.6733, lam=1.0507):
+@torch.jit.script
+def selu(x, alpha: float = 1.6733, lam: float = 1.0507):
     """ Scaled Exponential Linear Unit
 
     See "Self-Normalizing Neural Networks" Klambauer, Unterthiner, Mayr
@@ -79,6 +82,7 @@ def selu(x, alpha=1.6733, lam=1.0507):
     return lam * torch.where(x > 0, x, alpha * torch.expm1(x))
 
 
+@torch.jit.script
 def gelu(x):
     """ Gaussian Error Linear Unit
 
@@ -100,6 +104,7 @@ def exp(x):
     return torch.exp(x)
 
 
+@torch.jit.script
 def swish(x):
     """ Swish activation
 
@@ -132,6 +137,7 @@ def erf(x):
     return torch.erf(x)
 
 
+@torch.jit.script
 def L1mL2(x):
     """ Activation function inspired by the L1-L2 M-estimator
 
@@ -145,10 +151,12 @@ def L1mL2(x):
     return x / torch.sqrt(1.0 + 0.5 * x * x)
 
 
+@torch.jit.script
 def fair(x):
     return x / (1.0 + abs(x) / 1.3998)
 
 
+@torch.jit.script
 def retu(x):
     """ Rectifying activation followed by Tanh
 
@@ -185,6 +193,7 @@ def sin(x):
     return torch.sin(x)
 
 
+@torch.jit.script
 def cauchy(x):
     """ Activation function inspired by Cauchy M-estimator
 
@@ -199,6 +208,7 @@ def cauchy(x):
     return x / (1.0 + sqr(x / 2.3849))
 
 
+@torch.jit.script
 def geman_mcclure(x):
     """ Activation function based on Geman McClure M-estimator
 
@@ -212,6 +222,7 @@ def geman_mcclure(x):
     return x / sqr(1.0 + sqr(x))
 
 
+@torch.jit.script
 def welsh(x):
     """ Activation function based on the Welsh M-estimator
 
