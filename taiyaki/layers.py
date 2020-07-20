@@ -1229,7 +1229,7 @@ def logaddexp(x, y):
 
 
 @torch.jit.script
-def global_norm_flipflop_step(scores_t, fwd_t, nbase):
+def global_norm_flipflop_step(scores_t, fwd_t, nbase: int):
     """  Single step of flip-flop global normalization
 
     Args:
@@ -1241,7 +1241,6 @@ def global_norm_flipflop_step(scores_t, fwd_t, nbase):
         tuple of :torch:`Tensor` and :torch:`Tensor`: scaling factor for time
             step and new state following time step.
     """
-    nbase = int(nbase)
     curr_scores = fwd_t.unsqueeze(1) + scores_t.reshape(
         (-1, nbase + 1, 2 * nbase))
     base1_state = curr_scores[:, :nbase].logsumexp(2)
@@ -1272,7 +1271,6 @@ def log_partition_flipflop(scores):
                     1)
     logZ = fwd.logsumexp(1, keepdim=True)
     fwd = fwd - logZ
-    nbase = torch.tensor(nbase, device=scores.device, dtype=torch.long)
     for scores_t in scores.unbind(0):
         factors, fwd = global_norm_flipflop_step(scores_t, fwd, nbase)
         logZ = logZ + factors
