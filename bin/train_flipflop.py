@@ -132,11 +132,11 @@ def prepare_random_batches(
             seqs.append(chunk_seq)
 
         seqs = torch.tensor(
-            np.concatenate(seqs), dtype=torch.float32, device=device)
-        seqlens = torch.tensor(seqlens, dtype=torch.long, device=device)
+            np.concatenate(seqs), dtype=torch.float32, device='cpu')
+        seqlens = torch.tensor(seqlens, dtype=torch.long, device='cpu')
         if net_info.metadata.is_cat_mod:
             mod_cats = torch.tensor(
-                np.concatenate(mod_cats), dtype=torch.long, device=device)
+                np.concatenate(mod_cats), dtype=torch.long, device='cpu')
 
         total_sub_batches += 1
 
