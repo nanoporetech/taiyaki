@@ -101,7 +101,7 @@ def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
 
 class FlipFlopCRF(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, logprob, seqs, seqlen, sharpfact):
+    def forward(ctx, logprob, seqs, seqlen, sharpfact : float):
         lp = logprob.detach().cpu().numpy().astype(np.float32)
         seqs = seqs.cpu().numpy().astype(np.int32)
         seqlen = seqlen.cpu().numpy().astype(np.int32)
