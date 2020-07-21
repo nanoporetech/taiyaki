@@ -17,7 +17,7 @@ from taiyaki.constants import LARGE_LOG_VAL
 _FORGET_BIAS = 2.0
 #  Increment whenever layers change in non-compatible way.
 #  Remember to alter misc/upgrade_model.py to enable upgrade of old models
-MODEL_VERSION = 2
+MODEL_VERSION = 3
 
 
 def init_(param, value):

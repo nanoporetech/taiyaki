@@ -22,7 +22,7 @@ install_requires = [
     "pysam >= 0.15.0",
     "scipy >= 1",
     "statsmodels >= 0.10.1",
-    "torch == 1.2"
+    "torch >= 1.5"
 ]
 
 
