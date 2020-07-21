@@ -76,6 +76,28 @@ def convert_1_to_2(model):
     return True
 
 
+def convert_2_to_3(model):
+    """ Converts model from version 2 to version 3
+
+    - Add `_flat_weights_names` to `torch.nn.GRU/LSTM` for compatibility with
+      torch >= 1.4
+    """
+    if model.metadata['version'] >= 3:
+        return False
+    print('Upgrading to version 3')
+    model.metadata['version'] = 3
+
+    for layer in model.modules():
+        #  Walk layers and change
+        if isinstance(layer, torch.nn.LSTM):
+            print('Adding _flat_weights_names to torch.nn.LSTM')
+            layer._flat_weights_names = layer._all_weights[0]
+        if isinstance(layer, torch.nn.GRU):
+            print('Adding _flat_weights_names to torch.nn.GRU')
+            layer._flat_weights_names = layer._all_weights[0]
+    return True
+
+
 def main():
     args = parser.parse_args()
     if args.output is None:
@@ -87,6 +109,7 @@ def main():
     upgraded = False
     upgraded |= convert_0_to_1(net)
     upgraded |= convert_1_to_2(net)
+    upgraded |= convert_2_to_3(net)
 
     if upgraded:
         print('Saving upgraded model to {}'.format(args.output))
