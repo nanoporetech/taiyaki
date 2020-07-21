@@ -344,12 +344,13 @@ The table below describes the parameters currently used to train the production 
 
 # Environment variables
 
-The environment variables `OMP_NUM_THREADS` and `OPENBLAS_NUM_THREADS` can have an impact on performance.
+The environment variables `OMP_NUM_THREADS`, `OMP_PROC_BIND` and `OPENBLAS_NUM_THREADS` can have an impact on performance.
 The optimal value will depend on your system and on the jobs you are running, so experiment.
 As a starting point, we recommend:
 
     OPENBLAS_NUM_THREADS=1
     OMP_NUM_THREADS=8
+    OMP_PROC_BIND=true
 
 
 # CUDA

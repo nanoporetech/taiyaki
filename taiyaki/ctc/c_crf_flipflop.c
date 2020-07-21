@@ -259,7 +259,7 @@ void crf_flipflop_cost(float const *logprob, size_t ntrans, size_t nblk,
         seqidx[idx] = seqidx[idx - 1] + seqlen[idx - 1];
     }
 
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic, 1)
     for (size_t batch = 0; batch < nbatch; batch++) {
         if (0 == seqlen[batch]) {
             score[batch] = 0.0;
@@ -325,7 +325,7 @@ void crf_flipflop_scores_bwd(float const *logprob, size_t ntrans, size_t nblk,
         seqidx[idx] = seqidx[idx - 1] + seqlen[idx - 1];
     }
 
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic, 1)
     for (size_t batch = 0; batch < nbatch; batch++) {
         if (0 == seqlen[batch]) {
             score[batch] = 0.0;
@@ -451,7 +451,7 @@ void crf_flipflop_grad(float const *logprob, size_t ntrans, size_t nblk,
         seqidx[idx] = seqidx[idx - 1] + seqlen[idx - 1];
     }
 
-#pragma omp parallel for
+#pragma omp parallel for schedule(dynamic, 1)
     // Loop over batch elements
     for (size_t batch = 0; batch < nbatch; batch++) {
         const size_t batch_offset = batch * ntrans;
