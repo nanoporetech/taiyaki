@@ -29,7 +29,7 @@ def get_function_name(fun):
     Returns:
         str: Name of function
     """
-    if isinstance(fun, torch._C.Function):
+    if isinstance(fun, torch.jit.ScriptFunction):
         #  Function is JIT'd by pytorch
         return fun.name
 
