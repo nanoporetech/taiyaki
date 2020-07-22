@@ -32,7 +32,7 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
                       np.ndarray[np.uintp_t, ndim=1, mode="c"] moveidxs,
                       np.ndarray[np.uintp_t, ndim=1, mode="c"] stayidxs,
                       np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen,
-                      sharpfact):
+                      sharpfact, pin=False):
     """
 
     Args:
@@ -40,6 +40,7 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
         moveidx (array [sum(seqlen) - nseq]):  Transition indicies for moves.
         stayidx (array [sum(seqlen)]):  Transition indicies for stays.
         seqlen (array [nseq]): Length of sequences.
+        pin (bool): Whether to pin memory of returned tensors
 
     Returns:
         array [nbatch]: Costs (scores) for nbatch elements.
@@ -50,13 +51,16 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
     # conversion checks that nstates converts to a valid number of bases
     nstate_to_nbase(nstate)
 
-    cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs = np.zeros(
-        (nbatch,), dtype=np.float32)
+    costs = torch.zeros(nbatch, device='cpu', dtype=torch.float)
+    if pin:
+        costs = costs.pin_memory()
+
+    cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs_np = costs.numpy()
     libctc.crf_flipflop_cost(&logprob[0, 0, 0], nstate, nblk, nbatch,
                              &moveidxs[0], &stayidxs[0], &seqlen[0],
-                             sharpfact, &costs[0])
-    assert np.all(costs <= 0.), (
-        "Error: costs must not be positive, got {}").format(costs)
+                             sharpfact, &costs_np[0])
+    assert np.all(costs_np <= 0.), (
+        "Error: costs must not be positive, got {}").format(costs_np)
     return -costs / nblk
 
 
@@ -66,7 +70,7 @@ def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
                       np.ndarray[np.uintp_t, ndim=1, mode="c"] moveidxs,
                       np.ndarray[np.uintp_t, ndim=1, mode="c"] stayidxs,
                       np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen,
-                      sharpfact):
+                      sharpfact, pin=False):
     """
 
     Args:
@@ -74,6 +78,7 @@ def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
         moveidx (array [sum(seqlen) - nseq]):  Transition indicies for moves.
         stayidx (array [sum(seqlen)]):  Transition indicies for stays.
         seqlen (array [nseq]): Length of sequences.
+        pin (bool): Whether to pin memory of returned tensors
 
     Returns:
         Tuple(array [nbatch], array[nblk x nbatch x nstate]):
@@ -86,16 +91,20 @@ def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
     # conversion checks that nstates converts to a valid number of bases
     nstate_to_nbase(nstate)
 
-    cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs = np.zeros(
-        (nbatch,), dtype=np.float32)
-    cdef np.ndarray[np.float32_t, ndim=3, mode="c"] grads = np.zeros_like(
-        logprob, dtype=np.float32)
+    costs = torch.zeros(nbatch, device='cpu', dtype=torch.float)
+    grads = torch.zeros(nblk, nbatch, nstate, device='cpu', dtype=torch.float)
+    if pin:
+        costs = costs.pin_memory()
+        grads = grads.pin_memory()
+
+    cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs_np = costs.numpy()
+    cdef np.ndarray[np.float32_t, ndim=3, mode="c"] grads_np = grads.numpy()
     libctc.crf_flipflop_grad(&logprob[0, 0, 0], nstate, nblk, nbatch,
                              &moveidxs[0], &stayidxs[0], &seqlen[0],
-                             sharpfact, &costs[0], &grads[0, 0, 0])
-    assert np.all(costs <= 0.), (
-        "Error: costs must not be positive, got {}").format(costs)
-    assert np.all(np.isfinite(grads)), "Gradients not finite"
+                             sharpfact, &costs_np[0], &grads_np[0, 0, 0])
+    assert np.all(costs_np <= 0.), (
+        "Error: costs must not be positive, got {}").format(costs_np)
+    assert np.all(np.isfinite(grads_np)), "Gradients not finite"
     return -costs / nblk, -grads / nblk
 
 
@@ -122,11 +131,13 @@ class FlipFlopCRF(torch.autograd.Function):
 
         if logprob.requires_grad:
             cost, grads = crf_flipflop_grad(lp, moveidxs, stayidxs, seqlen,
-                                            sharpfact)
-            ctx.save_for_backward(torch.tensor(grads, device=logprob.device))
+                                            sharpfact,
+                                            pin=torch.cuda.is_available())
+            ctx.save_for_backward(grads.to(logprob.device, non_blocking=True))
         else:
-            cost = crf_flipflop_cost(lp, moveidxs, stayidxs, seqlen, sharpfact)
-        return torch.tensor(cost, device=logprob.device)
+            cost = crf_flipflop_cost(lp, moveidxs, stayidxs, seqlen, sharpfact,
+                                     pin=torch.cuda.is_available())
+        return cost.to(logprob.device, non_blocking=True)
 
     @staticmethod
     def backward(ctx, output_grads):
