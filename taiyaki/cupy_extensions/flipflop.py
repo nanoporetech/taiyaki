@@ -1,5 +1,4 @@
 import cupy as cp
-import numpy as np
 import torch
 from torch.autograd import Function
 
@@ -45,14 +44,16 @@ void flipflop_fwd(
     // to flip
     u = fwd[-fwd_stride] + scores[2 * nbase * to_base];
     for (int from_base = 1; from_base < 2 * nbase; from_base++) {
-      v = fwd[from_base - fwd_stride] + scores[2 * nbase * to_base + from_base];
+      v = fwd[from_base - fwd_stride] + scores[
+        2 * nbase * to_base + from_base];
       u = max(u, v) + log1p(exp(-abs(u - v)));
     }
     fwd[to_base] = u;
 
     // to flop
     u = fwd[to_base - fwd_stride] + scores[2 * nbase * nbase + to_base];
-    v = fwd[to_base + nbase - fwd_stride] + scores[(2 * nbase + 1) * nbase + to_base];
+    v = fwd[to_base + nbase - fwd_stride] + scores[
+      (2 * nbase + 1) * nbase + to_base];
     fwd[to_base + nbase] = max(u, v) + log1p(exp(-abs(u - v)));
     __syncthreads();
 
@@ -141,7 +142,8 @@ void flipflop_bwd(
   // all_scores and all_bwd should both be contiguous
   // a 1D grid parallelises over elements in the batch (N dimension)
   // a 1D threadpool parallelises over the bwd calculations for each state
-  // should be launched with blockDim = (N, 1, 1) and threadDim = (2 * nbase, 1, 1)
+  // should be launched with blockDim = (N, 1, 1) and
+  // threadDim = (2 * nbase, 1, 1)
 
   int S = 2 * nbase * (nbase + 1);
 
@@ -262,7 +264,8 @@ void flipflop_make_trans(
   // all tensors should be contiguous
   // a 1D grid parallelises over elements in the batch (N dimension)
   // a 1D threadpool parallelises over the calculations for each base
-  // should be launched with blockDim = (N, 1, 1) and threadDim = (2 * nbase, 1, 1)
+  // should be launched with blockDim = (N, 1, 1) and
+  // threadDim = (2 * nbase, 1, 1)
   int S = 2 * nbase * (nbase + 1);
 
   int scores_offset = S * blockIdx.x;
@@ -429,7 +432,8 @@ void flipflop_viterbi(
     fwd[out_offset] = u;
     tb[out_offset] = s;
     u = scores[flop_offset] + fwd[out_prev_offset + threadIdx.x];
-    v = scores[flop_offset + nbase] + fwd[out_prev_offset + threadIdx.x + nbase];
+    v = scores[flop_offset + nbase] + fwd[
+      out_prev_offset + threadIdx.x + nbase];
     fwd[out_offset + nbase] = max(u, v);
     tb[out_offset + nbase] = (u > v) ? threadIdx.x : threadIdx.x + nbase;
     flip_offset += in_stride;

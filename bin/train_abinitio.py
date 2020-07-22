@@ -11,44 +11,57 @@ import time
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from taiyaki import alphabet, constants, ctc, flipflopfings, helpers, layers, maths
+from taiyaki import (
+    alphabet, constants, ctc, flipflopfings, helpers, layers, maths)
 from taiyaki.cmdargs import FileExists, Maybe, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 
 
-# This is here, not in main to allow documentation to be built
-parser = argparse.ArgumentParser(
-    description='Train a flip-flop neural network',
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description='Train a flip-flop neural network',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, """adam alphabet device eps limit niteration
-                                   outdir overwrite quiet save_every version
-                                   weight_decay""".split())
+    add_common_command_args(
+        parser, """adam alphabet device eps limit niteration
+        outdir overwrite quiet save_every version
+        weight_decay""".split())
 
-parser.add_argument('--batch_size', default=128, metavar='chunks',
-                    type=Positive(int), help='Number of chunks to run in parallel')
-parser.add_argument('--gradient_cap_fraction', default=0.05, metavar='f',
-                    type=Maybe(NonNegative(float)),
-                    help='Cap L2 norm of gradient so that a fraction f of ' +
-                         'gradients are capped. ' +
-                         'Use --gradient_cap_fraction None for no capping.')
-parser.add_argument('--lr_max', default=4.0e-3, metavar='rate',
-                    type=Positive(float), help='Initial learning rate')
-parser.add_argument('--size', default=96, metavar='neurons',
-                    type=Positive(int), help='Base layer size for model')
-parser.add_argument('--seed', default=None, metavar='integer', type=Positive(int),
-                    help='Set random number seed')
-parser.add_argument('--stride', default=2, metavar='samples', type=Positive(int),
-                    help='Stride for model')
-parser.add_argument('--winlen', default=19, type=Positive(int),
-                    help='Length of window over data')
+    parser.add_argument(
+        '--batch_size', default=128, metavar='chunks',
+        type=Positive(int), help='Number of chunks to run in parallel')
+    parser.add_argument(
+        '--gradient_cap_fraction', default=0.05, metavar='f',
+        type=Maybe(NonNegative(float)),
+        help='Cap L2 norm of gradient so that a fraction f of gradients ' +
+        'are capped. Use --gradient_cap_fraction None for no capping.')
+    parser.add_argument(
+        '--lr_max', default=4.0e-3, metavar='rate',
+        type=Positive(float), help='Initial learning rate')
+    parser.add_argument(
+        '--size', default=96, metavar='neurons',
+        type=Positive(int), help='Base layer size for model')
+    parser.add_argument(
+        '--seed', default=None, metavar='integer', type=Positive(int),
+        help='Set random number seed')
+    parser.add_argument(
+        '--stride', default=2, metavar='samples', type=Positive(int),
+        help='Stride for model')
+    parser.add_argument(
+        '--winlen', default=19, type=Positive(int),
+        help='Length of window over data')
 
-parser.add_argument('model', action=FileExists,
-                    help='File to read python model description from')
-parser.add_argument('chunks', action=FileExists,
-                    help='file containing chunks')
-parser.add_argument('reference', action=FileExists,
-                    help='file containing fasta reference')
+    parser.add_argument(
+        'model', action=FileExists,
+        help='File to read python model description from')
+    parser.add_argument(
+        'chunks', action=FileExists,
+        help='file containing chunks')
+    parser.add_argument(
+        'reference', action=FileExists,
+        help='file containing fasta reference')
+
+    return parser
 
 
 def convert_seq(s, alphabet):
@@ -90,7 +103,7 @@ def save_model(network, outdir, index=None):
 
 
 if __name__ == '__main__':
-    args = parser.parse_args()
+    args = get_parser().parse_args()
 
     np.random.seed(args.seed)
 
@@ -117,7 +130,8 @@ if __name__ == '__main__':
         with open(args.reference, 'rb') as fh:
             seq_dict = pickle.load(fh)
         log.write(
-            '* Loaded preprocessed references from {}.\n'.format(args.reference))
+            '* Loaded preprocessed references from {}.\n'.format(
+                args.reference))
     else:
         #  Read sequences from .fa / .fasta file
         seq_dict = {int(seq.id): convert_seq(str(seq.seq), args.alphabet)
@@ -127,8 +141,9 @@ if __name__ == '__main__':
         pickle_name = os.path.splitext(args.reference)[0] + '.pkl'
         with open(pickle_name, 'wb') as fh:
             pickle.dump(seq_dict, fh)
-        log.write(
-            '* Written pickle of processed references to {} for future use.\n'.format(pickle_name))
+        log.write((
+            '* Written pickle of processed references to {} for ' +
+            'future use.\n').format(pickle_name))
 
     log.write('* Reading network from {}\n'.format(args.model))
     alphabet_info = alphabet.AlphabetInfo(args.alphabet, args.alphabet)
@@ -149,8 +164,8 @@ if __name__ == '__main__':
             'standardize': True,
             'version': layers.MODEL_VERSION
         }
-    log.write('* Network has {} parameters.\n'.format(sum([p.nelement()
-                                                           for p in network.parameters()])))
+    log.write('* Network has {} parameters.\n'.format(
+        sum([p.nelement() for p in network.parameters()])))
 
     optimizer = torch.optim.AdamW(network.parameters(), lr=args.lr_max,
                                   betas=args.adam, eps=args.eps,
@@ -199,8 +214,8 @@ if __name__ == '__main__':
         loss = lossvector.sum() / (seqlens > 0.0).float().sum()
         loss.backward()
 
-        gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(network.parameters(),
-                                                           gradient_cap)
+        gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
+            network.parameters(), gradient_cap)
         if args.gradient_cap_fraction is not None:
             gradient_cap = rolling_quantile.update(gradnorm_uncapped)
         optimizer.step()
@@ -228,7 +243,8 @@ if __name__ == '__main__':
             learning_rate = lr_scheduler.get_lr()[0]
             tn = time.time()
             dt = tn - t0
-            t = ' {:5d} {:7.5f}  {:5.2f}s ({:.2f} ksample/s {:.2f} kbase/s) lr={:.2e}\n'
+            t = (' {:5d} {:7.5f}  {:5.2f}s ({:.2f} ksample/s {:.2f} ' +
+                 'kbase/s) lr={:.2e}\n')
             log.write(t.format((i + 1) // 50, score_smoothed.value,
                                dt, total_samples / 1000.0 / dt,
                                total_bases / 1000.0 / dt, learning_rate))

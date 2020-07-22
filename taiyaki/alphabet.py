@@ -6,19 +6,19 @@ class AlphabetInfo(object):
     alphabet and modified base long names related to a mapped signal data set.
 
     `alphabet` is the single letter codes to reprsent the corresponding labels
-        in training data. Thus ''.join(alphabet[li] for li in labels) would give
-        the sequence corresponding to labels.
-    `collapse_alphabet`  are the canonical bases corresponding to the each value
-        in alphabet. collapse_alphabet must be the same length as alphabet and
-        the values must be a subset of the values in alphabet.
+        in training data. Thus ''.join(alphabet[li] for li in labels) would
+        give the sequence corresponding to labels.
+    `collapse_alphabet`  are the canonical bases corresponding to the each
+        value in alphabet. collapse_alphabet must be the same length as
+        alphabet and the values must be a subset of the values in alphabet.
     `mod_long_names` is a long names for each non-canonical (modified) base in
         alphabet. This value is not required if there are no modified bases in
         the alphabet.
 
     The cat_mod model outputs bases in a specific order. This ordering groups
-    modified base labels with thier corresponding canonical bases. The `reorder`
-    argument to this function will perform this re-ordering, but should not be
-    set for alphabets related to a mapped signal dataset.
+    modified base labels with thier corresponding canonical bases. The
+    `reorder` argument to this function will perform this re-ordering, but
+    should not be set for alphabets related to a mapped signal dataset.
 
     For example alphabet='ACGTZYXW', collapse_alphabet='ACGTCAAT' would produce
     cat_mod ordering of `AYXCZGTW`.
@@ -225,7 +225,7 @@ class AlphabetInfo(object):
         try:
             self.alphabet = self.alphabet.decode()
             self.collapse_alphabet = self.collapse_alphabet.decode()
-        except:
+        except Exception:
             pass
 
         self.parse_alphabet_info()

@@ -8,14 +8,21 @@ from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.cmdargs import FileAbsent, FileExists
 
 
-parser = argparse.ArgumentParser(description='Upgrade mapped signal HDF5 file',
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description='Upgrade mapped signal HDF5 file',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, ['version'])
-parser.add_argument('input', action=FileExists,
-                    help='Mapped signal to read from')
-parser.add_argument('output', action=FileAbsent,
-                    help='Name for output upgraded mapped signal file')
+    add_common_command_args(parser, ['version'])
+
+    parser.add_argument(
+        'input', action=FileExists,
+        help='Mapped signal to read from')
+    parser.add_argument(
+        'output', action=FileAbsent,
+        help='Name for output upgraded mapped signal file')
+
+    return parser
 
 
 def convert_7_to_8(h5):
@@ -53,7 +60,7 @@ def convert_7_to_8(h5):
 
 
 def main():
-    args = parser.parse_args()
+    args = get_parser().parse_args()
 
     copyfile(args.input, args.output)
 

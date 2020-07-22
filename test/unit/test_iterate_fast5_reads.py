@@ -84,7 +84,8 @@ class TestStrandList(unittest.TestCase):
         strand_list = os.path.join(
             self.STRAND_LIST_DIR, "invalid_strand_list_no_header.txt")
         with self.assertRaises(Exception):
-            for fn, rid in iterate_fast5_reads(self.MULTIREAD_DIR, strand_list=strand_list):
+            for fn, rid in iterate_fast5_reads(
+                    self.MULTIREAD_DIR, strand_list=strand_list):
                 print("Filename=", fn, "read_id=", rid)
 
     # TODO add recursive test (requires adding recursive data dir

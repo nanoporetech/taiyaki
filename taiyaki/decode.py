@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 
 from taiyaki import flipflopfings
@@ -78,9 +77,10 @@ def _flipflop_viterbi(scores):
 
     This is an idiomatic pytorch implementation.
 
-    :param scores: batch of score matrices with dimensions [T, batch size, S] where
-         T is the number of blocks (time axis) and S is the number of distict
-         flipflop transitions. For 4 bases S = 40, and in general S = 2 * nbase * (nbase + 1)
+    :param scores: batch of score matrices with dimensions [T, batch size, S]
+        where T is the number of blocks (time axis) and S is the number of
+        distict flipflop transitions. For 4 bases S = 40, and in general
+        S = 2 * nbase * (nbase + 1)
     """
     T, N, S = scores.shape
     nbase = flipflopfings.nbase_flipflop(S)
@@ -93,10 +93,10 @@ def _flipflop_viterbi(scores):
 
     for t in range(T):
         to_flip = scores[t, :, :S - 2 * nbase].reshape((N, nbase, 2 * nbase))
-        fwd[t + 1, :, :nbase], traceback[t, :,
-                                         :nbase] = (fwd[t].unsqueeze(1) + to_flip).max(2)
-        fwd[t + 1, :, nbase:], tb_flop = (fwd[t] + scores[t,
-                                                          :, -2 * nbase:]).reshape((N, 2, nbase)).max(1)
+        fwd[t + 1, :, :nbase], traceback[t, :, :nbase] = (
+            fwd[t].unsqueeze(1) + to_flip).max(2)
+        fwd[t + 1, :, nbase:], tb_flop = (
+            fwd[t] + scores[t, :, -2 * nbase:]).reshape((N, 2, nbase)).max(1)
         traceback[t, :, nbase:] = nbase * tb_flop + \
             torch.arange(nbase, device=traceback.device, dtype=traceback.dtype)
 

@@ -2,11 +2,11 @@ import json
 import numpy as np
 import torch
 
+# Some numpy types are not serializable to JSON out-of-the-box in Python3 --
+# need coersion. See
+# http://stackoverflow.com/questions/27050108/convert-numpy-type-to-python/
+#     27050186#27050186
 
-#
-# Some numpy types are not serializable to JSON out-of-the-box in Python3 -- need coersion. See
-# http://stackoverflow.com/questions/27050108/convert-numpy-type-to-python/27050186#27050186
-#
 
 class JsonEncoder(json.JSONEncoder):
     """ A custom JSON encoder with support for numpy arrays and torch tensors
@@ -15,8 +15,8 @@ class JsonEncoder(json.JSONEncoder):
     library, with added support for numpy arrays and torch tensors, which
     will be converted to JSON arrays.
 
-    This encoder can be used to serialise models built using the modules defined
-    in `taiyaki.layers` in a guppy-compatible format.
+    This encoder can be used to serialise models built using the modules
+    defined in `taiyaki.layers` in a guppy-compatible format.
 
     Examples:
         >>> import json

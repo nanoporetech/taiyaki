@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import os
-
-if True:
-    #  Protect in block to prevent autopep8 refactoring
-    import matplotlib
-    matplotlib.use('Agg')
+import sys
 
 from Bio import SeqIO
 import matplotlib.pyplot as plt
@@ -14,47 +10,56 @@ import statsmodels.api as sm
 
 from taiyaki import fileio
 
+if True:
+    #  Protect in block to prevent autopep8 refactoring
+    import matplotlib
+    matplotlib.use('Agg')
 
-parser = argparse.ArgumentParser(
-    description='Calculate parameters to correct qscores as predictor of ' +
-    'per-read error rate',
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-parser.add_argument("--alignment_summary", default=None,
-                    help="Input: tsv file containing alignment summary")
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description='Calculate parameters to correct qscores as predictor ' +
+        'of per-read error rate',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-parser.add_argument("--coverage_threshold", default=0.8, type=float,
-                    help="Disregard reads with coverage less than this")
+    parser.add_argument(
+        "--alignment_summary", default=None,
+        help="Input: tsv file containing alignment summary")
+    parser.add_argument(
+        "--coverage_threshold", default=0.8, type=float,
+        help="Disregard reads with coverage less than this")
+    parser.add_argument(
+        "--max_alignment_score", default=40.0, type=float,
+        help="Upper limit on score calculated from alignment")
+    parser.add_argument(
+        "--min_fastqscore", default=7.0, type=float,
+        help="Lower limit on score calculated from fastq")
+    parser.add_argument(
+        "--fastq", default=None,
+        help="Input: fastq file")
+    parser.add_argument(
+        "--input_directory", default=None,
+        help="Input directory containing fastq files and " +
+        "alignment_summary.txt (use either this arg or --fastq")
+    parser.add_argument(
+        '--maxreads', default=None, type=int,
+        help="Max reads to process (default to no max)")
+    parser.add_argument(
+        "--plot_title", default=None,
+        help="Add this title to plot")
+    parser.add_argument(
+        "--plot_filename", default='qscore_calibration.png',
+        help="Output: file name for plot.")
 
-parser.add_argument("--max_alignment_score", default=40.0, type=float,
-                    help="Upper limit on score calculated from alignment")
-
-parser.add_argument("--min_fastqscore", default=7.0, type=float,
-                    help="Lower limit on score calculated from fastq")
-
-parser.add_argument("--fastq", default=None,
-                    help="Input: fastq file")
-
-parser.add_argument("--input_directory", default=None,
-                    help="Input directory containing fastq files and " +
-                    "alignment_summary.txt (use either this arg or --fastq")
-
-parser.add_argument('--maxreads', default=None, type=int,
-                    help="Max reads to process (default to no max)")
-
-parser.add_argument("--plot_title", default=None,
-                    help="Add this title to plot")
-
-parser.add_argument("--plot_filename", default='qscore_calibration.png',
-                    help="Output: file name for plot.")
+    return parser
 
 
 def fastq_file_qscore(qvector):
     """Work out an 'average' q score from an array of q scores in a fastq.
 
     Notes:
-        The average q-score is calculated in probabilty space, so is an estimate
-    of the proportion of errors in the read
+        The average q-score is calculated in probabilty space, so is an
+        estimate of the proportion of errors in the read
 
     Args:
         qvector (:class:`ndarray`): numpy vector of q scores from fastq
@@ -100,7 +105,7 @@ def read_fastqs(fastqlist, maxreads=None, reads_per_dot=100):
             else:
                 mean_qscore_list.append(None)
             if (len(read_id_list) + 1) % reads_per_dot == 0:
-                print(".", end="")
+                sys.stdout.write(".")
             if maxreads is not None:
                 if len(read_id_list) >= maxreads:
                     break
@@ -170,10 +175,8 @@ def get_alignment_data(alignment_file):
                     ". Columns are {}".format(columnlist))
 
 
-def merge_align_fastq_data(fastq_ids,
-                           alignment_ids,
-                           alignment_accuracies,
-                           alignment_lens):
+def merge_align_fastq_data(
+        fastq_ids, alignment_ids, alignment_accuracies, alignment_lens):
     """Get an alignment accuracy and length of alignment in basecall
     for each id in the fastq data.
 
@@ -181,14 +184,14 @@ def merge_align_fastq_data(fastq_ids,
     choose the most accurate.
 
     Args:
-        fastq_ids (:class:`ndarray`): read_ids taken from the original base call
-            files.  Should be unique
+        fastq_ids (:class:`ndarray`): read_ids taken from the original base
+            call files.  Should be unique
         alignment_ids (:class:`ndarray`): read_ids from generated alignments.
             May be duplicated.
         alignment_accuracies (:class:`ndarray`): Accuracy of each alignment.
             Size of array equal to `alignment_ids`.
-        alignment_lens (:class:`ndarray`):  Alignment length for each alignment/
-            Size of array equal to `alignment_ids`.
+        alignment_lens (:class:`ndarray`):  Alignment length for each
+            alignment/ Size of array equal to `alignment_ids`.
 
     Returns:
         tuple of :class:`ndarray` and :class:`ndarray`:
@@ -337,7 +340,7 @@ def filter_data(accuracies, fastqscores, fastq_lens, alignment_lens,
 if __name__ == "__main__":
     print("Calculating shift and scale parameters to calibrate per-read")
     print("accuracy estimates from q scores.")
-    args = parser.parse_args()
+    args = get_parser().parse_args()
     fastqlist = None
     if args.input_directory is not None:
         fastqlist = [fi for fi in os.listdir(args.input_directory)

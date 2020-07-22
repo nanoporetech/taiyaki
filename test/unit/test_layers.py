@@ -1,8 +1,6 @@
 import abc
-import pickle
 import json
 import numpy as np
-import tempfile
 import torch
 import unittest
 
@@ -13,6 +11,8 @@ import taiyaki.layers as nn
 
 try:
     import taiyaki.cupy_extensions.flipflop as cuff
+    # does nothing but satisfies flake8
+    cuff
     _cupy_is_available = torch.cuda.is_available()
 except ImportError:
     _cupy_is_available = False
@@ -59,7 +59,8 @@ class ANNTest(unittest.TestCase):
             size=(self._SIZE, self._NFEATURES)).astype(numpy_dtype)
         self.b = np.random.normal(size=self._SIZE).astype(numpy_dtype)
         self.x = np.random.normal(
-            size=(self._NSTEP, self._NBATCH, self._NFEATURES)).astype(numpy_dtype)
+            size=(self._NSTEP, self._NBATCH, self._NFEATURES)).astype(
+                numpy_dtype)
         self.res = self.x.dot(self.W.transpose()) + self.b
 
     def test_000_single_layer_linear(self):
@@ -157,10 +158,12 @@ class ANNTest(unittest.TestCase):
             for i in range(_WINLEN - 1):
                 try:
                     np.testing.assert_almost_equal(
-                        res[:, j, i * _WINLEN: (i + 1) * _WINLEN], self.x[i: 1 + i - _WINLEN, j])
-                except:
-                    win_max = np.amax(
-                        np.fabs(res[:, :, i * _WINLEN: (i + 1) * _WINLEN] - self.x[i: 1 + i - _WINLEN]))
+                        res[:, j, i * _WINLEN: (i + 1) * _WINLEN],
+                        self.x[i: 1 + i - _WINLEN, j])
+                except Exception:
+                    win_max = np.amax(np.fabs(
+                        res[:, :, i * _WINLEN:
+                            (i + 1) * _WINLEN] - self.x[i: 1 + i - _WINLEN]))
                     print("Window max: {}".format(win_max))
                     raise
             np.testing.assert_almost_equal(
@@ -176,7 +179,7 @@ class ANNTest(unittest.TestCase):
         _KMERLEN = 3
         network = nn.Decode(_KMERLEN)
         f = network.compile()
-        res = f(self.res)
+        f(self.res)
 
     def test_018_studentise(self):
         network = nn.Studentise()
@@ -207,8 +210,8 @@ class LayerTest(metaclass=abc.ABCMeta):
         def setUp(self):
             self.layer = nn.Recurrent(12, 64)
     """
-
-    _INPUTS = None  # List of input matrices for testing the layer's run method
+    # List of input matrices for testing the layer's run method
+    _INPUTS = None
 
     @abc.abstractmethod
     def setUp(self):
@@ -218,7 +221,8 @@ class LayerTest(metaclass=abc.ABCMeta):
     def test_000_run(self):
         if self._INPUTS is None:
             raise NotImplementedError(
-                "Please specify layer inputs for testing, or explicitly skip this test.")
+                "Please specify layer inputs for testing, or explicitly " +
+                "skip this test.")
         f = self.layer.train(False)
         outs = [f(torch.tensor(x, dtype=torch_dtype)) for x in self._INPUTS]
         #  Check batch dim is preserved
@@ -228,7 +232,8 @@ class LayerTest(metaclass=abc.ABCMeta):
     def test_001_train(self):
         if self._INPUTS is None:
             raise NotImplementedError(
-                "Please specify layer inputs for testing, or explicitly skip this test.")
+                "Please specify layer inputs for testing, or explicitly " +
+                "skip this test.")
         f = self.layer.train(True)
         outs = [f(torch.tensor(x, dtype=torch_dtype)) for x in self._INPUTS]
         #  Check batch dim is preserved
@@ -236,12 +241,13 @@ class LayerTest(metaclass=abc.ABCMeta):
                              [x.shape[1] for x in outs])
 
     def test_002_json_dumps(self):
-        js = json.dumps(self.layer.json(), cls=JsonEncoder)
-        js2 = json.dumps(self.layer.json(), cls=JsonEncoder)
+        json.dumps(self.layer.json(), cls=JsonEncoder)
+        json.dumps(self.layer.json(), cls=JsonEncoder)
 
     def test_003_json_decodes(self):
-        props = json.JSONDecoder().decode(json.dumps(self.layer.json(), cls=JsonEncoder))
-        props2 = json.JSONDecoder().decode(json.dumps(
+        json.JSONDecoder().decode(json.dumps(
+            self.layer.json(), cls=JsonEncoder))
+        json.JSONDecoder().decode(json.dumps(
             self.layer.json(), cls=JsonEncoder))
 
 

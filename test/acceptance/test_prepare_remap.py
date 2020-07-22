@@ -14,7 +14,8 @@ class AcceptanceTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        """Make all paths absolute so that when we run Makefile in another dir it works OK"""
+        """ Make all paths absolute so that when we run Makefile in another
+        dir it works OK """
         testset_directory_rel, _ = os.path.splitext(__file__)
         self.testset_name = os.path.basename(testset_directory_rel)
         self.taiyakidir = os.path.abspath(
@@ -32,7 +33,8 @@ class AcceptanceTest(unittest.TestCase):
         self.output_mapped_signal_file = os.path.join(
             self.testset_work_dir, 'mapped_signals.hdf5')
         self.remapping_model = os.path.join(
-            self.taiyakidir, "models/mGru_flipflop_remapping_model_r9_DNA.checkpoint")
+            self.taiyakidir,
+            "models/mGru_flipflop_remapping_model_r9_DNA.checkpoint")
         self.script = os.path.join(
             self.taiyakidir, "bin/prepare_mapped_reads.py")
 
@@ -41,7 +43,8 @@ class AcceptanceTest(unittest.TestCase):
         print("Current directory is", os.getcwd())
         print("Taiyaki dir is", self.taiyakidir)
         print("Data dir is ", self.datadir)
-        output_mapped_signal_file = self.output_mapped_signal_file + '_test_prepare_remap'
+        output_mapped_signal_file = (
+            self.output_mapped_signal_file + '_test_prepare_remap')
         cmd = [self.script,
                self.read_dir,
                self.per_read_params,
@@ -56,7 +59,8 @@ class AcceptanceTest(unittest.TestCase):
         print("Stderr=", r.stderr.decode('utf-8'))
         self.assertEqual(r.returncode, 0)
 
-        # Open mapped read file and run checks to see if it complies with file format
+        # Open mapped read file and run checks to see if it complies with file
+        # format.
         # Also get a chunk and check that speed is within reasonable bounds
         self.assertTrue(os.path.exists(output_mapped_signal_file))
         with mapped_signal_files.HDF5Reader(output_mapped_signal_file) as f:
@@ -70,7 +74,8 @@ class AcceptanceTest(unittest.TestCase):
             # located chunk is returned.
             chunk_meandwell = chunk.sig_len / (chunk.seq_len + 0.0001)
             print("chunk mean dwell time in samples = ", chunk_meandwell)
-            assert 7 < chunk_meandwell < 13, "Chunk mean dwell time outside allowed range 7 to 13"
+            assert 7 < chunk_meandwell < 13, (
+                "Chunk mean dwell time outside allowed range 7 to 13")
 
         return
 
@@ -79,7 +84,8 @@ class AcceptanceTest(unittest.TestCase):
         print("Current directory is", os.getcwd())
         print("Taiyaki dir is", self.taiyakidir)
         print("Data dir is ", self.datadir)
-        output_mapped_signal_file = self.output_mapped_signal_file + 'test_mod_prepare_remap'
+        output_mapped_signal_file = (
+            self.output_mapped_signal_file + 'test_mod_prepare_remap')
         cmd = [self.script,
                self.read_dir,
                self.per_read_params,
@@ -96,7 +102,8 @@ class AcceptanceTest(unittest.TestCase):
         print("Stderr=", r.stderr.decode('utf-8'))
         self.assertEqual(r.returncode, 0)
 
-        # Open mapped read file and run checks to see if it complies with file format
+        # Open mapped read file and run checks to see if it complies with file
+        # format
         # Also get a chunk and check that speed is within reasonable bounds
         self.assertTrue(os.path.exists(output_mapped_signal_file))
         with mapped_signal_files.HDF5Reader(output_mapped_signal_file) as f:
@@ -110,6 +117,7 @@ class AcceptanceTest(unittest.TestCase):
             # located chunk is returned.
             chunk_meandwell = chunk.sig_len / (chunk.seq_len + 0.0001)
             print("chunk mean dwell time in samples = ", chunk_meandwell)
-            assert 7 < chunk_meandwell < 13, "Chunk mean dwell time outside allowed range 7 to 13"
+            assert 7 < chunk_meandwell < 13, (
+                "Chunk mean dwell time outside allowed range 7 to 13")
 
         return

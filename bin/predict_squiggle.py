@@ -9,17 +9,23 @@ from taiyaki.cmdargs import FileExists
 from taiyaki.common_cmdargs import add_common_command_args
 
 
-parser = argparse.ArgumentParser(description='Predict squiggle from sequence',
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description='Predict squiggle from sequence',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, "output version".split())
+    add_common_command_args(parser, "output version".split())
 
-parser.add_argument('model', action=FileExists, help='Model file')
-parser.add_argument('input', action=FileExists, help='Fasta file')
+    parser.add_argument(
+        'model', action=FileExists, help='Model file')
+    parser.add_argument(
+        'input', action=FileExists, help='Fasta file')
+
+    return parser
 
 
 def main():
-    args = parser.parse_args()
+    args = get_parser().parse_args()
 
     predict_squiggle = helpers.load_model(args.model)
 

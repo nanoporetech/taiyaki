@@ -7,6 +7,8 @@ import torch
 
 try:
     import taiyaki.cupy_extensions.flipflop as cuff
+    # does nothing but satisfies flake8
+    cuff
     _cupy_is_available = torch.cuda.is_available()
 except ImportError:
     _cupy_is_available = False
@@ -39,7 +41,8 @@ class TestFlipFlopDecode(unittest.TestCase):
 
         """
         self.assertEqual(a.shape, b.shape,
-                         msg='Array shape mismatch: {} != {}\n'.format(a.shape, b.shape))
+                         msg='Array shape mismatch: {} != {}\n'.format(
+                             a.shape, b.shape))
         self.assertTrue(np.allclose(a, b),
                         msg='Array element mismatch: {} != {}\n'.format(a, b))
 
@@ -54,8 +57,8 @@ class TestFlipFlopDecode(unittest.TestCase):
     def test_gpu_decoding_no_cupy(self):
         """ Test GPU Viterbi decoding of flip-flop (if available)
         """
-        _, _, path = decode.flipflop_viterbi(torch.tensor(self.scores, device=0),
-                                             _never_use_cupy=True)
+        _, _, path = decode.flipflop_viterbi(
+            torch.tensor(self.scores, device=0), _never_use_cupy=True)
         path = path.cpu().numpy()
         self.assertArrayEqual(path, self.expected_path)
 
@@ -73,40 +76,40 @@ class TestFlipFlopDecode(unittest.TestCase):
         """ Test making transition scores when input does not require gradients
         """
         scores = torch.tensor(self.scores, requires_grad=False)
-        trans = decode.flipflop_make_trans(scores)
+        decode.flipflop_make_trans(scores)
 
     def test_cpu_make_trans_no_grad_non_leaf(self):
         """ Test making transition scores when input does not require gradients
         """
         scores = torch.tensor(self.scores, requires_grad=False)
-        trans = decode.flipflop_make_trans(1.0 * scores)
+        decode.flipflop_make_trans(1.0 * scores)
 
     def test_cpu_make_trans_with_grad(self):
         """ Test making transition scores when input does require gradients
         """
         scores = torch.tensor(self.scores, requires_grad=True)
-        trans = decode.flipflop_make_trans(scores)
+        decode.flipflop_make_trans(scores)
 
     def test_cpu_make_trans_with_grad_non_leaf(self):
         """ Test making transition scores when input does require gradients
         """
         scores = torch.tensor(self.scores, requires_grad=True)
-        trans = decode.flipflop_make_trans(1.0 * scores)
+        decode.flipflop_make_trans(1.0 * scores)
 
     def test_cpu_make_trans_with_grad_non_leaf_no_grad(self):
         """ Test making transition scores, complex case
         """
         scores = torch.tensor(self.scores, requires_grad=True)
         with torch.no_grad():
-            trans = decode.flipflop_make_trans(1.0 * scores)
+            decode.flipflop_make_trans(1.0 * scores)
 
     @unittest.skipIf(not _cupy_is_available, "Cupy is not installed")
     def test_cupy_equals_torch_make_trans(self):
         """ Test that cupy and torch routines to calculate transition scores
         agree.
         """
-        trans_torch = decode.flipflop_make_trans(torch.tensor(self.scores, device=0),
-                                                 _never_use_cupy=True)
+        trans_torch = decode.flipflop_make_trans(torch.tensor(
+            self.scores, device=0), _never_use_cupy=True)
         trans_cupy = decode.flipflop_make_trans(
             torch.tensor(self.scores, device=0))
         self.assertArrayEqual(trans_torch.cpu().numpy(),

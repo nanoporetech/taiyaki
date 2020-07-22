@@ -37,6 +37,7 @@ add_common_command_args(
 parser.add_argument(
     'json_model', action=FileExists, help='JSON model with params')
 
+
 def set_params_gru(layer, params_name, jsn_params, layer_params):
     # convert from guppy format back to pytorch format
     if re.search('weight_ih', params_name) and 'iW' in jsn_params:
@@ -57,6 +58,7 @@ def set_params_gru(layer, params_name, jsn_params, layer_params):
                 params_name))
         sys.exit(1)
     return jsn_layer_params
+
 
 def set_params_lstm(layer, params_name, jsn_params, layer_params):
     # convert from guppy format back to pytorch format
@@ -81,6 +83,7 @@ def set_params_lstm(layer, params_name, jsn_params, layer_params):
         sys.exit(1)
     return jsn_layer_params
 
+
 def set_params_generic(layer, params_name, jsn_params):
     if re.search('weight', params_name) and 'W' in jsn_params:
         jsn_layer_params = torch.Tensor(np.array(jsn_params['W']))
@@ -95,6 +98,7 @@ def set_params_generic(layer, params_name, jsn_params):
         sys.exit(1)
     return jsn_layer_params
 
+
 def set_params(layer, jsn_params, layer_type):
     params_od = OrderedDict()
     for params_name, layer_params in layer.state_dict().items():
@@ -105,7 +109,8 @@ def set_params(layer, jsn_params, layer_type):
             jsn_layer_params = set_params_lstm(
                 layer, params_name, jsn_params, layer_params)
         else:
-            jsn_layer_params = set_params_generic(layer, params_name, jsn_params)
+            jsn_layer_params = set_params_generic(
+                layer, params_name, jsn_params)
         # TODO could add additional checks for layer size or names, but
         # this covers the applicable layers in the current release.
 
@@ -115,6 +120,7 @@ def set_params(layer, jsn_params, layer_type):
     layer.load_state_dict(params_od, strict=True)
 
     return layer
+
 
 def parse_sublayer(sublayer):
     # TODO apply additional attributes (e.g. has_bias, convolutional padding)
@@ -154,13 +160,14 @@ def parse_sublayer(sublayer):
             layer = Reverse(GruMod(sublayer['insize'], sublayer['size']))
         elif sublayer['type'] == 'LSTM':
             sys.stderr.write((
-                'Loading Reverse LSTM layer with attributes:\n\tin size: {}\n' +
-                '\tout size: {}\n').format(
+                'Loading Reverse LSTM layer with attributes:\n' +
+                '\tin size: {}\n\tout size: {}\n').format(
                     sublayer['insize'], sublayer['size']))
             layer = Reverse(Lstm(sublayer['insize'], sublayer['size']))
         else:
-            sys.stderr.write(('Invalid reversed-time layer type ({})\n').format(
-                sublayer['type']))
+            sys.stderr.write((
+                'Invalid reversed-time layer type ({})\n').format(
+                    sublayer['type']))
             sys.exit(1)
     elif sublayer['type'] == 'GlobalNormTwoState':
         nbase = nbase_flipflop(sublayer['size'])
@@ -176,7 +183,7 @@ def parse_sublayer(sublayer):
             collapse_alphabet += output_alphabet[curr_can_base] * (
                 can_i_nmod + 1)
             curr_can_base += can_i_nmod + 1
-        alphabet_info  = alphabet.AlphabetInfo(
+        alphabet_info = alphabet.AlphabetInfo(
             output_alphabet, collapse_alphabet,
             sublayer['modified_base_long_names'], do_reorder=False)
         sys.stderr.write((
@@ -192,6 +199,7 @@ def parse_sublayer(sublayer):
     layer = set_params(layer, sublayer['params'], sublayer['type'])
 
     return layer
+
 
 def main():
     args = parser.parse_args()
@@ -213,6 +221,7 @@ def main():
     torch.save(network, args.output)
 
     return
+
 
 if __name__ == '__main__':
     main()

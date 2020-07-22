@@ -18,23 +18,29 @@ def get_parser():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     # TODO: add several named commonly used values for bwa_mem_args
-    parser.add_argument('--bwa_mem_args', metavar='args',
-                        default='-k14 -W20 -r10 -t 16 -A 1 -B 2 -O 2 -E 1',
-                        help="Command line arguments to pass to bwa mem")
+    parser.add_argument(
+        '--bwa_mem_args', metavar='args',
+        default='-k14 -W20 -r10 -t 16 -A 1 -B 2 -O 2 -E 1',
+        help="Command line arguments to pass to bwa mem")
 
     assess_grp = parser.add_argument_group('Alignment Assessment Arguments')
-    assess_grp.add_argument('--coverage', metavar='proportion', default=0.6,
-                            type=proportion, help='Minimum coverage')
-    assess_grp.add_argument('--data_name', default=None,
-                            help="Data name. If not set file name is used.")
-    assess_grp.add_argument('--figure_format', default="png",
-                            help="Figure file format.")
-    assess_grp.add_argument('--fill', default=True, action=AutoBool,
-                            help='Fill basecall quality histogram with color')
-    assess_grp.add_argument('--show_median', default=False, action=AutoBool,
-                            help='Show median in a histogram plot')
-    assess_grp.add_argument('--reference', default=None,
-                            help="Reference sequence to align against")
+    assess_grp.add_argument(
+        '--coverage', metavar='proportion', default=0.6,
+        type=proportion, help='Minimum coverage')
+    assess_grp.add_argument(
+        '--data_name', default=None,
+        help="Data name. If not set file name is used.")
+    assess_grp.add_argument(
+        '--figure_format', default="png", help="Figure file format.")
+    assess_grp.add_argument(
+        '--fill', default=True, action=AutoBool,
+        help='Fill basecall quality histogram with color')
+    assess_grp.add_argument(
+        '--show_median', default=False, action=AutoBool,
+        help='Show median in a histogram plot')
+    assess_grp.add_argument(
+        '--reference', default=None,
+        help="Reference sequence to align against")
 
     parser.add_argument(
         'files', metavar='input', nargs='+',

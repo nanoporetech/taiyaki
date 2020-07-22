@@ -13,11 +13,12 @@ class ReciprocalLR(torch.optim.lr_scheduler._LRScheduler):
 
     so that after lr_decay iterations, the l.r. is divided by 2.
 
-    Also allows a warmup period where learning rate is at lr_warmup for warmup_iters
-    before all this starts.
+    Also allows a warmup period where learning rate is at lr_warmup for
+    warmup_iters before all this starts.
 
     Based on
-    https://pytorch.org/docs/stable/_modules/torch/optim/lr_scheduler.html#CosineAnnealingLR
+    https://pytorch.org/docs/stable/_modules/torch/optim/lr_scheduler.html#
+        CosineAnnealingLR
     """
 
     def __init__(self, optimizer, lr_decay_iterations,
@@ -35,7 +36,8 @@ class ReciprocalLR(torch.optim.lr_scheduler._LRScheduler):
         return lr_base / (1.0 + post_warmup_iters / self.lr_decay_iterations)
 
     def get_lr(self):
-        return [self._lr(self.last_epoch, base_lr) for base_lr in self.base_lrs]
+        return [self._lr(self.last_epoch, base_lr)
+                for base_lr in self.base_lrs]
 
 
 class CosineFollowedByFlatLR(torch.optim.lr_scheduler._LRScheduler):
@@ -46,11 +48,12 @@ class CosineFollowedByFlatLR(torch.optim.lr_scheduler._LRScheduler):
     The learning rate stays constant at lr_min after lr_cosine_iters
     iterations.
 
-    Also allows a warmup period where learning rate is at lr_warmup for warmup_iters
-    before all this starts.
+    Also allows a warmup period where learning rate is at lr_warmup for
+    warmup_iters before all this starts.
 
     Based on
-    https://pytorch.org/docs/stable/_modules/torch/optim/lr_scheduler.html#CosineAnnealingLR
+    https://pytorch.org/docs/stable/_modules/torch/optim/lr_scheduler.html#
+        CosineAnnealingLR
     """
 
     def __init__(self, optimizer, lr_min, lr_cosine_iters,
@@ -73,4 +76,5 @@ class CosineFollowedByFlatLR(torch.optim.lr_scheduler._LRScheduler):
             return self.lr_min
 
     def get_lr(self):
-        return [self._lr(self.last_epoch, base_lr) for base_lr in self.base_lrs]
+        return [self._lr(self.last_epoch, base_lr)
+                for base_lr in self.base_lrs]

@@ -1,4 +1,5 @@
-""" Functions to help out with calculation and calibration of qscores for basecalls
+""" Functions to help out with calculation and calibration of qscores for
+basecalls
 """
 import numpy as np
 import torch

@@ -64,9 +64,9 @@ def flipflop_code(labels, alphabet_length=4):
         alphabet_length: number of symbols in alphabet
 
     Returns:
-        np array c such that c[n] = labels[n] + alphabet_length where labels[n] is in
-            an even position in a run of identical symbols, or c[n] = labels[n]
-            otherwise
+        np array c such that c[n] = labels[n] + alphabet_length where labels[n]
+            is in an even position in a run of identical symbols, or
+            c[n] = labels[n] otherwise
 
     Examples:
         >>> x = np.array([1, 3, 2, 3, 3, 3, 3, 1, 1])
@@ -102,13 +102,14 @@ def extract_mod_weights(mod_weights, path, can_nmods):
 
 
     Args:
-        mod_weights: raw modified base scores, array of shape [T, sum(can_nmods)]
+        mod_weights: raw modified base scores, array of shape
+            [T, sum(can_nmods)]
         path: a array of length T. Each element is in the range from 0 to
             2 times the alphabet length, specifying which state the basecaller
-            is in at each time point, either a flip (0..alphabet length) or flop
-            (> alpabet length). Note that a new base is added to the basecall only
-            when the state changes, i.e. after collapsing all repeated elements,
-            so the basecall usually has length less than T.
+            is in at each time point, either a flip (0..alphabet length) or
+            flop (> alpabet length). Note that a new base is added to the
+            basecall only when the state changes, i.e. after collapsing all
+            repeated elements, so the basecall usually has length less than T.
         can_nmods: array giving the number of possible modifications for each
             base in the alphabet
 

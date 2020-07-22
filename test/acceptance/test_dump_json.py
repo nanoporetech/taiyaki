@@ -1,7 +1,6 @@
 import json
 from parameterized import parameterized
 import os
-import tempfile
 import unittest
 
 import util
@@ -81,7 +80,6 @@ class AcceptanceTest(unittest.TestCase):
             Unmaintained and expected to fail.
 
         """
-        subdir = "3"
         self.assertTrue(os.path.exists(self.model_file))
         test_work_dir = self.work_dir("test_json_to_checkpoint")
 
@@ -98,8 +96,9 @@ class AcceptanceTest(unittest.TestCase):
         re_model_file = os.path.join(test_work_dir, "re_model.checkpoint")
         cmd = [self.json_to_cp, json_file, "--output", re_model_file]
         open(re_model_file, "w").close()
-        error_message = "RuntimeError: File/path for 'output' exists, {}".format(
-            re_model_file)
+        error_message = (
+            "RuntimeError: File/path for 'output' exists, {}").format(
+                re_model_file)
         util.run_cmd(self, cmd).expect_exit_code(1).expect_stderr(
             util.any_line_starts_with(error_message))
         os.remove(re_model_file)

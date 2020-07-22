@@ -15,58 +15,78 @@ from taiyaki.constants import DOTROWLENGTH
 from taiyaki.squiggle_match import squiggle_match_loss, embed_sequence
 
 
-parser = argparse.ArgumentParser(description='Train a model to predict ionic current levels from sequence',
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description='Train a model to predict ionic current levels ' +
+        'from sequence',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, """adam device eps filter_max_dwell filter_mean_dwell
-                                   limit niteration outdir overwrite quiet
-                                   reverse save_every
-                                   sample_nreads_before_filtering version
-                                   weight_decay""".split())
+    add_common_command_args(
+        parser, """adam device eps filter_max_dwell filter_mean_dwell limit
+        niteration outdir overwrite quiet reverse save_every
+        sample_nreads_before_filtering version weight_decay""".split())
 
-parser.add_argument('--batch_size', default=100, metavar='chunks', type=Positive(int),
-                    help='Number of chunks to run in parallel')
-parser.add_argument('--back_prob', default=1e-15, metavar='probability',
-                    type=proportion, help='Probability of backwards move')
-parser.add_argument('--depth', metavar='layers', default=4, type=Positive(int),
-                    help='Number of residual convolution layers')
-parser.add_argument('--drop_slip', default=5, type=Maybe(Positive(int)), metavar='length',
-                    help='Drop chunks with slips greater than given length (None = off)')
-parser.add_argument('--full_filter_status', default=False, action=AutoBool,
-                    help='Output full chunk filtering statistics. ' +
-                    'Default: only proportion of filtered chunks.')
-parser.add_argument('--input_strand_list', default=None, action=FileExists,
-                    help='Strand summary file containing column read_id. Filenames in file are ignored.')
-parser.add_argument('--lr_decay', default=5000, metavar='n', type=Positive(float),
-                    help='Learning rate for batch i is lr_max / (1.0 + i / n)')
-parser.add_argument('--lr_max', default=1.0e-4, metavar='rate',
-                    type=Positive(float),
-                    help='Max (and starting) learning rate')
-parser.add_argument('--sd', default=0.5, metavar='value', type=Positive(float),
-                    help='Standard deviation to initialise with')
-parser.add_argument('--seed', default=None, metavar='integer', type=Positive(int),
-                    help='Set random number seed')
-parser.add_argument('--size', metavar='n', default=32, type=Positive(int),
-                    help='Size of layers in convolution network')
-parser.add_argument('--target_len', metavar='n', default=300, type=Positive(int),
-                    help='Target length of sequence')
-parser.add_argument('--winlen', metavar='n', default=9, type=Positive(int),
-                    help='Window for convolution network')
-parser.add_argument('input', action=FileExists,
-                    help='HDF5 file containing mapped reads')
+    parser.add_argument(
+        '--batch_size', default=100, metavar='chunks', type=Positive(int),
+        help='Number of chunks to run in parallel')
+    parser.add_argument(
+        '--back_prob', default=1e-15, metavar='probability',
+        type=proportion, help='Probability of backwards move')
+    parser.add_argument(
+        '--depth', metavar='layers', default=4, type=Positive(int),
+        help='Number of residual convolution layers')
+    parser.add_argument(
+        '--drop_slip', default=5, type=Maybe(Positive(int)), metavar='length',
+        help='Drop chunks with slips greater than given length (None = off)')
+    parser.add_argument(
+        '--full_filter_status', default=False, action=AutoBool,
+        help='Output full chunk filtering statistics. ' +
+        'Default: only proportion of filtered chunks.')
+    parser.add_argument(
+        '--input_strand_list', default=None, action=FileExists,
+        help='Strand summary file containing column read_id. Filenames in ' +
+        'file are ignored.')
+    parser.add_argument(
+        '--lr_decay', default=5000, metavar='n', type=Positive(float),
+        help='Learning rate for batch i is lr_max / (1.0 + i / n)')
+    parser.add_argument(
+        '--lr_max', default=1.0e-4, metavar='rate', type=Positive(float),
+        help='Max (and starting) learning rate')
+    parser.add_argument(
+        '--sd', default=0.5, metavar='value', type=Positive(float),
+        help='Standard deviation to initialise with')
+    parser.add_argument(
+        '--seed', default=None, metavar='integer', type=Positive(int),
+        help='Set random number seed')
+    parser.add_argument(
+        '--size', metavar='n', default=32, type=Positive(int),
+        help='Size of layers in convolution network')
+    parser.add_argument(
+        '--target_len', metavar='n', default=300, type=Positive(int),
+        help='Target length of sequence')
+    parser.add_argument(
+        '--winlen', metavar='n', default=9, type=Positive(int),
+        help='Window for convolution network')
+    parser.add_argument(
+        'input', action=FileExists,
+        help='HDF5 file containing mapped reads')
+
+    return parser
 
 
 def create_convolution(size, depth, winlen):
     conv_actfun = activation.tanh
     return layers.Serial(
         [layers.Convolution(3, size, winlen, stride=1, fun=conv_actfun)] +
-        [layers.Residual(layers.Convolution(size, size, winlen, stride=1, fun=conv_actfun)) for _ in range(depth)] +
+        [layers.Residual(layers.Convolution(
+            size, size, winlen, stride=1, fun=conv_actfun))
+         for _ in range(depth)] +
         [layers.Convolution(size, 3, winlen, stride=1, fun=activation.linear)]
     )
 
 
 def main():
-    args = parser.parse_args()
+    args = get_parser().parse_args()
     np.random.seed(args.seed)
 
     helpers.prepare_outdir(args.outdir, args.overwrite)
@@ -92,10 +112,9 @@ def main():
         assert alphabet_info.nbase == 4, (
             'Squiggle prediction with modified base training data is ' +
             'not currenly supported.')
+        # load list of signal_mapping.SignalMapping objects
         read_data = per_read_file.get_multiple_reads(
             read_ids, max_reads=args.limit)
-        # read_data now contains a list of reads
-        # (each an instance of the Read class defined in mapped_signal_files.py, based on dict)
 
     if len(read_data) == 0:
         log.write('* No reads remaining for training, exiting.\n')
@@ -108,10 +127,11 @@ def main():
         read_data, args.sample_nreads_before_filtering, args.target_len,
         args.filter_mean_dwell, args.filter_max_dwell)
 
-    log.write("* Sampled {} chunks: median(mean_dwell)={:.2f}, mad(mean_dwell)={:.2f}\n".format(
-        args.sample_nreads_before_filtering,
-        filter_parameters.median_meandwell,
-        filter_parameters.mad_meandwell))
+    log.write(("* Sampled {} chunks: median(mean_dwell)={:.2f}, " +
+               "mad(mean_dwell)={:.2f}\n").format(
+                   args.sample_nreads_before_filtering,
+                   filter_parameters.median_meandwell,
+                   filter_parameters.mad_meandwell))
 
     conv_net = create_convolution(args.size, args.depth, args.winlen)
     if not hasattr(conv_net, 'metadata'):
@@ -122,17 +142,17 @@ def main():
         }
     nparam = sum([p.data.detach().numpy().size for p in conv_net.parameters()])
     log.write('* Created network.  {} parameters\n'.format(nparam))
-    log.write(
-        '* Depth {} layers ({} residual layers)\n'.format(args.depth + 2, args.depth))
+    log.write('* Depth {} layers ({} residual layers)\n'.format(
+        args.depth + 2, args.depth))
     log.write('* Window width {}\n'.format(args.winlen))
-    log.write(
-        '* Context +/- {} bases\n'.format((args.depth + 2) * (args.winlen // 2)))
+    log.write('* Context +/- {} bases\n'.format(
+        (args.depth + 2) * (args.winlen // 2)))
 
     conv_net = conv_net.to(device)
 
-    optimizer = torch.optim.AdamW(conv_net.parameters(), lr=args.lr_max,
-                                  betas=args.adam, weight_decay=args.weight_decay,
-                                  eps=args.eps)
+    optimizer = torch.optim.AdamW(
+        conv_net.parameters(), lr=args.lr_max, betas=args.adam,
+        weight_decay=args.weight_decay, eps=args.eps)
 
     lr_scheduler = optim.ReciprocalLR(optimizer, args.lr_decay)
 
@@ -148,15 +168,15 @@ def main():
         revop = np.array
 
     for i in range(args.niteration):
-        # If the logging threshold is 0 then we log all chunks, including those rejected, so pass the log
-        # object into assemble_batch
+        # If the logging threshold is 0 then we log all chunks, including those
+        # rejected, so pass the log object into assemble_batch
         # chunk_batch is a list of dicts.
         chunk_batch, batch_rejections = chunk_selection.sample_chunks(
             read_data, args.batch_size, args.target_len, filter_parameters,
             chunk_len_means_sequence_len=True)
         if len(chunk_batch) < args.batch_size:
-            log.write(
-                '* Warning: only {} chunks passed filters.\n'.format(len(chunk_batch)))
+            log.write('* Warning: only {} chunks passed filters.\n'.format(
+                len(chunk_batch)))
 
         total_chunks += len(chunk_batch)
         # Update counts of reasons for rejection
@@ -174,9 +194,10 @@ def main():
         batch_siglen = torch.tensor(
             [chunk.sig_len for chunk in chunk_batch]).to(device)
 
-        #print("First 10 elements of first sequence in batch",seq_embed[:10,0,:])
-        #print("First 10 elements of signal batch",batch_signal[:10])
-        #print("First 10 lengths",batch_siglen[:10])
+        # print("First 10 elements of first sequence in batch",
+        #       seq_embed[:10,0,:])
+        # print("First 10 elements of signal batch",batch_signal[:10])
+        # print("First 10 lengths",batch_siglen[:10])
 
         optimizer.zero_grad()
 

@@ -2,16 +2,16 @@ import tempfile
 import os
 import unittest
 
-if True:
-    #  Protect in block to prevent autopep8 refactoring
-    import matplotlib
-    matplotlib.use('Agg')
-
 import matplotlib.pyplot as plt
 import numpy as np
 
 from taiyaki.constants import DEFAULT_ALPHABET
 from taiyaki import alphabet, mapped_signal_files, signal_mapping
+
+if True:
+    #  Protect in block to prevent autopep8 refactoring
+    import matplotlib
+    matplotlib.use('Agg')
 
 # To run as a  single test, in taiyaki dir and in venv do
 # pytest test/unit/test_mapped_signal_files.py
@@ -70,7 +70,7 @@ class TestMappedReadFiles(unittest.TestCase):
         try:
             os.remove(self.testfilepath)
             print("Previous test file removed")
-        except:
+        except Exception:
             print("No previous test file to remove")
 
     def test_HDF5_mapped_read_file(self):
@@ -117,8 +117,8 @@ class TestMappedReadFiles(unittest.TestCase):
         reflen = len(recovered_read.Reference)
         siglen = len(recovered_read.Dacs)
 
-        # Get a chunk - note that chunkstart is relative to the start of the mapped
-        # region, not relative to the start of the signal
+        # Get a chunk - note that chunkstart is relative to the start of
+        # the mapped region, not relative to the start of the signal
         chunklen, chunkstart = 5, 3
         chunk = recovered_read.get_chunk_with_sample_length(
             chunklen, chunkstart)
@@ -130,7 +130,7 @@ class TestMappedReadFiles(unittest.TestCase):
         self.assertTrue(np.all(recovered_read.Ref_to_signal ==
                                read_dict['Ref_to_signal']))
 
-        # Plot a picture showing ref_to_sig from the read object,    def setup():
+        # Plot a picture showing ref_to_sig from the read object,
         # and the result of searches to find the inverse
         if False:
             plt.figure()
@@ -139,7 +139,8 @@ class TestMappedReadFiles(unittest.TestCase):
             ix = np.array([0, -1])
             plt.scatter(chunk.current[ix], chunk.sequence[ix],
                         s=50, label='chunk limits', marker='s', color='black')
-            plt.scatter(recovered_read.Ref_to_signal, np.arange(reflen + 1), label='reftosig (source data)',
+            plt.scatter(recovered_read.Ref_to_signal, np.arange(reflen + 1),
+                        label='reftosig (source data)',
                         color='none', edgecolor='blue', s=60)
             siglocs = np.arange(siglen, dtype=np.int32)
             sigtoref_fromsearch = recovered_read.get_reference_locations(

@@ -152,8 +152,8 @@ def get_column_from_tsv(tsv_file_name, column):
     """
     if tsv_file_name is not None:
         data = readtsv(tsv_file_name, encoding='utf-8')
-        assert column in data.dtype.names, "Strand file does not contain required field {}".format(
-            column)
+        assert column in data.dtype.names, (
+            "Strand file does not contain required field {}".format(column))
         return [x for x in data[column]]
 
 
@@ -435,7 +435,8 @@ def set_torch_device(device):
             torch.cuda.set_device(device)
         else:
             raise ValueError(
-                'GPU device requested but cannot be set (PyTorch not compiled with CUDA enabled?)')
+                'GPU device requested but cannot be set (PyTorch not ' +
+                'compiled with CUDA enabled?)')
     return device
 
 
@@ -469,8 +470,8 @@ def formatted_env_info(device):
     info = ['* Taiyaki version {}'.format(__version__),
             '* Platform is {}'.format(platform.platform()),
             '* PyTorch version {}'.format(torch.__version__),
-            '* CUDA version {} on device {}'.format(torch.version.cuda,
-                                                    torch.cuda.get_device_name(device))
+            '* CUDA version {} on device {}'.format(
+                torch.version.cuda, torch.cuda.get_device_name(device))
             if device.type == 'cuda' else '* Running on CPU',
             '* Command line:',
             '* "{}"'.format(' '.join(sys.argv)),

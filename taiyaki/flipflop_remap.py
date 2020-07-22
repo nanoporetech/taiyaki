@@ -138,4 +138,5 @@ def flipflop_remap(transition_scores, sequence, alphabet=DEFAULT_ALPHABET,
     to_base = np.maximum(bases, nbase * flops)[1:]
     step_index = from_base + 2 * nbase * to_base
 
-    return map_to_crf_viterbi(transition_scores, step_index, stay_index, localpen=localpen)
+    return map_to_crf_viterbi(
+        transition_scores, step_index, stay_index, localpen=localpen)

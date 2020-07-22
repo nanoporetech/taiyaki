@@ -102,8 +102,8 @@ def run_model(
 
     Note:
         The `chunk_size` and `overlap` parameters as multiples of the stride of
-    `model` rather than as number of samples.  This behaviour is consistent with
-    the parameterisation in Guppy.
+    `model` rather than as number of samples.  This behaviour is consistent
+    with the parameterisation in Guppy.
 
     Args:
         normed_signal (:class:`ndarray`): Signal of read, which will be chunked
@@ -115,8 +115,8 @@ def run_model(
             be split.
         overlap (int, optional): Overlap between one chunk and the next.
         max_concur_chunks (int, optional): Calculate chunks in batches of size
-            at most `max_concur_chunks`; if None, then all chunks are calculated
-            at once.
+            at most `max_concur_chunks`; if None, then all chunks are
+            calculated at once.
         return_numpy (bool, optional): Return value should be converted
             :class:`ndarray` (default).
         return_tensor_on_device (bool, optional):  Return value should be moved

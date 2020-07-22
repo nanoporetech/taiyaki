@@ -5,37 +5,54 @@ import numpy as np
 import os
 import sys
 
-from taiyaki import alphabet, bio, fast5utils, helpers, prepare_mapping_funcs
+from taiyaki import alphabet, bio, fast5utils, helpers
 from taiyaki.cmdargs import FileExists, Maybe
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.iterators import imap_mp
+from taiyaki.prepare_mapping_funcs import (
+    get_per_read_params_dict_from_tsv, oneread_remap,
+    generate_output_from_results)
 
 
-program_description = "Prepare data for model training and save to hdf5 file by remapping with flip-flop model"
-parser = argparse.ArgumentParser(description=program_description,
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description="Prepare data for model training and save to hdf5 file " +
+        "by remapping with flip-flop model",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(
-    parser, 'alphabet input_folder input_strand_list jobs limit overwrite recursive version'.split())
+    add_common_command_args(
+        parser, ('alphabet input_folder input_strand_list jobs limit ' +
+                 'overwrite recursive version').split())
 
-parser.add_argument('--localpen', metavar='penalty', default=0.0, type=float,
-                    help='Penalty for local mapping')
-parser.add_argument('--max_read_length', metavar='bases', default=None, type=Maybe(int),
-                    help='Don\'t attempt remapping for reads longer than this')
-parser.add_argument('--mod', nargs=3, metavar=('base', 'canonical', 'name'),
-                    default=[], action='append',
-                    help='Modified base description')
-parser.add_argument('input_per_read_params', action=FileExists,
-                    help='Input per read parameter .tsv file')
-parser.add_argument('output', help='Output HDF5 file')
-parser.add_argument('model', action=FileExists, help='Taiyaki model file')
-parser.add_argument('references', action=FileExists,
-                    help='Single fasta file containing references for each read')
+    parser.add_argument(
+        '--localpen', metavar='penalty', default=0.0, type=float,
+        help='Penalty for local mapping')
+    parser.add_argument(
+        '--max_read_length', metavar='bases', default=None, type=Maybe(int),
+        help='Don\'t attempt remapping for reads longer than this')
+    parser.add_argument(
+        '--mod', nargs=3, metavar=('base', 'canonical', 'name'),
+        default=[], action='append', help='Modified base description')
+
+    parser.add_argument(
+        'input_per_read_params', action=FileExists,
+        help='Input per read parameter .tsv file')
+    parser.add_argument(
+        'output', help='Output HDF5 file')
+    parser.add_argument(
+        'model', action=FileExists, help='Taiyaki model file')
+    parser.add_argument(
+        'references', action=FileExists,
+        help='Single fasta file containing references for each read')
+
+    return parser
 
 
 def main():
-    """Main function to process mapping for each read using functions in prepare_mapping_funcs"""
-    args = parser.parse_args()
+    """ Main function to process mapping for each read using functions in
+    prepare_mapping_funcs
+    """
+    args = get_parser().parse_args()
     print("Running prepare_mapping using flip-flop remapping")
 
     if not args.overwrite:
@@ -47,15 +64,16 @@ def main():
     modified_bases = [elt[0] for elt in args.mod]
     canonical_bases = [elt[1] for elt in args.mod]
     for b in modified_bases:
-        assert len(
-            b) == 1, "Modified bases must be a single character, got {}".format(b)
-        assert b not in args.alphabet, "Modified base must not be a canonical base, got {}".format(
-            b)
+        assert len(b) == 1, (
+            "Modified bases must be a single character, got {}".format(b))
+        assert b not in args.alphabet, (
+            "Modified base must not be a canonical base, got {}".format(b))
     for b in canonical_bases:
-        assert len(
-            b) == 1, "Canonical coding for modified bases must be a single character, got {}".format(b)
-        assert b in args.alphabet, "Canonical coding for modified base must be a canonical base, got {}".format(
-            b)
+        assert len(b) == 1, ("Canonical coding for modified bases must be a " +
+                             "single character, got {}").format(b)
+        assert b in args.alphabet, (
+            "Canonical coding for modified base must be a canonical " +
+            "base, got {})").format(b)
     full_alphabet = args.alphabet + ''.join(modified_bases)
     flat_alphabet = args.alphabet + ''.join(canonical_bases)
     modification_names = [elt[2] for elt in args.mod]
@@ -63,16 +81,17 @@ def main():
     alphabet_info = alphabet.AlphabetInfo(full_alphabet, flat_alphabet,
                                           modification_names, do_reorder=True)
 
-    print("Converting references to labels using {}".format(str(alphabet_info)))
+    print("Converting references to labels using {}".format(
+        str(alphabet_info)))
 
     # Make an iterator that yields all the reads we're interested in.
     fast5_reads = fast5utils.iterate_fast5_reads(
-        args.input_folder, limit=args.limit, strand_list=args.input_strand_list,
-        recursive=args.recursive)
+        args.input_folder, limit=args.limit,
+        strand_list=args.input_strand_list, recursive=args.recursive)
 
     # Set up arguments (kwargs) for the worker function for each read
     kwargs = {}
-    kwargs['per_read_params_dict'] = prepare_mapping_funcs.get_per_read_params_dict_from_tsv(
+    kwargs['per_read_params_dict'] = get_per_read_params_dict_from_tsv(
         args.input_per_read_params)
     kwargs['model'] = helpers.load_model(args.model)
     kwargs['alphabet_info'] = alphabet_info
@@ -91,14 +110,13 @@ def main():
     else:
         chunksize = 50
 
-    results = imap_mp(prepare_mapping_funcs.oneread_remap, iter_jobs(),
-                      threads=args.jobs, fix_kwargs=kwargs, unordered=True,
-                      chunksize=chunksize)
+    results = imap_mp(
+        oneread_remap, iter_jobs(), threads=args.jobs, fix_kwargs=kwargs,
+        unordered=True, chunksize=chunksize)
 
     # results is an iterable of dicts
     # each dict is a set of return values from a single read
-    prepare_mapping_funcs.generate_output_from_results(
-        results, args.output, alphabet_info)
+    generate_output_from_results(results, args.output, alphabet_info)
 
 
 if __name__ == '__main__':
