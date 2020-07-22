@@ -140,41 +140,6 @@ def get_kwargs(args, names):
     return kwargs
 
 
-def trim_array(x, from_start, from_end):
-    """Trim the ends off a numpy 1D array.
-
-    Args:
-        x (numpy ndarray) : array to trim
-        from_start (int)  : number of elements to remove from start
-        from_end (int)    : number of elements to remove from end
-
-    Returns:
-        numpy ndarray : trimmed array
-    """
-    assert from_start >= 0
-    assert from_end >= 0
-
-    from_end = None if from_end == 0 else -from_end
-    return x[from_start:from_end]
-
-
-def subsample_array(x, length):
-    """Return a random (continuous) subsection of an array, of the given length.
-
-    Args:
-        x (numpy ndarray) : input array
-        length (int)      : desired length
-
-    Returns:
-        numpy ndarray : x[n:n+length] where n is chosen randomly
-    """
-    if length is None:
-        return x
-    assert len(x) > length
-    startpos = np.random.randint(0, len(x) - length + 1)
-    return x[startpos: startpos + length]
-
-
 def get_column_from_tsv(tsv_file_name, column):
     """Load a column from a csv file
 
@@ -192,18 +157,6 @@ def get_column_from_tsv(tsv_file_name, column):
         return [x for x in data[column]]
 
 
-def get_file_names(csv_file_name):
-    """Load strand file names from a csv file
-
-    Args:
-        csv_file_name (str) : the filename
-
-    Returns:
-        list of strs : filenames.
-    """
-    return get_column_from_tsv(csv_file_name, 'filename')
-
-
 def get_read_ids(tsv_file_name):
     """Load strand read ids from a tsv file
 
@@ -214,50 +167,6 @@ def get_read_ids(tsv_file_name):
         list of strs : read ids
     """
     return get_column_from_tsv(tsv_file_name, 'read_id')
-
-
-class ExponentialSmoother(object):
-    """Exponentially weighted rolling average of time series"""
-
-    def __init__(self, factor, val=0.0, weight=1e-30):
-        """Set up exponentially weighted rolling averager.
-
-        Args:
-            factor (float) : weight of value from n steps ago is factor^n
-            val (float) : start val used to initialise from previous smoother
-            weight (float) : start weight used to initialise
-
-        Returns:
-            ExponentialSmoother object.
-
-        Note:
-            To start from the end of a previous ExponentialSmoother object s
-            we do ExponentialSmoother(factor, s.val, s.weight).
-        """
-        assert 0.0 <= factor <= 1.0, "Smoothing factor was {}, should be between 0.0 and 1.0.\n".format(
-            factor)
-        self.factor = factor
-        self.val = val
-        self.weight = weight
-
-    @property
-    def value(self):
-        """Exponentially smoothed value.
-
-        Returns:
-            float : smoothed value over all previous updates
-        """
-        return self.val / self.weight
-
-    def update(self, val, weight=1.0):
-        """Add value in to exponentially weighted rolling average.
-
-        Args:
-            val (float) : value to add
-            weight (float) : weight
-        """
-        self.val = self.factor * self.val + (1.0 - self.factor) * val
-        self.weight = self.factor * self.weight + (1.0 - self.factor) * weight
 
 
 class WindowedExpSmoother(object):

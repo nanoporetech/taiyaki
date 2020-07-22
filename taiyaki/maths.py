@@ -49,36 +49,6 @@ def mad(data, factor=None, axis=None, keepdims=False):
     return dmad
 
 
-def studentise(x, axis=None):
-    """  Studentise a numpy array along a given axis
-    :param x: A :class:`ndaray`
-    :param axis: axis over which to studentise
-
-    :returns: A :class:`nd.array` with same shape as x
-    """
-    m = np.mean(x, axis=axis, keepdims=True)
-    s = np.std(x, axis=axis, keepdims=True)
-    s = np.where(s > 0.0, s, 1.0)
-    return np.divide(x - m, s)
-
-
-def geometric_prior(n, m, rev=False):
-    """ Log probabilities for random start time with geoemetric distribution
-
-    :param n: length of output vector
-    :param m: mean of distribution
-    :param rev: reverse distribution
-
-    :returns: A 1D :class:`ndarray` containing log probabilities
-    """
-    p = 1.0 / (1.0 + m)
-    prior = np.repeat(np.log(p), n)
-    prior[1:] += np.arange(1, n) * np.log1p(-p)
-    if rev:
-        prior = prior[::-1]
-    return prior
-
-
 def logsumexp(x, axis=None, keepdims=False):
     """ Calculate log-sum-exp of an array in a stable manner
 

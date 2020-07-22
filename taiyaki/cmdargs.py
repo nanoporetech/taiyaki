@@ -7,28 +7,10 @@ checking of values are within explicit sets.
 
 import argparse
 from collections import namedtuple
-import multiprocessing
 import numpy as np
 import os
 import re
 import warnings
-
-
-class ByteString(argparse.Action):
-    """Parses command line argument to a byte-string"""
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, values.encode('ascii'))
-
-
-def checkProbabilities(probabilities):
-    """Asserts that values are in range [0, 1]"""
-    try:
-        for probability in iter(probabilities):
-            assert 0.0 <= probability <= 1.0, 'Probability {} not in [0,1]'.format(
-                probability)
-    except TypeError:
-        assert 0.0 <= probabilities <= 1.0, 'Probability not in [0,1]'
 
 
 class display_version_and_exit(argparse.Action):
@@ -53,15 +35,6 @@ class FileExists(argparse.Action):
         setattr(namespace, self.dest, values)
 
 
-class FileExist(FileExists):
-    """Deprecated: use FileExists instead"""
-
-    def __init__(self, **kwdargs):
-        warnings.warn(
-            "FileExist is deprecated. Use FileExists instead.", DeprecationWarning)
-        super(FileExist, self).__init__(**kwdargs)
-
-
 class FileAbsent(argparse.Action):
     """Checks that input file doesn't exist"""
 
@@ -69,21 +42,6 @@ class FileAbsent(argparse.Action):
         if os.path.exists(values):
             raise RuntimeError(
                 "File/path for '{}' exists, {}".format(self.dest, values))
-        setattr(namespace, self.dest, values)
-
-
-class CheckCPU(argparse.Action):
-    """Make sure people do not overload the machine
-
-    Raises:
-        RuntimeError: if requested number of workers exceeds number of CPUs
-    """
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        num_cpu = multiprocessing.cpu_count()
-        if int(values) <= 0 or int(values) > num_cpu:
-            raise RuntimeError(
-                'Number of jobs can only be in the range of {} and {}'.format(1, num_cpu))
         setattr(namespace, self.dest, values)
 
 
@@ -126,44 +84,6 @@ class ParseToNamedTuple(argparse.Action):
     @staticmethod
     def value_as_string(value):
         return ' '.join(str(x) for x in value)
-
-
-class NegBound(argparse.Action):
-    """Creates a negative list bound suitable for trimming arrays"""
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        if values == 0:
-            setattr(namespace, self.dest, None)
-        else:
-            try:
-                setattr(namespace, self.dest, -int(values))
-            except:
-                raise ValueError(
-                    'Illegal value for {} ({}), should be castable to int')
-
-
-class ExpandRanges(argparse.Action):
-    """Translate a str like 1,2,3:5,40 to [1,2,3,4,5,40]"""
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        elts = []
-        for item in values.replace(' ', '').split(','):
-            mo = re.search(r'(\d+):(\d+)', item)
-            if mo is not None:
-                rng = [int(x) for x in mo.groups()]
-                elts.extend(list(range(rng[0], rng[1] + 1)))
-            else:
-                elts.append(int(item))
-        setattr(namespace, self.dest, elts)
-
-
-class ChannelList(ExpandRanges):
-    """ChannelList is deprecated. Use ExpandRanges instead"""
-
-    def __init__(self, **kwdargs):
-        warnings.warn(
-            "ChannelList is deprecated. Use ExpandRanges instead.", DeprecationWarning)
-        super(ChannelList, self).__init__(**kwdargs)
 
 
 class AutoBool(argparse.Action):
@@ -227,13 +147,6 @@ class Maybe(object):
             raise argparse.ArgumentTypeError(
                 'Argument must be {}'.format(self))
         return res
-
-
-def TypeOrNone(mytype):
-    """TypeOrNone is deprecated. Use Maybe instead."""
-    warnings.warn("TypeOrNone is deprecated. Use Maybe instead.",
-                  DeprecationWarning)
-    return Maybe(mytype)
 
 
 class Bounded(object):
@@ -354,19 +267,6 @@ def Vector(mytype):
     return MyNumpyAction
 
 
-def str_to_numeric(x):
-    """Converts a str to int or float, if possible, otherwise leave alone."""
-    if not isinstance(x, str):
-        return x
-    try:
-        return int(x)
-    except:
-        try:
-            return float(x)
-        except:
-            return x
-
-
 class DeviceAction(argparse.Action):
     """Parses string specifying a device (either CPU or GPU) and returns a normalised version
 
@@ -396,19 +296,3 @@ class DeviceAction(argparse.Action):
 
         # in all other cases, do nothing, and let torch.device decide
         return value
-
-
-str_to_type = {
-    'None': None,
-    'True': True, 'False': False,
-    'true': True, 'false': False,
-    'TRUE': True, 'FALSE': False
-}
-"""Deprecated: rules to convert a string to a boolean"""
-
-bool_actions = {
-    AutoBool,
-    argparse._StoreTrueAction,
-    argparse._StoreFalseAction
-}
-"""Deprecated: a list of boolean-related actions"""
