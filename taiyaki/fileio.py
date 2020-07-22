@@ -92,39 +92,6 @@ def read_chunks(fname, n_lines, n_chunks=None, header=True):
                     break
 
 
-def take_a_peak(fname, n_lines=4):
-    """Read the head of a file
-
-    Args:
-        fname (str): file to read
-        n_lines (int): number of lines to read
-
-    Yields:
-        str : line of the file
-    """
-    with open(fname, 'r') as fh:
-        for l in islice(fh, n_lines):
-            yield l
-
-
-def savetsv(fname, X, header=True):
-    """Save a structured array to a .tsv file
-
-    Args:
-        fname (str or file handle) : where to save
-            If the filename ends in ``.gz``, the file is automatically
-            saved in compressed gzip format.  `loadtxt` understands
-            gzipped files transparently.
-        X (array_like) : Data to be saved to a text file.
-    """
-    if header:
-        header = '\t'.join(X.dtype.names)
-    else:
-        header = ''
-    fmt = '\t'.join(_numpyfmt(X))
-    np.savetxt(fname, X, fmt=fmt, header=header, comments='', delimiter='\t')
-
-
 def readtsv(fname, fields=None, **kwargs):
     """Read a tsv file into a numpy array with required field checking
 
@@ -147,30 +114,3 @@ def readtsv(fname, fields=None, **kwargs):
     table = np.genfromtxt(fname, **kwargs)
     #  Numpy tricks to force single element to be array of one row
     return table.reshape(-1)
-
-
-def readchunkedtsv(fname, chunk_size=100, **kwargs):
-    """Read chunks of a .tsv file at a time.
-
-    Args:
-        fname (str): file to read
-        chunk_size (int): length of resultant chunks
-        **kwargs (dict): kwargs passed on to np.genfromtxt
-
-    Yields:
-        numpy recarray : structured array
-    """
-    for k in ['names', 'delimiter', 'dtype']:
-        kwargs.pop(k, None)
-
-    prototype = readtsv(take_a_peak(fname, chunk_size))
-    dtype = prototype.dtype
-
-    with warnings.catch_warnings():
-        warnings.filterwarnings('error')
-        for i, chunk in enumerate(read_chunks(fname, chunk_size)):
-            names = True if i == 0 else None
-            try:
-                yield np.genfromtxt(chunk, names=names, delimiter='\t', dtype=dtype, **kwargs)
-            except:
-                break
