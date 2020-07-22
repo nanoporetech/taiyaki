@@ -62,7 +62,7 @@ class SignalMapping:
         """
         is_req = name in self.req_data_types._fields
         is_opt = name in self.opt_data_types._fields
-        if not is_req or is_opt:
+        if not (is_req or is_opt):
             return 'Invalid attribute name "' + name + '".\n'
         target_type = (getattr(self.req_data_types, name) if is_req else
                        getattr(self.opt_data_types, name))
