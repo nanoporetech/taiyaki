@@ -290,44 +290,24 @@ def load_data(args, log, res_info):
 
 def load_network(args, alphabet_info, res_info, log):
     log.write('* Reading network from {}\n'.format(args.model))
-    model_kwargs = {
-        'stride': args.stride,
-        'winlen': args.winlen,
-        'insize': 1,
-        'size': args.size,
-        'alphabet_info': alphabet_info
-    }
-
     if res_info.is_lead_process:
         # Under pytorch's DistributedDataParallel scheme, we
         # need a clone of the start network to use as a template for saving
         # checkpoints. Necessary because DistributedParallel makes the class
         # structure different.
-        net_clone = helpers.load_model(args.model, **model_kwargs)
+        model_kwargs = {
+            'stride': args.stride,
+            'winlen': args.winlen,
+            'insize': 1,
+            'size': args.size,
+            'alphabet_info': alphabet_info
+        }
+        model_metadata = {'reverse': args.reverse,
+                          'standardize': args.standardize}
+        net_clone = helpers.load_model(
+            args.model, model_metadata=model_metadata, **model_kwargs)
         log.write('* Network has {} parameters.\n'.format(
-            sum(p.nelement()
-                for p in net_clone.parameters())))
-        if hasattr(net_clone, 'metadata'):
-            #  Check model metadata is consistent with command-line options
-            if net_clone.metadata['reverse'] != args.reverse:
-                sys.stderr.write((
-                    '* WARNING: Commandline specifies {} orientation ' +
-                    'but model trained in opposite direction!\n').format(
-                        'reverse' if args.reverse else 'forward'))
-                net_clone.metadata['reverse'] = args.reverse
-            if net_clone.metadata['standardize'] != \
-               args.standardize:
-                sys.stderr.write('* WARNING: Model and command-line ' +
-                                 'standardization are inconsistent.\n')
-                net_clone.metadata[
-                    'standardize'] = args.standardize
-
-        else:
-            net_clone.metadata = {
-                'reverse': args.reverse,
-                'standardize': args.standardize,
-                'version': layers.MODEL_VERSION
-            }
+            sum(p.nelement() for p in net_clone.parameters())))
 
         if not alphabet_info.is_compatible_model(net_clone):
             sys.stderr.write(
