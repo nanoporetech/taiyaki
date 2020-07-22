@@ -72,7 +72,8 @@ def save_model(network, output, index=None, model_skeleton=None):
     torch.save(_network.state_dict(), params_file)
 
 
-def load_model(model_file, params_file=None, **model_kwargs):
+def load_model(
+        model_file, params_file=None, model_metadata=None, **model_kwargs):
     """Load model from either python or checkpoint file.
 
     Args:
@@ -80,6 +81,8 @@ def load_model(model_file, params_file=None, **model_kwargs):
         params_file (str) : if this is supplied, then load a parameter
                             dict from this location and fill in the
                             parameters in the model.
+        model_metadata : dict containing metadata to be stored along with
+            model.
         **model_kwargs : passed on to the constructor of a python model.
 
     Returns :
@@ -89,6 +92,8 @@ def load_model(model_file, params_file=None, **model_kwargs):
 
     if extension == '.py':
         network = _load_python_model(model_file, **model_kwargs)
+        network.metadata = {} if model_metadata is None else model_metadata
+        network.metadata['version'] = MODEL_VERSION
     else:
         network = torch.load(model_file, map_location='cpu')
         assert hasattr(network, 'metadata'), \
@@ -99,6 +104,21 @@ def load_model(model_file, params_file=None, **model_kwargs):
             """Attempted to load old model version.
             Please run misc/upgrade_model.py
             """
+        if model_metadata is not None:
+            #  Check metadata from model and arguments are consistent
+            if 'reverse' in model_metadata and \
+               net_clone.metadata['reverse'] != model_metadata['reverse']:
+                sys.stderr.write((
+                    '* WARNING: model_metadata specifies {} orientation ' +
+                    'but model trained in opposite direction!\n').format(
+                    'reverse' if model_metadata['reverse'] else 'forward'))
+                net_clone.metadata['reverse'] = model_metadata['reverse']
+            if 'standardize' in model_metadata and \
+               net_clone.metadata['standardize'] != model_metadata['standardize']:
+                sys.stderr.write('* WARNING: Model and model_metadata ' +
+                                 'standardization are inconsistent.\n')
+                net_clone.metadata[
+                    'standardize'] = model_metadata['standardize']
 
     if params_file is not None:
         param_dict = torch.load(params_file, map_location='cpu')

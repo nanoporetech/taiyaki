@@ -11,8 +11,7 @@ import time
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
-from taiyaki import (
-    alphabet, constants, ctc, flipflopfings, helpers, layers, maths)
+from taiyaki import alphabet, constants, ctc, flipflopfings, helpers, maths
 from taiyaki.cmdargs import FileExists, Maybe, NonNegative, Positive
 from taiyaki.common_cmdargs import add_common_command_args
 
@@ -157,13 +156,12 @@ if __name__ == '__main__':
         'insize': 1,
         'alphabet_info': alphabet_info
     }
-    network = helpers.load_model(args.model, **model_kwargs).to(device)
-    if not hasattr(network, 'metadata'):
-        network.metadata = {
-            'reverse': False,
-            'standardize': True,
-            'version': layers.MODEL_VERSION
-        }
+    model_metadata = {
+        'reverse': False,
+        'standardize': True
+    }
+    network = helpers.load_model(
+        args.model, model_metadata=model_metadata, **model_kwargs).to(device)
     log.write('* Network has {} parameters.\n'.format(
         sum([p.nelement() for p in network.parameters()])))
 
