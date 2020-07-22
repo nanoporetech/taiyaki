@@ -664,7 +664,7 @@ class Chunk(object):
 
         Args:
             filter_params (namedtuple as in
-                           taiyaki.signal_mappings.FILTER_PARAMETERS)
+                           taiyaki.chunk_selection.FILTER_PARAMETERS)
 
         Note:
             If filter_params.median_mean_dwell or filter_params.mad_dwell are
