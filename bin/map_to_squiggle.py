@@ -66,7 +66,7 @@ def main():
             bases = bases.decode('ascii')
             fh.write('#{} {}\n'.format(read_id, score))
             for i, (s, p) in enumerate(zip(sig, path)):
-                fh.write('{}\t{}\t{}\t{}\t{}\t{}\t{}i\n'.format(
+                fh.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
                     read_id, i, s, p, bases[p], squiggle[p, 0], squiggle[p, 1],
                     squiggle[p, 2]))
 
