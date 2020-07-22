@@ -2,7 +2,6 @@ from copy import deepcopy
 from itertools import islice
 import numpy as np
 import os
-import warnings
 
 from gzip import open as gzopen
 from bz2 import BZ2File as bzopen
@@ -106,9 +105,11 @@ def readtsv(fname, fields=None, **kwargs):
 
     if not file_has_fields(fname, fields):
         raise KeyError(
-            'File {} does not contain requested required fields {}'.format(fname, fields))
+            'File {} does not contain requested required fields {}'.format(
+                fname, fields))
 
-    for k, v in {'names': True, 'delimiter': '\t', 'dtype': None, 'encoding': None}.items():
+    for k, v in (('names', True), ('delimiter', '\t'), ('dtype', None),
+                 ('encoding', None)):
         if not (k in kwargs):
             kwargs[k] = v
     table = np.genfromtxt(fname, **kwargs)

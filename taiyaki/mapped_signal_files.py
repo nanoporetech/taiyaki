@@ -152,7 +152,7 @@ class AbstractMappedSignalReader(ABC):
         """
         try:
             read = self.get_read(read_id)
-        except:
+        except Exception:
             return "Unable to get read " + read_id + " from file"
         return read.check()
 
@@ -160,8 +160,8 @@ class AbstractMappedSignalReader(ABC):
         """Check the whole file
 
         Args:
-            limit_report_lines (int, optional): maximum number of lines in error
-                report.
+            limit_report_lines (int, optional): maximum number of lines in
+                error report.
 
         Returns:
             str: taiyaki.mapped_signal_file.AbstractMappedSignalReader.pass_str
@@ -170,7 +170,7 @@ class AbstractMappedSignalReader(ABC):
         return_string = ""
         try:
             version_number = self.version
-        except:
+        except Exception:
             return_string += "Can't get version number\n"
 
         if not np.issubdtype(type(version_number), np.integer):
@@ -279,12 +279,9 @@ class HDF5Reader(AbstractMappedSignalReader):
     version is an attr, and the read data are stored
     as Datasets or attributes as appropriate.
 
-      file--|---Reads ----------|--<read_id_0>-- {
-            \                   |                {(All the read data for read 0)
-             version            |
-             alphabet           |--<read_id_>--  {
-             collapse_alphabet  |                {(All the read data for read 1)
-             mod_long_names     |
+    Global level attributes are version, alphabet, collapse_alphabet, and
+    mod_long_names. A single global "Reads" group contains a group for each
+    signal-mapped read
 
     Attributes:
         hdf5 (:class:`h5py.File`): File handle of HDF5 file
@@ -340,7 +337,7 @@ class HDF5Reader(AbstractMappedSignalReader):
             pass
         try:
             return list(self.hdf5[READS_ROOT_TEXT].keys())
-        except:
+        except Exception:
             return []
 
     def get_alphabet_information(self):
@@ -375,12 +372,9 @@ class HDF5Writer(AbstractMappedSignalWriter):
     version is an attr, and the read data are stored
     as Datasets or attributes as appropriate.
 
-      file--|---Reads ----------|--<read_id_0>-- {
-            \                   |                {(All the read data for read 0)
-             version            |
-             alphabet           |--<read_id_>--  {
-             collapse_alphabet  |                {(All the read data for read 1)
-             mod_long_names     |
+    Global level attributes are version, alphabet, collapse_alphabet, and
+    mod_long_names. A single global "Reads" group contains a group for each
+    signal-mapped read
 
     Attributes:
        hdf5 (:class:`h5py.File`):  File handle of HDF5 file to write to

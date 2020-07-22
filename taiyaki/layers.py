@@ -47,12 +47,12 @@ def random_orthonormal(n, m=None):
         https://arxiv.org/pdf/math-ph/0609050v2.pdf.
 
     A square matrix is generated if only one parameter is given, otherwise a
-    rectangular matrix is generated.  The number of columns must be greater than
-    the number of rows.
+    rectangular matrix is generated.  The number of columns must be greater
+    than the number of rows.
 
     Args:
         n (int): rank of matrix to generate
-        m (int, optional): second dimension of matrix, set equal to `n` if None.
+        m (int, optional): second dimension of matrix, set equal to `n` if None
 
     Returns:
         `ndarray`: orthonormal matrix
@@ -269,8 +269,8 @@ class FeedForward(nn.Module):
         Args:
             insize (int):  Size (number of neurons) of layer input.
             size (int):  Size(number of neurons) of layer output.
-            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
-                is initialised to zero and not trained.
+            has_bias (bool, optional): Whether layer has bias.  If `False`,
+                bias is initialised to zero and not trained.
             fun (<function>, optional):  Activation function to apply to output
                 of layer.
 
@@ -315,14 +315,15 @@ class FeedForward(nn.Module):
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
         """
-        res = OrderedDict([('type', "feed-forward"),
-                           ('activation', self.activation.__name__),
-                           ('size', self.size),
-                           ('insize', self.insize),
-                           ('bias', self.has_bias)])
-        res['params'] = OrderedDict([('W', self.linear.weight)] +
-                                    [('b', self.linear.bias)] if self.has_bias else [])
-        return res
+        return OrderedDict([
+            ('type', "feed-forward"),
+            ('activation', self.activation.__name__),
+            ('size', self.size),
+            ('insize', self.insize),
+            ('bias', self.has_bias),
+            ('params', OrderedDict(
+                [('W', self.linear.weight)] +
+                [('b', self.linear.bias)] if self.has_bias else []))])
 
 
 class Softmax(nn.Module):
@@ -348,8 +349,8 @@ class Softmax(nn.Module):
         Args:
             insize (int):  Size (number of neurons) of layer input.
             size (int):  Size (number of neurons) of layer output.
-            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
-                is initialised to zero and not trained.
+            has_bias (bool, optional): Whether layer has bias.  If `False`,
+                bias is initialised to zero and not trained.
         """
         super().__init__()
         self.insize = insize
@@ -395,8 +396,9 @@ class Softmax(nn.Module):
                            ('size', self.size),
                            ('insize', self.insize),
                            ('bias', self.has_bias)])
-        res['params'] = OrderedDict([('W', self.linear.weight)] +
-                                    [('b', self.linear.bias)] if self.has_bias else [])
+        res['params'] = OrderedDict(
+            [('W', self.linear.weight)] +
+            [('b', self.linear.bias)] if self.has_bias else [])
         return res
 
 
@@ -419,8 +421,8 @@ class CudnnGru(nn.Module):
         Args:
             insize (int):  Size (number of neurons) of layer input.
             size (int):  Size (number of neurons) of layer output.
-            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
-                is initialised to zero and not trained.
+            has_bias (bool, optional): Whether layer has bias.  If `False`,
+                bias is initialised to zero and not trained.
         """
         super().__init__()
         self.cudnn_gru = nn.GRU(insize, size, bias=bias)
@@ -479,11 +481,11 @@ class CudnnGru(nn.Module):
         sW = _cudnn_to_guppy_gru(self.cudnn_gru.weight_hh_l0)
         ib = _cudnn_to_guppy_gru(self.cudnn_gru.bias_ih_l0)
         sb = _cudnn_to_guppy_gru(self.cudnn_gru.bias_hh_l0)
-        res['params'] = OrderedDict([('iW', _reshape(iW, (3, self.size, self.insize))),
-                                     ('sW', _reshape(
-                                         sW, (3, self.size, self.size))),
-                                     ('ib', _reshape(ib, (3, self.size))),
-                                     ('sb', _reshape(sb, (3, self.size)))])
+        res['params'] = OrderedDict([
+            ('iW', _reshape(iW, (3, self.size, self.insize))),
+            ('sW', _reshape(sW, (3, self.size, self.size))),
+            ('ib', _reshape(ib, (3, self.size))),
+            ('sb', _reshape(sb, (3, self.size)))])
         return res
 
 
@@ -507,8 +509,8 @@ class Lstm(nn.Module):
         Args:
             insize (int):  Size (number of neurons) of layer input.
             size (int):  Size (number of neurons) of layer output.
-            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
-                is initialised to zero and not trained.
+            has_bias (bool, optional): Whether layer has bias.  If `False`,
+                bias is initialised to zero and not trained.
         """
         super().__init__()
         self.lstm = nn.LSTM(insize, size, bias=has_bias)
@@ -567,7 +569,8 @@ class Lstm(nn.Module):
             tuple of str and :nn:`Parameter`: name of `lstm` parameter and the
                 parameter.
         """
-        for name, param in self.lstm.named_parameters(prefix=prefix, recurse=recurse):
+        for name, param in self.lstm.named_parameters(
+                prefix=prefix, recurse=recurse):
             if 'bias_hh' not in name:
                 yield name, param
 
@@ -595,18 +598,20 @@ class Lstm(nn.Module):
                            ('size', self.size),
                            ('insize', self.insize),
                            ('bias', self.has_bias)])
-        res['params'] = OrderedDict([('iW', _reshape(self.lstm.weight_ih_l0, (4, self.size, self.insize))),
-                                     ('sW', _reshape(self.lstm.weight_hh_l0,
-                                                     (4, self.size, self.size))),
-                                     ('b', _reshape(self.lstm.bias_ih_l0, (4, self.size)))])
+        res['params'] = OrderedDict([
+            ('iW', _reshape(self.lstm.weight_ih_l0,
+                            (4, self.size, self.insize))),
+            ('sW', _reshape(self.lstm.weight_hh_l0,
+                            (4, self.size, self.size))),
+            ('b', _reshape(self.lstm.bias_ih_l0, (4, self.size)))])
         return res
 
 
 class GruMod(nn.Module):
     """  Gated Recurrent Unit compatable with guppy
 
-    This version of the Gru should be compatable with guppy. It differs from the
-    CudnnGru in that the CudnnGru has an additional bias parameter.
+    This version of the Gru should be compatable with guppy. It differs from
+    the CudnnGru in that the CudnnGru has an additional bias parameter.
 
     Attributes:
         cudnn_gru (:nn:`Module`): Pytorch GRU module
@@ -622,8 +627,8 @@ class GruMod(nn.Module):
         Args:
             insize (int):  Size (number of neurons) of layer input.
             size (int):  Size (number of neurons) of layer output.
-            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
-                is initialised to zero and not trained.
+            has_bias (bool, optional): Whether layer has bias.  If `False`,
+                bias is initialised to zero and not trained.
         """
         super().__init__()
         self.cudnn_gru = nn.GRU(insize, size, bias=has_bias)
@@ -662,8 +667,8 @@ class GruMod(nn.Module):
         """  Disable training of redundant bias parameter and initialise to zero
 
         Returns:
-            None:  Redundant parameter "bias_hh" of `cudnn_gru` is set to zero and
-                training is disable.
+            None: Redundant parameter "bias_hh" of `cudnn_gru` is set to zero
+                and training is disable.
         """
         for name, param in self.cudnn_gru.named_parameters():
             if 'bias_hh' in name:
@@ -684,7 +689,7 @@ class GruMod(nn.Module):
         """
         prefix = prefix + ('.' if prefix else '')
         for name, param in self.cudnn_gru.named_parameters(recurse=recurse):
-            if not 'bias_hh' in name:
+            if 'bias_hh' not in name:
                 yield prefix + name, param
 
     def forward(self, x):
@@ -714,10 +719,10 @@ class GruMod(nn.Module):
         iW = _cudnn_to_guppy_gru(self.cudnn_gru.weight_ih_l0)
         sW = _cudnn_to_guppy_gru(self.cudnn_gru.weight_hh_l0)
         b = _cudnn_to_guppy_gru(self.cudnn_gru.bias_ih_l0)
-        res['params'] = OrderedDict([('iW', _reshape(iW, (3, self.size, self.insize))),
-                                     ('sW', _reshape(
-                                         sW, (3, self.size, self.size))),
-                                     ('b', _reshape(b, (3, self.size)))])
+        res['params'] = OrderedDict([
+            ('iW', _reshape(iW, (3, self.size, self.insize))),
+            ('sW', _reshape(sW, (3, self.size, self.size))),
+            ('b', _reshape(b, (3, self.size)))])
         return res
 
 
@@ -770,13 +775,13 @@ class Convolution(nn.Module):
             stride (int, optional): step size between successive windows.
                 Default stride 1 does not down-sample output.
             pad (tuple of int and int,optional): padding applied to start and
-                end of input, or None in which case the padding is set to ensure
-                that output length does not depend on `winlen` -- padding is
-                (winlen // 2, (winlen - 1) // 2).
+                end of input, or None in which case the padding is set to
+                ensure that output length does not depend on `winlen` --
+                padding is (winlen // 2, (winlen - 1) // 2).
             fun (<function>): function applying activation elementwise to
                 result of convolution.
-            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
-                is initialised to zero and not trained.
+            has_bias (bool, optional): Whether layer has bias.  If `False`,
+                bias is initialised to zero and not trained.
         """
         super().__init__()
         self.has_bias = has_bias
@@ -840,8 +845,9 @@ class Convolution(nn.Module):
                            ("stride", self.conv.stride[0]),
                            ("padding", self.padding),
                            ("activation", self.activation.__name__)])
-        res['params'] = OrderedDict([("W", self.conv.weight)] +
-                                    [("b", self.conv.bias)] if self.has_bias else [])
+        res['params'] = OrderedDict(
+            [("W", self.conv.weight)] +
+            [("b", self.conv.bias)] if self.has_bias else [])
         return res
 
 
@@ -1016,8 +1022,9 @@ class SoftChoice(nn.Module):
         Returns:
             :collections:`OrderedDict`: Structured description of layer.
         """
-        res = OrderedDict([('type', "softchoice"),
-                           ('sublayers', [layer.json() for layer in self.sublayers])])
+        res = OrderedDict(
+            [('type', "softchoice"),
+             ('sublayers', [layer.json() for layer in self.sublayers])])
         res['params'] = OrderedDict([('alpha', self.alpha)])
         return res
 
@@ -1264,11 +1271,11 @@ def log_partition_flipflop(scores):
     T, N, C = scores.shape
     nbase = flipflopfings.nbase_flipflop(C)
 
-    fwd = torch.cat([torch.zeros(N, nbase, device=scores.device,
-                                 dtype=scores.dtype),
-                     torch.full((N, nbase), -LARGE_LOG_VAL, device=scores.device,
-                                dtype=scores.dtype)],
-                    1)
+    fwd = torch.cat(
+        [torch.zeros(N, nbase, device=scores.device,
+                     dtype=scores.dtype),
+         torch.full((N, nbase), -LARGE_LOG_VAL, device=scores.device,
+                    dtype=scores.dtype)], 1)
     logZ = fwd.logsumexp(1, keepdim=True)
     fwd = fwd - logZ
     for scores_t in scores.unbind(0):
@@ -1400,6 +1407,8 @@ class GlobalNormFlipFlop(nn.Module):
 
         try:
             from .cupy_extensions import flipflop
+            # does nothing but satisfies flake8
+            flipflop
             return True
         except ImportError:
             return False
@@ -1610,6 +1619,8 @@ class GlobalNormFlipFlopCatMod(nn.Module):
 
         try:
             from .cupy_extensions import flipflop
+            # does nothing but satisfies flake8
+            flipflop
             return True
         except ImportError:
             return False
@@ -1710,8 +1721,8 @@ class TimeLinear(nn.Module):
         Args:
             insize (int):  Size (number of neurons) of layer input.
             size (int):  Size(number of neurons) of layer output.
-            has_bias (bool, optional): Whether layer has bias.  If `False`, bias
-                is initialised to zero and not trained.
+            has_bias (bool, optional): Whether layer has bias.  If `False`,
+                bias is initialised to zero and not trained.
             fun (<function>, optional):  Activation function to apply to output
                 of layer.
         """
@@ -1762,8 +1773,9 @@ class TimeLinear(nn.Module):
                            ('size', self.size),
                            ('insize', self.insize),
                            ('bias', self.has_bias)])
-        res['params'] = OrderedDict([('W', self.linear.weight)] +
-                                    [('b', self.linear.bias)] if self.has_bias else [])
+        res['params'] = OrderedDict(
+            [('W', self.linear.weight)] +
+            [('b', self.linear.bias)] if self.has_bias else [])
         return res
 
 
@@ -1806,7 +1818,8 @@ class UpSample(nn.Module):
         """
         nt, nb, nf = x.shape
         y = x.transpose(1, 0)
-        assert nf % self.nfold == 0, "Number of features must be divisible by nfold"
+        assert nf % self.nfold == 0, (
+            "Number of features must be divisible by nfold")
         nf_out = nf // self.nfold
         nt_out = nt * self.nfold
         z = torch.reshape(y, (nb, nt_out, nf_out))
@@ -1852,7 +1865,8 @@ class DownSample(nn.Module):
         """
         nt, nb, nf = x.shape
         y = x.transpose(1, 0)
-        assert nt % self.nfold == 0, "Number of time points must be divisible by nfold"
+        assert nt % self.nfold == 0, (
+            "Number of time points must be divisible by nfold")
         nt_out = nt // self.nfold
         nf_out = nf * self.nfold
         z = torch.reshape(y, (nb, nt_out, nf_out))

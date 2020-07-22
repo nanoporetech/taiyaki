@@ -2,9 +2,9 @@
 
 if [ "$1" == "" ]
 then
-	echo "Compress data sets within a HDF5 file"
-	echo "Usage: compress_hdf5.sh file.hdf5"
-	exit 1
+    echo "Compress data sets within a HDF5 file"
+    echo "Usage: compress_hdf5.sh file.hdf5"
+    exit 1
 fi
 INFILE=$1
 

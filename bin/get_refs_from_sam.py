@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import pysam
-import re
 import sys
 
 from taiyaki.bio import complement, fasta_file_to_dict, reverse_complement
@@ -11,26 +10,38 @@ from taiyaki.fileio import readtsv
 from taiyaki.helpers import open_file_or_stdout
 
 
-parser = argparse.ArgumentParser(
-    description='Extract reference sequence for each read from a SAM alignment file',
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description='Extract reference sequence for each read from a SAM ' +
+        'alignment file',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, ["output"])
+    add_common_command_args(parser, ["output"])
 
-parser.add_argument('--complement', default=False, action=AutoBool,
-                    help='Complement all reference sequences')
-parser.add_argument('--input_strand_list', default=None, action=FileExists,
-                    help='Strand summary file containing subset')
-parser.add_argument('--min_coverage', metavar='proportion', default=0.6, type=proportion,
-                    help='Ignore reads with alignments shorter than min_coverage * read length')
-parser.add_argument('--pad', type=int, default=0,
-                    help='Number of bases by which to pad reference sequence')
-parser.add_argument('--reverse', default=False, action=AutoBool,
-                    help='Reverse all reference sequences (for RNA)')
-parser.add_argument('reference', action=FileExists,
-                    help="Genomic references that reads were aligned against")
-parser.add_argument('input', metavar='input.sam', nargs='+',
-                    help="SAM or BAM file(s) containing read alignments to reference")
+    parser.add_argument(
+        '--complement', default=False, action=AutoBool,
+        help='Complement all reference sequences')
+    parser.add_argument(
+        '--input_strand_list', default=None, action=FileExists,
+        help='Strand summary file containing subset')
+    parser.add_argument(
+        '--min_coverage', metavar='proportion', default=0.6, type=proportion,
+        help='Ignore reads with alignments shorter than min_coverage * ' +
+        'read length')
+    parser.add_argument(
+        '--pad', type=int, default=0,
+        help='Number of bases by which to pad reference sequence')
+    parser.add_argument(
+        '--reverse', default=False, action=AutoBool,
+        help='Reverse all reference sequences (for RNA)')
+    parser.add_argument(
+        'reference', action=FileExists,
+        help="Genomic references that reads were aligned against")
+    parser.add_argument(
+        'input', metavar='input.sam', nargs='+',
+        help="SAM or BAM file(s) containing read alignments to reference")
+
+    return parser
 
 
 def get_refs(sam, ref_seq_dict, min_coverage=0.6, pad=0, strand_list=None):
@@ -66,7 +77,7 @@ def get_refs(sam, ref_seq_dict, min_coverage=0.6, pad=0, strand_list=None):
 
 
 def main():
-    args = parser.parse_args()
+    args = get_parser().parse_args()
 
     sys.stderr.write(
         "* Loading references (this may take a while for large genomes)\n")
@@ -83,8 +94,9 @@ def main():
     sys.stderr.write("* Extracting read references using SAM alignment\n")
     with open_file_or_stdout(args.output) as fh:
         for samfile in args.input:
-            for name, read_ref in get_refs(samfile, references, args.min_coverage,
-                                           args.pad, strand_list=strand_list):
+            for name, read_ref in get_refs(
+                    samfile, references, args.min_coverage, args.pad,
+                    strand_list=strand_list):
                 if args.reverse:
                     read_ref = read_ref[::-1]
                 if args.complement:

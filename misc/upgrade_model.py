@@ -8,14 +8,22 @@ from taiyaki.cmdargs import FileAbsent, FileExists
 from taiyaki import activation, layers
 
 
-parser = argparse.ArgumentParser(description='Upgrade model file',
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description='Upgrade model file',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, ['version'])
-parser.add_argument('--output', action=FileAbsent, default=None,
-                    help='Name for output upgraded mapped signal file')
-parser.add_argument('input', action=FileExists,
-                    help='Mapped signal to read from')
+    add_common_command_args(parser, ['version'])
+
+    parser.add_argument(
+        '--output', action=FileAbsent, default=None,
+        help='Name for output upgraded mapped signal file')
+
+    parser.add_argument(
+        'input', action=FileExists,
+        help='Mapped signal to read from')
+
+    return parser
 
 
 def convert_0_to_1(model):
@@ -68,7 +76,8 @@ def convert_1_to_2(model):
     for layer in model.modules():
         #  Walk layers and change
         if isinstance(layer, layers.GlobalNormFlipFlop):
-            print('Adding activation (tanh) and scale (5.0) to GlobalNormFlipFlop')
+            print('Adding activation (tanh) and scale (5.0) to ' +
+                  'GlobalNormFlipFlop')
             assert not hasattr(layer, 'activation'), 'Inconsistent model!'
             layer.activation = activation.tanh
             assert not hasattr(layer, 'scale'), 'Inconsistent model!'
@@ -99,7 +108,7 @@ def convert_2_to_3(model):
 
 
 def main():
-    args = parser.parse_args()
+    args = get_parser().parse_args()
     if args.output is None:
         args.output = args.input
 

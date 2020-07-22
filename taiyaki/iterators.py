@@ -5,7 +5,7 @@ https://docs.python.org/2/library/itertools.html#recipes
 because its all so useful!
 
 """
-from itertools import *
+from itertools import tee
 from functools import partial
 from multiprocessing import Pool
 

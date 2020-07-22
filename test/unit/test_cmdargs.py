@@ -57,7 +57,8 @@ class CmdArgsTest(unittest.TestCase):
 
     def test_proportion_valid_float_values(self):
         f = cmdargs.proportion
-        for x in [1e-30, self.EPS, 1e-5, 0.0, 1.0, 1.0 - 1e-5, 1.0 - self.EPS, 1.0 - 1e-30]:
+        for x in [1e-30, self.EPS, 1e-5, 0.0, 1.0, 1.0 - 1e-5, 1.0 - self.EPS,
+                  1.0 - 1e-30]:
             self.assertAlmostEqual(x, f(x))
 
     def test_proportion_invalid_float_values(self):

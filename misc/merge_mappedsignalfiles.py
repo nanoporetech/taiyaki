@@ -102,8 +102,8 @@ def validate_and_merge_alphabets(in_fns):
                 mod_long_names[mod_long_name] = mod_base
                 mod_fns[mod_base] = in_fn
 
-    all_mods = [(mod_nase, can_base, mod_long_name)
-                for mod_nase, (can_base, mod_long_name) in all_mods.items()]
+    all_mods = [(mod_nase, can_b, mln)
+                for mod_nase, (can_b, mln) in all_mods.items()]
     merge_alphabet = can_bases + ''.join(list(zip(*all_mods))[0])
     merge_collapse_alphabet = can_bases + ''.join(list(zip(*all_mods))[1])
     merge_mod_long_names = list(zip(*all_mods))[2]

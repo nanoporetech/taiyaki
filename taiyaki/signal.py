@@ -43,7 +43,7 @@ class Signal:
         if read is None:
             try:
                 self.untrimmed_dacs = dacs.copy()
-            except:
+            except Exception:
                 raise Exception("Cannot initialise Signal object")
             self.channel_info = channel_info
             self.read_id = read_id
@@ -62,8 +62,8 @@ class Signal:
         self.offset = self.channel_info['offset']
         self.digitisation = self.channel_info['digitisation']
 
-        # We want to allow trimming without mucking about with the original data
-        # To start with, set trimming parameters to trim nothing
+        # We want to allow trimming without mucking about with the original
+        # data. To start with, set trimming parameters to trim nothing
         self.signalstart = 0
         # end is defined exclusively so that
         # self.dacs[signalstart:signalend_exc] is the bit we want.

@@ -36,9 +36,10 @@ class CtcGradientTest(unittest.TestCase):
         # Sequence ACC. Flip-flop coded ACc or 015
         # 'sequences' rather than 'sequence' because
         # we could have more than one sequence packed together
-        self.sequences = {'015': torch.tensor([0, 1, 5]),
-                          '237': torch.tensor([2, 3, 7]),
-                          '510': torch.tensor([5, 1, 0])}  # prob 0 according to outputs
+        self.sequences = {
+            '015': torch.tensor([0, 1, 5]),
+            '237': torch.tensor([2, 3, 7]),
+            '510': torch.tensor([5, 1, 0])}  # prob 0 according to outputs
         self.seqlens = torch.tensor([self.seqlen])
         # Network outputs are weights for flip-flop transitions
         # Define some example paths and assign weights to them.
@@ -63,8 +64,9 @@ class CtcGradientTest(unittest.TestCase):
                                    for k, v in self.path_probabilities.items()}
 
         # Make output (transition weight) matrix with these path probs
-        self.outputs = torch.zeros(self.nblocks, self.batchsize,
-                                   self.nflipflop_transitions, dtype=torch.float)
+        self.outputs = torch.zeros(
+            self.nblocks, self.batchsize,
+            self.nflipflop_transitions, dtype=torch.float)
         for k in paths.keys():
             for block in range(self.nblocks):
                 transcode = flipflop_transitioncode(
@@ -82,22 +84,22 @@ class CtcGradientTest(unittest.TestCase):
         # First check normalisation of output matrix
         logpart = float(layers.log_partition_flipflop(self.outputs))
         # Print output will appear only if test fails
-        print("Check normalisation: exp(log_partition_flipflop) =", end="")
-        print(" {:3.4f}, log={:3.4f}".format(np.exp(logpart), logpart))
+        print("Check normalisation: exp(log_partition_flipflop) =" +
+              " {:3.4f}, log={:3.4f}".format(np.exp(logpart), logpart))
         self.assertAlmostEqual(logpart, 0.0)
 
         # Now check probabilities for three sequences
         for sequence_name, sequence in self.sequences.items():
             sequence_prob = self.path_probabilities[sequence_name]
-            print("Sequence {} P={:3.3f} ".format(sequence_name, sequence_prob),
-                  end="")
+            print("Sequence {} P={:3.3f} ".format(
+                sequence_name, sequence_prob))
             lossvector = ctc.crf_flipflop_loss(self.outputs, sequence,
                                                self.seqlens,
                                                self.sharpen)
             sequence_prob_from_ctc = float(
                 torch.exp(-lossvector * self.nblocks))
-            print("Pctc={:3.4f}, loss={:3.4f}".format(sequence_prob_from_ctc,
-                                                      float(lossvector)))
+            print("Pctc={:3.4f}, loss={:3.4f}".format(
+                sequence_prob_from_ctc, float(lossvector)))
             self.assertAlmostEqual(sequence_prob, sequence_prob_from_ctc)
 
     def test_grad(self):
@@ -105,12 +107,11 @@ class CtcGradientTest(unittest.TestCase):
         output (transition weight) matrix"""
         self.outputs.requires_grad = True
         for ks, seq in self.sequences.items():
-            print("Sequence", ks, end=": ")
             lossvector = ctc.crf_flipflop_loss(self.outputs, seq,
                                                self.seqlens,
                                                self.sharpen)
-            print("P={:3.4f}, loss={:3.4f}".format(
-                float(torch.exp(-lossvector * self.nblocks)),
+            print("Sequence: {}: P={:3.4f}, loss={:3.4f}".format(
+                ks, float(torch.exp(-lossvector * self.nblocks)),
                 float(lossvector)))
             loss = torch.sum(lossvector)
             if self.outputs.grad is not None:
@@ -126,8 +127,9 @@ class CtcGradientTest(unittest.TestCase):
             loss_change = float(loss2 - loss)
             loss_change_from_grad = float(
                 torch.sum(small_change * self.outputs.grad))
-            print("    Change in loss = {:3.7f} ".format(loss_change), end="")
-            print(", est from grad = {:3.7f}".format(loss_change_from_grad))
+            print(("    Change in loss = {:3.7f}, est from " +
+                   "grad = {:3.7f}").format(
+                       loss_change, loss_change_from_grad))
             self.assertAlmostEqual(loss_change / float(loss),
                                    loss_change_from_grad / float(loss),
                                    places=self.grad_dp)

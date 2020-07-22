@@ -1,4 +1,3 @@
-import numpy as np
 import os
 from subprocess import Popen, PIPE
 
@@ -11,7 +10,9 @@ MODELS_DIR = "../../models"
 
 class Result(object):
 
-    def __init__(self, test_case, cmd, cwd, exit_code, stdout, stderr, max_lines=100):
+    def __init__(
+            self, test_case, cmd, cwd, exit_code, stdout, stderr,
+            max_lines=100):
         self.test_case = test_case
         self.cmd = cmd
         self.cwd = cwd
@@ -86,11 +87,12 @@ def run_cmd(test_case, cmd, cwd=None):
 
 
 def maybe_create_dir(directory_name):
-    '''
+    """
     Create a directory if it does not exist already.
-    In Python 2.7 OSError is thrown if directory does not exist or permissions are insufficient.
+    In Python 2.7 OSError is thrown if directory does not exist or permissions
+    are insufficient.
     In Python 3 more specific exceptions are thrown.
-    '''
+    """
 
     try:
         os.makedirs(directory_name)
@@ -102,18 +104,4 @@ def maybe_create_dir(directory_name):
 
 
 def any_line_starts_with(prefix):
-    return lambda lines: any(l.startswith(prefix) for l in lines)
-
-
-if __name__ == '__main__':
-    assert not zeroth_line_starts_with('a')([])
-    assert zeroth_line_starts_with('a')(['a'])
-    assert zeroth_line_starts_with('a')(['a', 'a'])
-    assert zeroth_line_starts_with('a')(['a', 'b'])
-    assert not zeroth_line_starts_with('a')(['b', 'a'])
-
-    assert not last_line_starts_with('a')([])
-    assert last_line_starts_with('a')(['a'])
-    assert last_line_starts_with('a')(['a', 'a'])
-    assert not last_line_starts_with('a')(['a', 'b'])
-    assert last_line_starts_with('a')(['b', 'a'])
+    return lambda lines: any(line.startswith(prefix) for line in lines)

@@ -9,12 +9,14 @@ import torch
 from ont_fast5_api import fast5_interface
 
 from taiyaki import basecall_helpers, fast5utils, helpers, layers, qscores
-from taiyaki.cmdargs import AutoBool, FileAbsent, FileExists, NonNegative, Positive
+from taiyaki.cmdargs import (
+    AutoBool, FileAbsent, FileExists, NonNegative, Positive)
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.decode import flipflop_make_trans, flipflop_viterbi
-from taiyaki.flipflopfings import extract_mod_weights, nstate_flipflop, path_to_str
-from taiyaki.helpers import (guess_model_stride, load_model, open_file_or_stdout,
-                             Progress)
+from taiyaki.flipflopfings import (
+    extract_mod_weights, nstate_flipflop, path_to_str)
+from taiyaki.helpers import (
+    guess_model_stride, load_model, open_file_or_stdout, Progress)
 from taiyaki.maths import med_mad
 from taiyaki.prepare_mapping_funcs import get_per_read_params_dict_from_tsv
 from taiyaki.signal import Signal
@@ -23,39 +25,53 @@ from taiyaki.signal import Signal
 STITCH_BEFORE_VITERBI = False
 
 
-parser = argparse.ArgumentParser(
-    description="Basecall reads using a taiyaki model",
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description="Basecall reads using a taiyaki model",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-add_common_command_args(parser, """alphabet device input_folder
-                        input_strand_list limit output quiet
-                        recursive version""".split())
+    add_common_command_args(
+        parser, """alphabet device input_folder
+        input_strand_list limit output quiet
+        recursive version""".split())
 
-parser.add_argument("--chunk_size", type=Positive(int), metavar="blocks",
-                    default=basecall_helpers._DEFAULT_CHUNK_SIZE,
-                    help="Size of signal chunks sent to GPU is chunk_size * model stride")
-parser.add_argument('--fastq', default=False, action=AutoBool,
-                    help='Write output in fastq format (default is fasta)')
-parser.add_argument("--max_concurrent_chunks", type=Positive(int),
-                    default=128, help="Maximum number of chunks to call at "
-                    "once. Lower values will consume less (GPU) RAM.")
-parser.add_argument("--modified_base_output", action=FileAbsent, default=None, metavar="mod_basecalls.hdf5",
-                    help="Output filename for modified base output.")
-parser.add_argument("--overlap", type=NonNegative(int), metavar="blocks",
-                    default=basecall_helpers._DEFAULT_OVERLAP,
-                    help="Overlap between signal chunks sent to GPU")
-parser.add_argument("--qscore_offset", type=float,
-                    default=0.0,
-                    help="Offset to apply to q scores in fastq (after scale)")
-parser.add_argument("--qscore_scale", type=float,
-                    default=1.0,
-                    help="Scaling factor to apply to q scores in fastq")
-parser.add_argument('--reverse', default=False, action=AutoBool,
-                    help='Reverse sequences in output')
-parser.add_argument('--scaling', action=FileExists, default=None,
-                    help='Path to TSV containing per-read scaling params')
-parser.add_argument("model", action=FileExists,
-                    help="Model checkpoint file to use for basecalling")
+    parser.add_argument(
+        "--chunk_size", type=Positive(int), metavar="blocks",
+        default=basecall_helpers._DEFAULT_CHUNK_SIZE,
+        help="Size of signal chunks sent to GPU is chunk_size * model stride")
+    parser.add_argument(
+        '--fastq', default=False, action=AutoBool,
+        help='Write output in fastq format (default is fasta)')
+    parser.add_argument(
+        "--max_concurrent_chunks", type=Positive(int),
+        default=128, help="Maximum number of chunks to call at "
+        "once. Lower values will consume less (GPU) RAM.")
+    parser.add_argument(
+        "--modified_base_output", action=FileAbsent, default=None,
+        metavar="mod_basecalls.hdf5",
+        help="Output filename for modified base output.")
+    parser.add_argument(
+        "--overlap", type=NonNegative(int), metavar="blocks",
+        default=basecall_helpers._DEFAULT_OVERLAP,
+        help="Overlap between signal chunks sent to GPU")
+    parser.add_argument(
+        "--qscore_offset", type=float,
+        default=0.0,
+        help="Offset to apply to q scores in fastq (after scale)")
+    parser.add_argument(
+        "--qscore_scale", type=float, default=1.0,
+        help="Scaling factor to apply to q scores in fastq")
+    parser.add_argument(
+        '--reverse', default=False, action=AutoBool,
+        help='Reverse sequences in output')
+    parser.add_argument(
+        '--scaling', action=FileExists, default=None,
+        help='Path to TSV containing per-read scaling params')
+    parser.add_argument(
+        "model", action=FileExists,
+        help="Model checkpoint file to use for basecalling")
+
+    return parser
 
 
 def med_mad_norm(x, dtype='f4'):
@@ -93,8 +109,9 @@ def get_signal(read_filename, read_id):
             return sig.current
 
     except Exception as e:
-        sys.stderr.write('Unable to obtain signal for {} from {}.\n{}\n'.format(
-            read_id, read_filename, repr(e)))
+        sys.stderr.write(
+            'Unable to obtain signal for {} from {}.\n{}\n'.format(
+                read_id, read_filename, repr(e)))
         return None
 
 
@@ -217,7 +234,7 @@ def process_read(
 
 
 def main():
-    args = parser.parse_args()
+    args = get_parser().parse_args()
 
     device = helpers.set_torch_device(args.device)
     # TODO convert to logging
@@ -235,15 +252,15 @@ def main():
     chunk_overlap = args.overlap * stride
 
     sys.stderr.write("* Initializing reads file search.\n")
-    fast5_reads = list(fast5utils.iterate_fast5_reads(args.input_folder,
-                                                      limit=args.limit,
-                                                      strand_list=args.input_strand_list,
-                                                      recursive=args.recursive))
+    fast5_reads = list(fast5utils.iterate_fast5_reads(
+        args.input_folder, limit=args.limit,
+        strand_list=args.input_strand_list, recursive=args.recursive))
     sys.stderr.write("* Found {} reads.\n".format(len(fast5_reads)))
 
     if args.scaling is not None:
         sys.stderr.write(
-            "* Loading read scaling parameters from {}.\n".format(args.scaling))
+            "* Loading read scaling parameters from {}.\n".format(
+                args.scaling))
         all_read_params = get_per_read_params_dict_from_tsv(args.scaling)
         input_read_ids = frozenset(rec[1] for rec in fast5_reads)
         scaling_read_ids = frozenset(all_read_params.keys())
@@ -281,9 +298,9 @@ def main():
                     is_cat_mod, mods_fp, args.max_concurrent_chunks,
                     args.fastq, args.qscore_scale, args.qscore_offset)
                 if basecall is not None:
-                    fh.write("{}{}\n{}\n".format(startcharacter,
-                                                 read_id,
-                                                 basecall[::-1] if args.reverse else basecall))
+                    fh.write("{}{}\n{}\n".format(
+                        startcharacter, read_id,
+                        basecall[::-1] if args.reverse else basecall))
                     nbase += len(basecall)
                     ncalled += 1
                     if args.fastq:

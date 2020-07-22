@@ -2,11 +2,6 @@
 import argparse
 import os
 
-if True:
-    #  Protect in block to prevent autopep8 refactoring
-    import matplotlib
-    matplotlib.use('Agg')
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -14,27 +9,42 @@ from taiyaki.cmdargs import Positive
 from taiyaki import fileio
 from taiyaki.constants import DOTROWLENGTH
 
+if True:
+    #  Protect in block to prevent autopep8 refactoring
+    import matplotlib
+    matplotlib.use('Agg')
 
-parser = argparse.ArgumentParser(
-    description='Plot graphs of training loss',
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-parser.add_argument('output', help='Output png file')
-parser.add_argument('input_directories',  nargs='+',
-                    help='One or more directories containing model.log and ' +
-                         'batch.log files')
-parser.add_argument('--mav', default=None,
-                    type=int,
-                    help='Moving average window applied to batchlog loss.' +
-                         'e.g --mav 10 visually separates loss curves')
-parser.add_argument('--upper_y_limit', default=None, type=Positive(float),
-                    help='Upper limit of plot y(loss) axis')
-parser.add_argument('--lower_y_limit', default=None, type=Positive(float),
-                    help='Lower limit of plot y(loss) axis')
-parser.add_argument('--upper_x_limit', default=None, type=Positive(float),
-                    help='Upper limit of plot x(iterations) axis')
-parser.add_argument('--lower_x_limit', default=None, type=Positive(float),
-                    help='Lower limit of plot x(iterations) axis')
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description='Plot graphs of training loss',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument(
+        '--mav', default=None, type=int,
+        help='Moving average window applied to batchlog loss.' +
+        'e.g --mav 10 visually separates loss curves')
+    parser.add_argument(
+        '--upper_y_limit', default=None, type=Positive(float),
+        help='Upper limit of plot y(loss) axis')
+    parser.add_argument(
+        '--lower_y_limit', default=None, type=Positive(float),
+        help='Lower limit of plot y(loss) axis')
+    parser.add_argument(
+        '--upper_x_limit', default=None, type=Positive(float),
+        help='Upper limit of plot x(iterations) axis')
+    parser.add_argument(
+        '--lower_x_limit', default=None, type=Positive(float),
+        help='Lower limit of plot x(iterations) axis')
+
+    parser.add_argument(
+        'output', help='Output png file')
+    parser.add_argument(
+        'input_directories',  nargs='+',
+        help='One or more directories containing model.log and ' +
+        'batch.log files')
+
+    return parser
 
 
 def moving_average(a, n=3):
@@ -64,7 +74,7 @@ def read_training_log(filepath):
                     train_loss.append(float(splitline[2]))
                     val_loss.append(float(splitline[3]))
                     lr.append(float(line.split('lr=')[1].split()[0]))
-                except:
+                except Exception:
                     break
     return {'t': DOTROWLENGTH * np.array(polkas),
             'training_loss': np.array(train_loss),
@@ -81,7 +91,7 @@ def read_batch_log(filepath):
 
 
 def main():
-    args = parser.parse_args()
+    args = get_parser().parse_args()
 
     logdata = {}
     batchdata = {}

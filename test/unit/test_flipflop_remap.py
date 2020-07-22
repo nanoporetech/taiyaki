@@ -39,9 +39,7 @@ class TestFlipFlopMapping(unittest.TestCase):
 
         # Check we get the same with the lower-level interface
         step_index = [8, 6, 1]
-        step_score = log_transitions[:, step_index]
         stay_index = [0, 10, 5, 0]
-        stay_score = log_transitions[:, stay_index]
         score2, path2 = flipflop_remap.map_to_crf_viterbi(
             log_transitions, step_index, stay_index, localpen=-0.5)
         self.assertEqual(score, score2)
@@ -81,9 +79,7 @@ class TestFlipFlopMapping(unittest.TestCase):
 
         # Check we get the same with the lower-level interface
         step_index = [1]
-        step_score = log_transitions[:, step_index]
         stay_index = [5, 0]
-        stay_score = log_transitions[:, stay_index]
         score2, path2 = flipflop_remap.map_to_crf_viterbi(
             log_transitions, step_index, stay_index, localpen=-0.5)
         self.assertEqual(score, score2)

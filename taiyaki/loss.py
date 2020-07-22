@@ -155,11 +155,14 @@ class FlipFlopLoss(nn.Module):
         nb_move, npos_move = move_idx.shape
 
         assert nf == 40, "Flip-flop requires 40 features, got {}".format(nf)
-        assert nb_stay == nb, "Input and stay index batch size are inconsistent"
-        assert nb_move == nb, "Input and move index batch size are inconsistent"
+        assert nb_stay == nb, (
+            "Input and stay index batch size are inconsistent")
+        assert nb_move == nb, (
+            "Input and move index batch size are inconsistent")
         assert len(
             seqlens) == nb, "Sequence length and batch size are inconsistent"
-        assert npos == npos_move + 1, "Move and stay indicies have different lengths"
+        assert npos == npos_move + 1, (
+            "Move and stay indicies have different lengths")
 
         #  Initialise forward vector. Must start in first position
         fwd = x.new_full((nb, npos), -1e30)

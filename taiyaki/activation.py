@@ -87,7 +87,7 @@ def gelu(x):
     Using approximation from paper above.
 
     Note:
-        Why isn't this approximation :math:`x \sigma(1.813799 x)`,
+        Why isn't this approximation :math:`x sigma(1.813799 x)`,
         which would be the result of replacing the Gaussian distribution
         function with a Logistic distribution with unit variance?
 
@@ -103,7 +103,7 @@ def exp(x):
 def swish(x):
     """ Swish activation
 
-    Swish is self-gated linear activation :math:`x \sigma(x)`
+    Swish is self-gated linear activation :math:`x sigma(x)`
 
     For details see: https://arxiv.org/abs/1710.05941
 
@@ -137,7 +137,7 @@ def L1mL2(x):
 
     This is the weight function of the L2-L1 M-estimatorm, given by:
     .. math::
-        \frac{x}{\sqrt(1 + x^2 / 2)}
+        frac{x}{sqrt(1 + x^2 / 2)}
 
     For more details see page 22 of
     http://www.audentia-gestion.fr/research.microsoft/ZhangIVC-97-01.pdf
@@ -217,7 +217,7 @@ def welsh(x):
 
     This is the weight function of the Welsh M-estimator, given by:
     .. math::
-        x \exp(-(x / c)^2)
+        x exp(-(x / c)^2)
     where c = 2.9846 is a standard choice.
 
     For more details see page 22 of

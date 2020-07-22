@@ -31,7 +31,8 @@ class FileExists(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         if not os.path.exists(values):
             raise RuntimeError(
-                "File/path for '{}' does not exist, {}".format(self.dest, values))
+                "File/path for '{}' does not exist, {}".format(
+                    self.dest, values))
         setattr(namespace, self.dest, values)
 
 
@@ -89,7 +90,9 @@ class ParseToNamedTuple(argparse.Action):
 class AutoBool(argparse.Action):
     """Automagically creates --foo / --no-foo argument pairs"""
 
-    def __init__(self, option_strings, dest, default=None, required=False, help=None):
+    def __init__(
+            self, option_strings, dest, default=None, required=False,
+            help=None):
         if default is None:
             raise ValueError('You must provide a default with AutoBool action')
         if len(option_strings) != 1:
@@ -105,9 +108,10 @@ class AutoBool(argparse.Action):
             default_opt = opts[0]
         else:
             default_opt = opts[1]
-        super(AutoBool, self).__init__(opts, dest, nargs=0, const=None,
-                                       default=default, required=required,
-                                       help='{} (Default: {})'.format(help, default_opt))
+        super(AutoBool, self).__init__(
+            opts, dest, nargs=0, const=None, default=default,
+            required=required,
+            help='{} (Default: {})'.format(help, default_opt))
 
     def __call__(self, parser, namespace, values, option_strings=None):
         if option_strings.startswith('--no-'):
@@ -143,7 +147,7 @@ class Maybe(object):
                 res = None
             else:
                 res = self.mytype(y)
-        except:
+        except Exception:
             raise argparse.ArgumentTypeError(
                 'Argument must be {}'.format(self))
         return res
@@ -170,7 +174,8 @@ class Bounded(object):
 
     def __repr__(self):
         if self.lower is not None and self.upper is not None:
-            return "{} in range [{}, {}]".format(self.mytype, self.lower, self.upper)
+            return "{} in range [{}, {}]".format(
+                self.mytype, self.lower, self.upper)
         else:
             if self.lower is not None:
                 return "{} in range [{}, inf]".format(self.mytype, self.lower)
@@ -232,7 +237,8 @@ def proportion(p):
 def probability(p):
     """Probability if deprecated. Use proportion instead."""
     warnings.warn(
-        "probability is deprecated. Use proportion instead.", DeprecationWarning)
+        "probability is deprecated. Use proportion instead.",
+        DeprecationWarning)
     return proportion(p)
 
 
@@ -248,7 +254,8 @@ def Vector(mytype):
         >>> parser.add_argument('data', nargs='+', action=Vector(np.float32))
         >>> args = parser.parse_args(['1e-4', '3.14', '18', '2.0', '0.0'])
         >>> args.data
-        array([1.00e-04, 3.14e+00, 1.80e+01, 2.00e+00, 0.00e+00], dtype=float32)
+        array([1.00e-04, 3.14e+00, 1.80e+01, 2.00e+00, 0.00e+00],
+              dtype=float32)
     """
 
     class MyNumpyAction(argparse.Action):
@@ -257,7 +264,7 @@ def Vector(mytype):
         def __call__(self, parser, namespace, values, option_string=None):
             try:
                 setattr(namespace, self.dest, np.array(values, dtype=mytype))
-            except:
+            except Exception:
                 raise argparse.ArgumentTypeError(
                     'Cannot convert {} to array of {}'.format(values, mytype))
 
@@ -268,7 +275,8 @@ def Vector(mytype):
 
 
 class DeviceAction(argparse.Action):
-    """Parses string specifying a device (either CPU or GPU) and returns a normalised version
+    """ Parses string specifying a device (either CPU or GPU) and returns a
+    normalised version
 
     Converts None to 'cpu'
     Converts a string like '2' to int 2

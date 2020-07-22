@@ -32,7 +32,7 @@ class AcceptanceTest(unittest.TestCase):
 
     def test_usage(self):
         cmd = [self.merge_script]
-        #cmd = ['python3',self.merge_script]
+        # cmd = ['python3',self.merge_script]
         util.run_cmd(self, cmd).expect_exit_code(2).expect_stderr(
             util.any_line_starts_with(u"usage"))
 
