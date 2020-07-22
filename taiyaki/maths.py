@@ -2,6 +2,9 @@ import numpy as np
 from collections import deque
 
 
+MAD_SD_FACTOR = 1.4826
+
+
 def med_mad(data, factor=None, axis=None, keepdims=False):
     """Compute the Median Absolute Deviation, i.e., the median
     of the absolute deviations from the median, and the median
@@ -16,7 +19,7 @@ def med_mad(data, factor=None, axis=None, keepdims=False):
     :returns: a tuple containing the median and MAD of the data
     """
     if factor is None:
-        factor = 1.4826
+        factor = MAD_SD_FACTOR
     dmed = np.median(data, axis=axis, keepdims=True)
     dmad = factor * np.median(abs(data - dmed), axis=axis, keepdims=True)
     if axis is None:
