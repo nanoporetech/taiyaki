@@ -8,6 +8,8 @@ because its all so useful!
 from itertools import *
 from functools import partial
 from multiprocessing import Pool
+import sys
+import traceback
 
 
 def empty_iterator(it):
@@ -34,6 +36,31 @@ class __NotGiven(object):
     def __init__(self):
         """ Some horrible voodoo """
         pass
+
+
+def try_except_pass(func, *args, **kwargs):
+    """ Try function: if error occurs, print traceback and return None
+
+    When wrapping a function we would ordinarily form a closure over a (sub)set
+    of the inputs. Such closures cannot be pickled however since the wrapper
+    name is not importable. We get around this by using functools.partial
+    (which is pickleable). The result is that we can decorate a function to
+    mask exceptions thrown by it.
+
+    Args:
+        func (Callable): Function to try
+        *args: Arguments to pass to `func`
+        **kwargs: Keyword arguments to pass to `func`
+
+    Returns:
+        `None` if func raises an exception, else the function return value.
+    """
+    try:
+        return func(*args, **kwargs)
+    except Exception:
+        exc_info = sys.exc_info()
+        traceback.print_tb(exc_info[2])
+        return None
 
 
 def imap_mp(
