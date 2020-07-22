@@ -3,6 +3,7 @@
 
 import sys
 import argparse
+from collections import Counter
 
 import numpy as np
 
@@ -135,8 +136,22 @@ def main():
         return
     sys.stderr.write('* Computing chunk metrics\n')
     out_fp.write('\n\n' + '*' * 10 + ' Chunk Metrics ' + '*' * 10 + '\n')
-    chunks = [read.get_chunk_with_sample_length(args.chunk_len)
-              for read in np.random.choice(reads, args.num_chunks)]
+    chunks, rej_res = [], []
+    while len(chunks) < args.num_chunks:
+        chunk = np.random.choice(reads, 1)[0].get_chunk_with_sample_length(
+            args.chunk_len)
+        if chunk.accepted:
+            chunks.append(chunk)
+        else:
+            rej_res.append(chunk.reject_reason)
+    if len(rej_res) > 0:
+        out_fp.write(
+            'Chunk rejection reasons:\n{: >16}{: >16}\n'.format(
+                'Reject Reason', 'Num. Chunks') +
+            '\n'.join('{: >16}{: >16}'.format(*x)
+                      for x in Counter(rej_res).most_common()) + '\n\n')
+    else:
+        out_fp.write('All chunks passed filters\n\n')
     mean_dwells = np.array([chunk.mean_dwell for chunk in chunks])
     max_dwells = np.array([chunk.max_dwell for chunk in chunks])
     # report in MAD units for direct use in command line parameter usage
