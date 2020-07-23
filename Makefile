@@ -61,6 +61,11 @@ install: ${envDir}
 	@echo "To activate your new environment:  source ${envDir}/bin/activate"
 
 
+.PHONY: rebuild
+rebuild:
+	python setup.py build develop
+
+
 .PHONY: deps
 deps:
 	apt-get update
