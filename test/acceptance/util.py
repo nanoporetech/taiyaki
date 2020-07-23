@@ -7,6 +7,10 @@ DATA_DIR = "../../test/data"
 MISC_DIR = "../../misc"
 MODELS_DIR = "../../models"
 
+MODEL_FILES = [["mGru_flipflop_remapping_model_r9_DNA.checkpoint"],
+               ["mLstm_flipflop_model_r941_DNA.checkpoint"],
+               ["mLstm_flipflop_model_r103_DNA.checkpoint"]]
+
 
 class Result(object):
 
