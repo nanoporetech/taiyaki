@@ -1,10 +1,12 @@
 import datetime
 import hashlib
 import imp
-import numpy as np
 import os
 import platform
 import sys
+import warnings
+
+import numpy as np
 import torch
 
 from taiyaki import __version__
@@ -107,18 +109,20 @@ def load_model(
         if model_metadata is not None:
             #  Check metadata from model and arguments are consistent
             if 'reverse' in model_metadata and \
-               net_clone.metadata['reverse'] != model_metadata['reverse']:
+               network.metadata['reverse'] != model_metadata['reverse']:
                 sys.stderr.write((
                     '* WARNING: model_metadata specifies {} orientation ' +
                     'but model trained in opposite direction!\n').format(
                     'reverse' if model_metadata['reverse'] else 'forward'))
-                net_clone.metadata['reverse'] = model_metadata['reverse']
+                warnings.warn('Inconsistent metadata', RuntimeWarning)
+                network.metadata['reverse'] = model_metadata['reverse']
             if 'standardize' in model_metadata and \
-               net_clone.metadata['standardize'] != model_metadata['standardize']:
+               network.metadata['standardize'] != \
+                    model_metadata['standardize']:
                 sys.stderr.write('* WARNING: Model and model_metadata ' +
                                  'standardization are inconsistent.\n')
-                net_clone.metadata[
-                    'standardize'] = model_metadata['standardize']
+                warnings.warn('Inconsistent metadata', RuntimeWarning)
+                network.metadata['standardize'] = model_metadata['standardize']
 
     if params_file is not None:
         param_dict = torch.load(params_file, map_location='cpu')

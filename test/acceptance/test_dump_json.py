@@ -53,11 +53,7 @@ class AcceptanceTest(unittest.TestCase):
         util.run_cmd(self, cmd).expect_exit_code(
             2).expect_stderr(util.any_line_starts_with(u"usage"))
 
-    @parameterized.expand([
-        ["mGru_flipflop_remapping_model_r9_DNA.checkpoint"],
-        ["mLstm_flipflop_model_r941_DNA.checkpoint"],
-        ["mLstm_flipflop_model_r103_DNA.checkpoint"],
-    ])
+    @parameterized.expand(util.MODEL_FILES)
     def test_dump_to_stdout(self, model_name):
         """  Try dumping json to stdout
 
