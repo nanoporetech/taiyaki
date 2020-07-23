@@ -35,11 +35,12 @@ flake8:
     script:
         - source $TEST_ENV && pip install flake8 &&
           find bin/ misc/ taiyaki/ test/ -name \*.py |
-          flake8 -j 2 --exit-zero --show-source --statistics --tee --output-file=flake_results.txt
+          flake8 -j 2 --show-source --statistics --tee --output-file=flake_results.txt
     artifacts:
         paths:
             - flake_results.txt
         expire_in: 1 week
+        when: on_failure
 
 unit_test:
     stage: test
