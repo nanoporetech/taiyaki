@@ -63,7 +63,8 @@ install: ${envDir}
 
 .PHONY: rebuild
 rebuild:
-	python setup.py build develop
+	source ${envDir}/bin/activate && \
+	    python setup.py build develop
 
 
 .PHONY: deps
