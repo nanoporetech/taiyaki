@@ -7,7 +7,7 @@ import os
 import sys
 
 from ont_fast5_api import fast5_interface
-from taiyaki import config, helpers
+from taiyaki import helpers
 from taiyaki.maths import mad
 from taiyaki.constants import DEFAULT_ALPHABET, LARGE_LOG_VAL
 
@@ -19,7 +19,7 @@ _cartesian_tetrahedron = np.array([[1.0, 0.0, -1.0 / np.sqrt(2.0)],
                                    [-1.0, 0.0, -1.0 / np.sqrt(2.0)],
                                    [0.0, 1.0, 1.0 / np.sqrt(2.0)],
                                    [0.0, -1.0, 1.0 / np.sqrt(2.0)]],
-                                  dtype=config.taiyaki_dtype)
+                                  dtype=np.float32)
 
 
 @cython.boundscheck(False)
@@ -150,7 +150,7 @@ def worker(fast5_read_tuple, trim, back_prob, localpen, minscore):
     assert len(signal) > 0
 
     norm_sig = (signal - np.median(signal)) / mad(signal)
-    norm_sig = np.ascontiguousarray(norm_sig, dtype=config.taiyaki_dtype)
+    norm_sig = np.ascontiguousarray(norm_sig, dtype=np.float32)
 
     embedded_seq = np.expand_dims(embed_sequence(refseq), axis=1)
     with torch.no_grad():

@@ -5,7 +5,6 @@ import torch
 import unittest
 
 from taiyaki import activation
-from taiyaki.config import taiyaki_dtype, torch_dtype, numpy_dtype
 from taiyaki.json import JsonEncoder
 import taiyaki.layers as nn
 
@@ -56,11 +55,11 @@ class ANNTest(unittest.TestCase):
         self._NBATCH = 2
 
         self.W = np.random.normal(
-            size=(self._SIZE, self._NFEATURES)).astype(numpy_dtype)
-        self.b = np.random.normal(size=self._SIZE).astype(numpy_dtype)
+            size=(self._SIZE, self._NFEATURES)).astype(np.float32)
+        self.b = np.random.normal(size=self._SIZE).astype(np.float32)
         self.x = np.random.normal(
             size=(self._NSTEP, self._NBATCH, self._NFEATURES)).astype(
-                numpy_dtype)
+                np.float32)
         self.res = self.x.dot(self.W.transpose()) + self.b
 
     def test_000_single_layer_linear(self):
@@ -97,7 +96,7 @@ class ANNTest(unittest.TestCase):
 
     def test_003_simple_serial(self):
         W2 = np.random.normal(
-            size=(self._SIZE, self._SIZE)).astype(taiyaki_dtype)
+            size=(self._SIZE, self._SIZE)).astype(np.float32)
         res = self.res.dot(W2.transpose())
 
         l1 = nn.FeedForward(self._NFEATURES, self._SIZE, has_bias=True,
@@ -224,7 +223,7 @@ class LayerTest(metaclass=abc.ABCMeta):
                 "Please specify layer inputs for testing, or explicitly " +
                 "skip this test.")
         f = self.layer.train(False)
-        outs = [f(torch.tensor(x, dtype=torch_dtype)) for x in self._INPUTS]
+        outs = [f(torch.tensor(x).float()) for x in self._INPUTS]
         #  Check batch dim is preserved
         self.assertListEqual([x.shape[1] for x in self._INPUTS],
                              [x.shape[1] for x in outs])
@@ -235,7 +234,7 @@ class LayerTest(metaclass=abc.ABCMeta):
                 "Please specify layer inputs for testing, or explicitly " +
                 "skip this test.")
         f = self.layer.train(True)
-        outs = [f(torch.tensor(x, dtype=torch_dtype)) for x in self._INPUTS]
+        outs = [f(torch.tensor(x).float()) for x in self._INPUTS]
         #  Check batch dim is preserved
         self.assertListEqual([x.shape[1] for x in self._INPUTS],
                              [x.shape[1] for x in outs])
@@ -306,7 +305,7 @@ class ProductTest(LayerTest, unittest.TestCase):
 
     def test_Product_gives_same_result_as_product(self):
         for x in self._INPUTS:
-            xt = torch.tensor(x, dtype=torch_dtype)
+            xt = torch.tensor(x).float()
             with torch.no_grad():
                 y1 = self.linear1(xt)
                 y2 = self.linear2(xt)
