@@ -8,7 +8,6 @@ from torch import nn
 from torch.nn import Parameter
 
 from taiyaki import activation, flipflopfings
-from taiyaki.config import taiyaki_dtype
 from taiyaki.constants import LARGE_LOG_VAL
 
 
@@ -1035,7 +1034,7 @@ def zeros(size):
     Args:
         size (int): length of vector
     """
-    return np.zeros(size, dtype=taiyaki_dtype)
+    return np.zeros(size, dtype=np.float32)
 
 
 def _reshape(x, shape):

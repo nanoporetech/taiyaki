@@ -8,7 +8,6 @@ import torch
 from ont_fast5_api import fast5_interface
 from taiyaki import (
     flipflop_remap, helpers, mapped_signal_files, signal_mapping, signal)
-from taiyaki.config import taiyaki_dtype
 from taiyaki.fileio import readtsv
 
 
@@ -74,7 +73,7 @@ def oneread_remap(
         # appropriate device (GPU  number or CPU)
         signalTensor = torch.tensor(
             sig.standardized_current[:, np.newaxis, np.newaxis].astype(
-                taiyaki_dtype), device=device)
+                np.float32), device=device)
         # The model must live on the same device
         modelOnDevice = model.to(device)
         # Apply the network to the signal, generating transition weight matrix,
