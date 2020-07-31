@@ -62,7 +62,7 @@ install: ${envDir}
 
 
 .PHONY: rebuild
-rebuild:
+rebuild: venv
 	source ${envDir}/bin/activate && \
 	    python setup.py build develop
 
