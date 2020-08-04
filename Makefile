@@ -36,7 +36,6 @@ show_cuda_version:
 	@echo 'Will install cupy with: ' $(if $(CUPY), pip install $(CUPY), **not installing cupy**)
 
 
-envDir ?= venv
 envPrompt ?= "(taiyaki) "
 pyTestArgs ?=
 override pyTestArgs += --durations=20 -v
@@ -45,25 +44,27 @@ buildDir = build
 cacheDir = $(HOME)/.cache/taiyaki
 
 venv:
-	virtualenv --python=${PYTHON} --prompt=${envPrompt} ${envDir}
+	virtualenv --python=${PYTHON} --prompt=${envPrompt} venv || (rm -rf venv; false)
+	@if [ -z "${TORCH}" ]; then echo "Torch URL not specified for cuda=${CUDA}. Please check supported cuda versions"; exit 1; fi
+	(source venv/bin/activate && \
+	    ${PYTHON} venv/bin/pip install pip --upgrade && \
+	    mkdir -p ${cacheDir}/wheelhouse/${CUDA} && \
+	    ${PYTHON} venv/bin/pip download --dest ${cacheDir}/wheelhouse/${CUDA} ${TORCH} && \
+	    ${PYTHON} venv/bin/pip install --find-links ${cacheDir}/wheelhouse/${CUDA} --no-index torch && \
+	    ${PYTHON} venv/bin/pip install -r requirements.txt ${CUPY} && \
+	    ${PYTHON} venv/bin/pip install -r develop_requirements.txt && \
+	    ${PYTHON} setup.py develop) || (rm -rf venv ; false)
+	@echo "To activate your new environment:  source venv/bin/activate"
+
 
 .PHONY: install
-install: ${envDir}
-	@if [ -z "${TORCH}" ]; then echo "Torch URL not specified for cuda=${CUDA}. Please check supported cuda versions"; exit 1; fi
-	source ${envDir}/bin/activate && \
-	    ${PYTHON} ${envDir}/bin/pip install pip --upgrade && \
-	    mkdir -p ${cacheDir}/wheelhouse/${CUDA} && \
-	    ${PYTHON} ${envDir}/bin/pip download --dest ${cacheDir}/wheelhouse/${CUDA} ${TORCH} && \
-	    ${PYTHON} ${envDir}/bin/pip install --find-links ${cacheDir}/wheelhouse/${CUDA} --no-index torch && \
-	    ${PYTHON} ${envDir}/bin/pip install -r requirements.txt ${CUPY} && \
-	    ${PYTHON} ${envDir}/bin/pip install -r develop_requirements.txt && \
-	    ${PYTHON} setup.py develop
-	@echo "To activate your new environment:  source ${envDir}/bin/activate"
+install: venv
 
 
 .PHONY: rebuild
-rebuild:
-	python setup.py build develop
+rebuild: venv
+	source venv/bin/activate && \
+	    python setup.py build develop
 
 
 .PHONY: deps
@@ -74,38 +75,28 @@ deps:
 	    libblas3 libblas-dev python3-dev lsb-release virtualenv
 
 
-.PHONY: sdist
-sdist:
-	${PYTHON} setup.py sdist
-
-
-.PHONY: bdist_wheel
-bdist_wheel:
-	${PYTHON} setup.py bdist_wheel
-	ls -l dist/*.whl
-
-
 .PHONY: test
-test: unittest
+test: unittest acctest
 
 
 .PHONY: unittest
-unittest:
-	mkdir -p ${buildDir}/unittest
-	cd ${buildDir}/unittest && ${PYTHON} -m pytest ${pyTestArgs} ../../test/unit
+unittest: venv
+	source venv/bin/activate && \
+		mkdir -p ${buildDir}/unittest && \
+		cd ${buildDir}/unittest && ${PYTHON} -m pytest ${pyTestArgs} ../../test/unit
 
 
 .PHONY: acctest
-accset ?=
-acctest:
-	mkdir -p ${buildDir}/acctest
-	${PYTHON} ${envDir}/bin/pip install -r test/acceptance/requirements.txt
-	cd ${buildDir}/acctest && ${PYTHON} -m pytest ${pyTestArgs} ../../test/acceptance/${accset}
+acctest: venv
+	source venv/bin/activate && \
+		mkdir -p ${buildDir}/acctest && \
+		${PYTHON} venv/bin/pip install -r test/acceptance/requirements.txt && \
+		cd ${buildDir}/acctest && ${PYTHON} -m pytest ${pyTestArgs} ../../test/acceptance/
 
 
 .PHONY: clean
 clean:
-	rm -rf ${buildDir}/ dist/ deb_dist/ *.egg-info/ ${envDir}/
+	rm -rf ${buildDir}/ dist/ deb_dist/ *.egg-info/ venv/
 	rm -f taiyaki/ctc/ctc.c taiyaki/squiggle_match/squiggle_match.c
 	find . -name '*.pyc' -delete
 	find . -name '*.so' -delete
@@ -121,11 +112,13 @@ pep8:
 
 
 .PHONY: workflow
-workflow:
-	envDir=${envDir} ./workflow/remap_from_samrefs_then_train_test_workflow.sh
-	envDir=${envDir} ./workflow/remap_from_samrefs_then_train_multireadf5_test_workflow.sh
-	envDir=${envDir} ./workflow/remap_from_samrefs_then_train_squiggle_test_workflow.sh
-	envDir=${envDir} ./workflow/remap_from_mod_fasta_then_train_test_mod_workflow.sh
+workflow: venv
+	source venv/bin/activate && \
+		envDir=venv ./workflow/remap_from_samrefs_then_train_test_workflow.sh && \
+		envDir=venv ./workflow/remap_from_samrefs_then_train_multireadf5_test_workflow.sh && \
+		envDir=venv ./workflow/remap_from_samrefs_then_train_squiggle_test_workflow.sh && \
+		envDir=venv ./workflow/remap_from_mod_fasta_then_train_test_mod_workflow.sh
+#  Needs to be in venv, despite apparently being set in script -- fix?
 #(The scripts each check to see if the training log file and chunk log file exist and contain data)
 
 
