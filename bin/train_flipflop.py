@@ -19,6 +19,7 @@ from _bin_argparse import get_train_flipflop_parser
 # Note also set flag in taiyaki/ctc/ctc.pyx when profiling code
 _DO_PROFILE = False
 _DEBUG_MULTIGPU = False
+_MAKE_TORCH_DETERMINISTIC = False
 
 RESOURCE_INFO = namedtuple('RESOURCE_INFO', (
     'is_multi_gpu', 'is_lead_process', 'device'))
@@ -196,6 +197,22 @@ def parse_init_args(args):
     is_multi_gpu = (args.local_rank is not None)
     is_lead_process = (not is_multi_gpu) or args.local_rank == 0
 
+    if is_lead_process:
+        helpers.prepare_outdir(args.outdir, args.overwrite)
+        if args.model.endswith('.py'):
+            copyfile(args.model, os.path.join(args.outdir, 'model.py'))
+        batchlog = helpers.BatchLog(args.outdir)
+        logfile = os.path.join(args.outdir, 'model.log')
+    else:
+        logfile = batchlog = None
+    log = helpers.Logger(logfile, args.quiet)
+
+    # if seed is provided use this else generate random seed value
+    seed = (
+        np.random.randint(0, np.iinfo(np.uint32).max, dtype=np.uint32)
+        if args.seed is None else args.seed)
+    if is_lead_process:
+        log.write('* Using random seed: {}\n'.format(seed))
     if is_multi_gpu:
         # Use distributed parallel processing to run one process per GPU
         try:
@@ -208,27 +225,18 @@ def parse_init_args(args):
                 'local_rank should be used only by torch.distributed.' +
                 'launch. See the README.')
         device = helpers.set_torch_device(args.local_rank)
-        if args.seed is not None:
-            args.seed = args.seed + args.local_rank
+        # offset seeds so different GPUs get different data streams
+        seed += args.local_rank
     else:
         device = helpers.set_torch_device(args.device)
 
-    if args.seed is not None:
-        np.random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        if device.type == 'cuda':
-            torch.backends.cudnn.deterministic = True
-            torch.backends.cudnn.benchmark = False
+    # set random seed for this process
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if _MAKE_TORCH_DETERMINISTIC and device.type == 'cuda':
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
-    if is_lead_process:
-        helpers.prepare_outdir(args.outdir, args.overwrite)
-        if args.model.endswith('.py'):
-            copyfile(args.model, os.path.join(args.outdir, 'model.py'))
-        batchlog = helpers.BatchLog(args.outdir)
-        logfile = os.path.join(args.outdir, 'model.log')
-    else:
-        logfile = batchlog = None
-    log = helpers.Logger(logfile, args.quiet)
     log.write(helpers.formatted_env_info(device))
 
     return RESOURCE_INFO(is_multi_gpu, is_lead_process, device), log, batchlog
