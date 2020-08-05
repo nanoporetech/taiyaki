@@ -10,7 +10,7 @@ import torch
 
 from taiyaki import (
     chunk_selection, constants, ctc, flipflopfings, helpers, layers,
-    mapped_signal_files, maths, optim, signal_mapping)
+    mapped_signal_files, maths, signal_mapping)
 from taiyaki.constants import DOTROWLENGTH
 from taiyaki.helpers import guess_model_stride
 from _bin_argparse import get_train_flipflop_parser
@@ -369,24 +369,30 @@ def load_network(args, alphabet_info, res_info, log):
         network.parameters(), lr=args.lr_max, betas=args.adam,
         weight_decay=args.weight_decay, eps=args.eps)
 
-    if args.lr_warmup is None:
-        lr_warmup = args.lr_min
-    else:
-        lr_warmup = args.lr_warmup
-
-    if args.lr_frac_decay is not None:
-        lr_scheduler = optim.ReciprocalLR(
-            optimiser, args.lr_frac_decay, args.warmup_batches, lr_warmup)
-        log.write('* Learning rate schedule lr_max*k/(k+t)')
-        log.write(', k={}, t=iterations.\n'.format(args.lr_frac_decay))
-    else:
-        lr_scheduler = optim.CosineFollowedByFlatLR(
-            optimiser, args.lr_min, args.lr_cosine_iters, args.warmup_batches,
-            lr_warmup)
-        log.write('* Learning rate goes like cosine from lr_max to lr_min ')
-        log.write('over {} iterations.\n'.format(args.lr_cosine_iters))
-    log.write('* At start, train for {} '.format(args.warmup_batches))
-    log.write('batches at warm-up learning rate {:3.2}\n'.format(lr_warmup))
+    lr_warmup = args.lr_min if args.lr_warmup is None else args.lr_warmup
+    adam_beta1, _ = args.adam
+    if args.warmup_batches >= args.niteration:
+        sys.stderr.write('* Error: --warmup_batches must be < --niteration\n')
+        sys.exit(1)
+    warmup_fraction = args.warmup_batches / args.niteration
+    # Pytorch OneCycleLR crashes if pct_start==1 (i.e. warmup_fraction==1)
+    lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimiser,
+        args.lr_max,
+        total_steps=args.niteration,
+        # pct_start is really fractional, not percent
+        pct_start=warmup_fraction,
+        div_factor=args.lr_max / lr_warmup,
+        final_div_factor=lr_warmup / args.lr_min,
+        cycle_momentum=(args.min_momentum is not None),
+        base_momentum=adam_beta1 if args.min_momentum is None \
+        else args.min_momentum,
+        max_momentum=adam_beta1
+    )
+    log.write('* Learning rate goes like cosine from lr_max to lr_min over ')
+    log.write('{} steps.\n'.format(args.niteration - args.warmup_batches))
+    log.write('* At start, over {} steps,'.format(args.warmup_batches))
+    log.write('rate increases like cos from {:3.2f}\n'.format(lr_warmup))
 
     if args.gradient_cap_fraction is None:
         log.write('* No gradient capping\n')
