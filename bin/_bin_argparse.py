@@ -44,19 +44,11 @@ def get_train_flipflop_parser():
         help='Cap L2 norm of gradient so that a fraction f of gradients ' +
         'are capped. Use --gradient_cap_fraction None for no capping.')
     trn_grp.add_argument(
-        '--lr_cosine_iters', default=90000, metavar='n', type=Positive(float),
-        help='Learning rate decreases from max to min like cosine function ' +
-        'over n batches')
-    trn_grp.add_argument(
-        '--lr_frac_decay', default=None, metavar='k', type=Positive(int),
-        help='If specified, use fractional learning rate ' +
-        'schedule, rate=lr_max*k/(k+t)')
-    trn_grp.add_argument(
         '--lr_max', default=4.0e-3, metavar='rate', type=Positive(float),
-        help='Max (and starting) learning rate')
+        help='Max learning rate, reached at --warmup_batches iterations.')
     trn_grp.add_argument(
         '--lr_min', default=1.0e-4, metavar='rate', type=Positive(float),
-        help='Min (and final) learning rate')
+        help='Min (starting and final) learning rate')
     trn_grp.add_argument(
         '--seed', default=None, metavar='integer', type=Positive(int),
         help='Set random number seed')
@@ -68,10 +60,13 @@ def get_train_flipflop_parser():
         '"max" over "niter" iterations')
     trn_grp.add_argument(
         '--warmup_batches', type=int, default=200,
-        help='For the first n batches, warm up at a low learning rate.')
+        help='Over first n batches, increase learning rate like cosine.')
     trn_grp.add_argument(
-        '--lr_warmup', type=float, default=None,
-        help="Learning rate used for warmup. Defaults to lr_min")
+        '--lr_warmup',  metavar='rate', type=Positive(float),
+        help='Start learning rate for warmup. Defaults to lr_min.')
+    trn_grp.add_argument(
+        '--min_momentum', type=Positive(float),
+        help='Min momentum in cycling. default = Adam beta1, no cycling')
 
     data_grp = parser.add_argument_group('Data Arguments')
     data_grp.add_argument(

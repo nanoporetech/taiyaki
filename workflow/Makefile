@@ -71,6 +71,8 @@ export OMP_NUM_THREADS
 MAXREADS := 10
 #Max number of training iterations - use small number for testing
 MAX_TRAINING_ITERS := 51
+#Number of iterations for warmup (increasing learning rate)
+WARMUP_ITERS:=10
 
 # Which device to use for remapping and for training (cpu for CPU, or integer for GPU number)
 # Run nvidia-smi to get a summary of which GPUs are in use. Specify DEVICE=cpu if no GPU available.
@@ -209,6 +211,7 @@ listparams:
 	@echo "TAIYAKI_ROOT="${TAIYAKI_ROOT}
 	@echo "TAIYAKIACTIVATE="${TAIYAKIACTIVATE}
 	@echo "MAX_TRAINING_ITERS="${MAX_TRAINING_ITERS}
+	@echo "WARMUP_ITERS="${WARMUP_ITERS}
 	@echo "NETWORK_SIZE="${NETWORK_SIZE}
 	@echo "BATCH_SIZE="${BATCH_SIZE}
 	@echo "CHUNK_LEN_MIN="${CHUNK_LEN_MIN}
@@ -310,7 +313,8 @@ ${RESULT_DIR}/train_%/trained: ${INGREDIENT_DIR}/mapped_%.hdf5
 	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --min_sub_batch_size ${BATCH_SIZE} \
 		--chunk_len_min ${CHUNK_LEN_MIN} --chunk_len_max ${CHUNK_LEN_MAX} \
 		--sample_nreads_before_filtering 1000 \
-		--size ${NETWORK_SIZE} --outdir $(dir $@) --overwrite --niteration ${MAX_TRAINING_ITERS} \
+		--size ${NETWORK_SIZE} --outdir $(dir $@) --overwrite \
+		--niteration ${MAX_TRAINING_ITERS} --warmup_batches ${WARMUP_ITERS} \
 		--device ${DEVICE} ${SEEDOPT} ${TRAININGMODEL} $<
 	touch $@
 
@@ -333,7 +337,8 @@ ${RESULT_DIR}/mod_train_%/trained: ${INGREDIENT_DIR}/mod_mapped_%.hdf5
 	${TAIYAKIACTIVATE} ${TAIYAKI_ROOT}/bin/train_flipflop.py --min_sub_batch_size ${BATCH_SIZE} \
 		--chunk_len_min ${CHUNK_LEN_MIN} --chunk_len_max ${CHUNK_LEN_MAX} \
 		--sample_nreads_before_filtering 1000 \
-		--size ${NETWORK_SIZE} --overwrite --niteration ${MAX_TRAINING_ITERS} \
+		--size ${NETWORK_SIZE} --overwrite \
+		--niteration ${MAX_TRAINING_ITERS} --warmup_batches ${WARMUP_ITERS} \
 		--device ${DEVICE} ${SEEDOPT} --outdir $(dir $@) ${MODTRAININGMODEL} $<
 	touch $@
 

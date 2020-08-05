@@ -8,7 +8,7 @@ import torch
 from collections import defaultdict
 
 from taiyaki import (activation, chunk_selection, helpers, layers,
-                     mapped_signal_files, optim, signal_mapping)
+                     mapped_signal_files, signal_mapping)
 from taiyaki.cmdargs import AutoBool, FileExists, Maybe, Positive, proportion
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.constants import DOTROWLENGTH
@@ -154,7 +154,9 @@ def main():
         conv_net.parameters(), lr=args.lr_max, betas=args.adam,
         weight_decay=args.weight_decay, eps=args.eps)
 
-    lr_scheduler = optim.ReciprocalLR(optimizer, args.lr_decay)
+    lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer,
+        lambda i: args.lr_decay / (i + args.lr_decay))
 
     # To count the numbers of different sorts of chunk rejection
     rejection_dict = defaultdict(lambda: 0)
