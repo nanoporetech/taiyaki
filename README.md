@@ -352,6 +352,8 @@ As a starting point, we recommend:
     OMP_NUM_THREADS=8
     OMP_PROC_BIND=true
 
+Note that when using multiple GPUs as recommended via `torch.distributed.launch`, the `OMP_PROC_BIND=true` should be omitted.
+
 
 # CUDA
 
