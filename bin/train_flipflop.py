@@ -389,10 +389,13 @@ def load_network(args, alphabet_info, res_info, log):
         else args.min_momentum,
         max_momentum=adam_beta1
     )
-    log.write('* Learning rate goes like cosine from lr_max to lr_min over ')
-    log.write('{} steps.\n'.format(args.niteration - args.warmup_batches))
-    log.write('* At start, over {} steps,'.format(args.warmup_batches))
-    log.write('rate increases like cos from {:3.2f}\n'.format(lr_warmup))
+    log.write(('* Learning rate increases from {:.2e} to {:.2e} over {} ' +
+               'iterations using cosine schedule.\n').format(
+                   lr_warmup, args.lr_max, args.warmup_batches))
+    log.write(('* Then learning rate decreases from {:.2e} to {:.2e} over ' +
+               '{} iterations using cosine schedule.\n').format(
+                   args.lr_max, args.lr_min,
+                   args.niteration - args.warmup_batches))
 
     if args.gradient_cap_fraction is None:
         log.write('* No gradient capping\n')
