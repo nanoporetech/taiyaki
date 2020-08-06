@@ -596,7 +596,7 @@ def log_polka(
         (curr_iter + 1) // DOTROWLENGTH, score_smoothed.value, rloss,
         time_delta, total_samples / 1000.0 / time_delta,
         total_bases / 1000.0 / time_delta,
-        optim_info.lr_scheduler.get_lr()[0]))
+        optim_info.lr_scheduler.get_last_lr()[0]))
     # Write summary of chunk rejection reasons
     if train_params.full_filter_status:
         for k, v in rejection_dict.items():
