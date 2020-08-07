@@ -80,14 +80,14 @@ test: unittest acctest
 
 
 .PHONY: unittest
-unittest: venv
+unittest: rebuild
 	source venv/bin/activate && \
 		mkdir -p ${buildDir}/unittest && \
 		cd ${buildDir}/unittest && ${PYTHON} -m pytest ${pyTestArgs} ../../test/unit
 
 
 .PHONY: acctest
-acctest: venv
+acctest: rebuild
 	source venv/bin/activate && \
 		mkdir -p ${buildDir}/acctest && \
 		${PYTHON} venv/bin/pip install -r test/acceptance/requirements.txt && \
@@ -112,7 +112,7 @@ pep8:
 
 
 .PHONY: workflow
-workflow: venv
+workflow: rebuild
 	source venv/bin/activate && \
 		envDir=venv ./workflow/remap_from_samrefs_then_train_test_workflow.sh && \
 		envDir=venv ./workflow/remap_from_samrefs_then_train_multireadf5_test_workflow.sh && \
