@@ -133,7 +133,7 @@ def prepare_random_batches(
             seqs.append(chunk_seq)
 
         seqs = torch.tensor(
-            np.concatenate(seqs), dtype=torch.float32, device='cpu')
+            np.concatenate(seqs), dtype=torch.long, device='cpu')
         seqlens = torch.tensor(seqlens, dtype=torch.long, device='cpu')
         if net_info.metadata.is_cat_mod:
             mod_cats = torch.tensor(
