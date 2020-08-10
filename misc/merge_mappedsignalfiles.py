@@ -18,6 +18,10 @@ parser.add_argument(
     '--per_file_limit', type=int, default=None,
     help='Max number of reads to include from a single file (default no max)')
 parser.add_argument(
+    '--seed', type=int, default=None,
+    help='Seed for randomly selected reads when limits are set ' +
+    '(default random seed)')
+parser.add_argument(
     '--allow_mod_merge', action='store_true',
     help='Allow merging of data sets with different modified bases. While ' +
     'alphabets may differ, incompatible alphabets are not allowed ' +
@@ -161,7 +165,10 @@ def add_file_reads(
         file_alphabet_conv = create_alphabet_conversion(
             hin, merge_alphabet_info)
 
-    for read_id in hin.get_read_ids():
+    read_ids = hin.get_read_ids()
+    if global_limit is not None or per_file_limit is not None:
+        np.random.shuffle(read_ids)
+    for read_id in read_ids:
         if read_id in reads_written:
             sys.stderr.write((
                 "* Read {} already present: not copying from " +
@@ -193,6 +200,8 @@ def main():
     else:
         merge_alphabet_info = assert_all_alphabets_equal(args.input)
 
+    if args.seed is not None:
+        np.random.seed(args.seed)
     reads_written = set()
     sys.stderr.write("Writing reads to {}\n".format(args.output))
     with MAPPED_SIGNAL_WRITER(args.output, merge_alphabet_info) as hout:
