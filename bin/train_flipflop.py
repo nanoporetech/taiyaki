@@ -417,7 +417,8 @@ def compute_filter_params(args, net_info, read_data, log):
         sampling_chunk_len // net_info.stride) * net_info.stride
     filter_params = chunk_selection.sample_filter_parameters(
         read_data, args.sample_nreads_before_filtering, sampling_chunk_len,
-        args.filter_mean_dwell, args.filter_max_dwell)
+        args.filter_mean_dwell, args.filter_max_dwell, net_info.stride,
+        args.filter_path_buffer)
     log.write((
         '* Sampled {} chunks: median(mean_dwell)={:.2f}, mad(mean_dwell)=' +
         '{:.2f}\n').format(

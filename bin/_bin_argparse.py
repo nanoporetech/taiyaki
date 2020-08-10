@@ -2,8 +2,8 @@ import argparse
 
 from taiyaki import __version__
 from taiyaki.cmdargs import (
-    AutoBool, DeviceAction, display_version_and_exit, FileExists, Maybe,
-    NonNegative, ParseToNamedTuple, Positive)
+    AutoBool, Bounded, DeviceAction, display_version_and_exit, FileExists,
+    Maybe, NonNegative, ParseToNamedTuple, Positive)
 
 
 def get_train_flipflop_parser():
@@ -84,6 +84,12 @@ def get_train_flipflop_parser():
         type=Maybe(Positive(float)),
         help='Drop chunks with mean dwell more than radius deviations ' +
         'from the median (over chunks)')
+    data_grp.add_argument(
+        '--filter_path_buffer', default=1.1, metavar='ratio',
+        type=Bounded(float, lower=1.0),
+        help='Drop chunks with small ratio of signal length to bases * ' +
+        'model stride, which would restrict potential CTC paths. Must be ' +
+        'greater than 1.0.')
     data_grp.add_argument(
         '--limit', default=None, type=Maybe(Positive(int)),
         help='Limit number of reads to process')
