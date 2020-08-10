@@ -37,9 +37,10 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
 
     Args:
         logprob (array [nblk x nbatch x nstate]):  Log scores.
-        moveidx (array [sum(seqlen) - nseq]):  Transition indicies for moves.
-        stayidx (array [sum(seqlen)]):  Transition indicies for stays.
+        moveidxs (array [sum(seqlen) - nseq]):  Transition indicies for moves.
+        stayidxs (array [sum(seqlen)]):  Transition indicies for stays.
         seqlen (array [nseq]): Length of sequences.
+        sharpfact (float): Path sharpening factor (1 = no sharpening).
         pin (bool): Whether to pin memory of returned tensors
 
     Returns:
@@ -156,34 +157,43 @@ crf_flipflop_loss = FlipFlopCRF.apply
 @cython.wraparound(False)
 def cat_mod_flipflop_cost(
         np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
-        np.ndarray[np.int32_t, ndim=1, mode="c"] seqs,
+        np.ndarray[np.uintp_t, ndim=1, mode="c"] moveidxs,
+        np.ndarray[np.uintp_t, ndim=1, mode="c"] stayidxs,
+        np.ndarray[np.uintp_t, ndim=1, mode="c"] modmoveidxs,
+        np.ndarray[np.float32_t, ndim=1, mode="c"] modmovefacts,
         np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen,
-        np.ndarray[np.int32_t, ndim=1, mode="c"] mod_cats,
-        np.ndarray[np.int32_t, ndim=1, mode="c"] can_mods_offsets,
-        np.ndarray[np.float32_t, ndim=1, mode="c"] mod_cat_weights,
-        mod_weight, sharpfact):
+        sharpfact, pin=False):
     """
-    :param logprob: Tensor containing log probabilities
-    :param seqs: A vector containing sequences, concatenated
-    :param mod_cats: A vector containing mod categories, concatenated
-    :param seqlen: Length of each sequence
+
+    Args:
+        logprob (array [nblk x nbatch x nstate]):  Log scores.
+        moveidxs (array [sum(seqlen) - nseq]):  Transition indicies for moves.
+        stayidxs (array [sum(seqlen)]):  Transition indicies for stays.
+        modmoveidxs (array [sum(seqlen) - nseq]):  Transition indicies for
+            modbase moves.
+        modmovefacts (array [sum(seqlen) - nseq]):  Transition indicies for
+            modbase moves.
+        seqlen (array [nseq]): Length of sequences.
+        sharpfact (float): Path sharpening factor (1 = no sharpening).
+        pin (bool): Whether to pin memory of returned tensors
+
+    Returns:
+        array [nbatch]: Costs (scores) for nbatch elements.
     """
     assert np.all(np.isfinite(logprob)), "Input not finite"
-    assert np.all(logprob[:,:,-can_mods_offsets[4]:] <= 0), (
-        'Error: Some modified base log probs are positive.')
     cdef size_t nblk, nbatch, nstate
     nblk, nbatch, nstate = logprob.shape[0], logprob.shape[1], logprob.shape[2]
-    # conversion checks that nstates converts to a valid number of bases
-    nstate_to_nbase(nstate - can_mods_offsets[4])
 
-    cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs = np.zeros(
-        (nbatch,), dtype=np.float32)
+    costs = torch.zeros(nbatch, device='cpu', dtype=torch.float)
+    if pin:
+        costs = costs.pin_memory()
+
+    cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs_np = costs.numpy()
     libctc.cat_mod_flipflop_cost(
-        &logprob[0, 0, 0], nstate, nblk, nbatch, &seqs[0], &seqlen[0],
-        &mod_cats[0], &can_mods_offsets[0], &mod_cat_weights[0], mod_weight,
-        sharpfact, &costs[0])
-    assert np.all(costs <= 0.), (
-        "Error: costs must not be positive, got {}").format(costs)
+        &logprob[0, 0, 0], nstate, nblk, nbatch, &moveidxs[0], &stayidxs[0],
+        &modmoveidxs[0], &modmovefacts[0], &seqlen[0], sharpfact, &costs_np[0])
+    assert np.all(costs_np <= 0.), (
+        "Error: costs must not be positive, got {}").format(costs_np)
     return -costs / nblk
 
 
@@ -191,58 +201,97 @@ def cat_mod_flipflop_cost(
 @cython.wraparound(False)
 def cat_mod_flipflop_grad(
         np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
-        np.ndarray[np.int32_t, ndim=1, mode="c"] seqs,
+        np.ndarray[np.uintp_t, ndim=1, mode="c"] moveidxs,
+        np.ndarray[np.uintp_t, ndim=1, mode="c"] stayidxs,
+        np.ndarray[np.uintp_t, ndim=1, mode="c"] modmoveidxs,
+        np.ndarray[np.float32_t, ndim=1, mode="c"] modmovefacts,
         np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen,
-        np.ndarray[np.int32_t, ndim=1, mode="c"] mod_cats,
-        np.ndarray[np.int32_t, ndim=1, mode="c"] can_mods_offsets,
-        np.ndarray[np.float32_t, ndim=1, mode="c"] mod_cat_weights,
-        mod_weight, sharpfact):
+        sharpfact, pin=False):
     """
-    :param logprob: Tensor containing log probabilities
-    :param seqs: A vector containing sequences, concatenated
-    :param mod_cats: A vector containing mod categories, concatenated
-    :param seqlen: Length of each sequence
+
+    Args:
+        logprob (array [nblk x nbatch x nstate]):  Log scores.
+        moveidxs (array [sum(seqlen) - nseq]):  Transition indicies for moves.
+        stayidxs (array [sum(seqlen)]):  Transition indicies for stays.
+        modmoveidxs (array [sum(seqlen) - nseq]):  Transition indicies for
+            modbase moves.
+        modmovefacts (array [sum(seqlen) - nseq]):  Transition indicies for
+            modbase moves.
+        seqlen (array [nseq]): Length of sequences.
+        sharpfact (float): Path sharpening factor (1 = no sharpening).
+        pin (bool): Whether to pin memory of returned tensors
+
+    Returns:
+        Tuple(array [nbatch], array[nblk x nbatch x nstate]):
+    Costs (scores) for nbatch elements, and the gradient of that cost WRT
+    elements of `logprob`.
     """
     assert np.all(np.isfinite(logprob)), "Input not finite"
-    assert np.all(logprob[:,:,-can_mods_offsets[4]:] <= 0), (
-        'Error: Some modified base log probs are positive.')
     cdef size_t nblk, nbatch, nstate
     nblk, nbatch, nstate = logprob.shape[0], logprob.shape[1], logprob.shape[2]
-    # conversion checks that nstates converts to a valid number of bases
-    nstate_to_nbase(nstate - can_mods_offsets[4])
 
-    cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs = np.zeros(
-        (nbatch,), dtype=np.float32)
-    cdef np.ndarray[np.float32_t, ndim=3, mode="c"] grads = np.zeros_like(
-        logprob, dtype=np.float32)
+    costs = torch.zeros(nbatch, device='cpu', dtype=torch.float)
+    grads = torch.zeros(nblk, nbatch, nstate, device='cpu', dtype=torch.float)
+    if pin:
+        costs = costs.pin_memory()
+        grads = grads.pin_memory()
+
+    cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs_np = costs.numpy()
+    cdef np.ndarray[np.float32_t, ndim=3, mode="c"] grads_np = grads.numpy()
     libctc.cat_mod_flipflop_grad(
-        &logprob[0, 0, 0], nstate, nblk, nbatch, &seqs[0], &seqlen[0],
-        &mod_cats[0], &can_mods_offsets[0], &mod_cat_weights[0], mod_weight,
-        sharpfact, &costs[0], &grads[0, 0, 0])
-    assert np.all(np.isfinite(grads)), "Gradients not finite"
+        &logprob[0, 0, 0], nstate, nblk, nbatch, &moveidxs[0], &stayidxs[0],
+        &modmoveidxs[0], &modmovefacts[0], &seqlen[0], sharpfact, &costs_np[0],
+        &grads_np[0, 0, 0])
+    assert np.all(costs_np <= 0.), (
+        "Error: costs must not be positive, got {}").format(costs_np)
+    assert np.all(np.isfinite(grads_np)), "Gradients not finite"
     return -costs / nblk, -grads / nblk
 
 
 class CatModFlipFlop(torch.autograd.Function):
     @staticmethod
     def forward(ctx, logprob, seqs, seqlen, mod_cats, can_mods_offsets,
-                mod_cat_weights, mod_weight, sharpfact):
+                mod_cat_weights, sharpfact):
         lp = np.ascontiguousarray(
             logprob.detach().cpu().numpy().astype(np.float32))
         seqs = seqs.cpu().numpy().astype(np.int32)
         seqlen = seqlen.cpu().numpy().astype(np.int32)
         mod_cats = mod_cats.cpu().numpy().astype(np.int32)
-        mod_weight, sharpfact = map(float, (mod_weight, sharpfact))
+        sharpfact = float(sharpfact)
+
+        ntrans = lp.shape[2]
+        nbase = flipflopfings.nbase_flipflop(ntrans - can_mods_offsets[-1])
+
+        #  Calculate indices -- seqlen[0:-1] ensures input to split is array
+        seq_starts = np.cumsum(seqlen[:-1])
+        batch_seqs = np.split(seqs, seq_starts)
+        batch_mod_cats = np.split(mod_cats, seq_starts)
+        moveidxs = np.concatenate([
+            flipflopfings.move_indices(seq, nbase)
+            for seq in batch_seqs]).astype(np.uintp)
+        stayidxs = np.concatenate([
+            flipflopfings.stay_indices(seq, nbase)
+            for seq in batch_seqs]).astype(np.uintp)
+        assert np.all(np.logical_and(moveidxs >=0, moveidxs < ntrans))
+        assert np.all(np.logical_and(stayidxs >=0, stayidxs < ntrans))
+
+        mod_offset = (nbase + 1) * nbase * 2
+        mod_seq = np.concatenate([
+            can_mods_offsets[np.mod(seq[1:], nbase)] + mod_cat[1:]
+            for seq, mod_cat in zip(batch_seqs, batch_mod_cats)]).astype(int)
+        modmoveidxs = (mod_offset + mod_seq).astype(np.uintp)
+        modmovefacts = mod_cat_weights[mod_seq].astype(np.float32)
+
         if logprob.requires_grad:
             cost, grads = cat_mod_flipflop_grad(
-                lp, seqs, seqlen, mod_cats, can_mods_offsets, mod_cat_weights,
-                mod_weight, sharpfact)
-            ctx.save_for_backward(torch.tensor(grads, device=logprob.device))
+                lp, moveidxs, stayidxs, modmoveidxs, modmovefacts, seqlen,
+                sharpfact, pin=torch.cuda.is_available())
+            ctx.save_for_backward(grads.to(logprob.device, non_blocking=True))
         else:
             cost = cat_mod_flipflop_cost(
-                lp, seqs, seqlen, mod_cats, can_mods_offsets, mod_cat_weights,
-                mod_weight, sharpfact)
-        return torch.tensor(cost, device=logprob.device)
+                lp, moveidxs, stayidxs, modmoveidxs, modmovefacts, seqlen,
+                sharpfact, pin=torch.cuda.is_available())
+        return cost.to(logprob.device, non_blocking=True)
 
     @staticmethod
     def backward(ctx, output_grads):

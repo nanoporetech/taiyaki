@@ -24,9 +24,7 @@ _MAKE_TORCH_DETERMINISTIC = False
 RESOURCE_INFO = namedtuple('RESOURCE_INFO', (
     'is_multi_gpu', 'is_lead_process', 'device'))
 
-MOD_INFO = namedtuple('MOD_INFO', (
-    'mod_factor', 'mod_cat_weights', 'mod_factor_start', 'mod_factor_final',
-    'mod_factor_niter'))
+MOD_INFO = namedtuple('MOD_INFO', ('mod_cat_weights', 'mod_factor'))
 
 NETWORK_METADATA = namedtuple('NETWORK_METADATA', (
     'reverse', 'standardize', 'is_cat_mod', 'can_mods_offsets',
@@ -145,8 +143,8 @@ def prepare_random_batches(
 
 
 def calculate_loss(
-        net_info, batch_gen, sharpen, mod_cat_weights=None,
-        mod_factor_t=None, calc_grads=False):
+        net_info, batch_gen, sharpen, mod_cat_weights=None, mod_factor=None,
+        calc_grads=False):
     total_chunk_count = total_fval = total_samples = total_bases = \
         n_subbatches = 0
     rejection_dict = defaultdict(int)
@@ -165,7 +163,7 @@ def calculate_loss(
                 lossvector = ctc.cat_mod_flipflop_loss(
                     outputs, seqs, seqlens, mod_cats,
                     net_info.metadata.can_mods_offsets,
-                    mod_cat_weights, mod_factor_t, sharpen)
+                    mod_cat_weights * mod_factor, sharpen)
             else:
                 lossvector = ctc.crf_flipflop_loss(
                     outputs, seqs, seqlens, sharpen)
@@ -272,8 +270,6 @@ def load_data(args, log, res_info):
     # mod cat inv freq weighting is currently disabled. Compute and set this
     # value to enable mod cat weighting
     # prepare modified base paramter tensors
-    final_mod_factor_t = torch.tensor(
-        args.mod_factor.final, dtype=torch.float32).to(res_info.device)
     if args.mod_prior_factor is None:
         mod_cat_weights = np.ones(alphabet_info.nbase, dtype=np.float32)
     else:
@@ -289,9 +285,7 @@ def load_data(args, log, res_info):
                           '  '.join('{}:{:.4f}'.format(*x)
                                     for x in zip(alphabet_info.alphabet,
                                                  mod_cat_weights))))
-    mod_info = MOD_INFO(
-        final_mod_factor_t, mod_cat_weights, args.mod_factor.start,
-        args.mod_factor.final, args.mod_factor.niter)
+    mod_info = MOD_INFO(mod_cat_weights, args.mod_factor)
 
     return read_data, alphabet_info, mod_info
 
@@ -485,14 +479,12 @@ def train_model(
     time_last = time.time()
     log.write('* Training\n')
     for curr_iter in range(train_params.niteration):
-        sharpen = train_params.sharpen.min + (
-            train_params.sharpen.max - train_params.sharpen.min) * \
-            min(1.0, curr_iter / train_params.sharpen.niter)
-        mod_factor_t = torch.tensor(
-            mod_info.mod_factor_final + (
-                mod_info.mod_factor_final - mod_info.mod_factor_start) *
-            min(1.0, curr_iter / mod_info.mod_factor_niter),
-            dtype=torch.float32).to(res_info.device)
+        sharpen = float(train_params.sharpen.min + (
+            train_params.sharpen.max - train_params.sharpen.min) *
+            min(1.0, curr_iter / train_params.sharpen.niter))
+        mod_factor = float(mod_info.mod_factor.start + (
+            mod_info.mod_factor.final - mod_info.mod_factor.start) *
+            min(1.0, curr_iter / mod_info.mod_factor.niter))
 
         # Chunk length is chosen randomly in the range given but forced to
         # be a multiple of the stride
@@ -516,7 +508,7 @@ def train_model(
         chunk_count, fval, chunk_samples, chunk_bases, batch_rejections = \
             calculate_loss(
                 net_info, main_batch_gen, sharpen, mod_info.mod_cat_weights,
-                mod_factor_t, calc_grads=True)
+                mod_factor, calc_grads=True)
         if optim_info.rolling_quantile is None:
             gradnorm_uncapped = compute_grad_norm(net_info.net)
         else:
@@ -581,7 +573,7 @@ def log_polka(
     # compute validation loss and log polka information
     _, rloss, _, _, _ = calculate_loss(
         net_info, reporting_batch_list, train_params.sharpen.max,
-        mod_info.mod_cat_weights, mod_info.mod_factor)
+        mod_info.mod_cat_weights, mod_info.mod_factor.final)
     time_delta = time.time() - time_last
     log.write(LOG_POLKA_TMPLT.format(
         (curr_iter + 1) // DOTROWLENGTH, score_smoothed.value, rloss,
