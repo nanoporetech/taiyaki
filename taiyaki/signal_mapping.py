@@ -577,8 +577,7 @@ class SignalMapping:
 
 
 class Chunk(object):
-    """
-    Represents a chunk of a signal mapping including current, sequence,
+    """ Represents a chunk of a signal mapping including current, sequence,
     relevant metrics, and whether the chunk has been rejected.
 
     The apply_filters function checks for mean and maximum dwell metrics and
@@ -595,6 +594,7 @@ class Chunk(object):
     rej_str_empty_sig = 'emptysignal'
     rej_str_short = 'tooshort'
     rej_str_null_map = 'nullmapping'
+    rej_str_path_buffer = 'pathbuffer'
     rej_str_mean_dwl = 'meandwell'
     rej_str_max_dwl = 'maxdwell'
     valid_rej_strs = set((
@@ -672,8 +672,16 @@ class Chunk(object):
         """
         if not self.accepted or \
            filter_params.median_meandwell is None or \
-           filter_params.mad_meandwell is None:
+           filter_params.mad_meandwell is None or \
+           filter_params.model_stride is None or \
+           filter_params.path_buffer is None:
             #  Short-circuit no filtering
+            return
+
+        if self.sig_len / (self.seq_len * filter_params.model_stride) <= \
+           filter_params.path_buffer:
+            #  Failed path buffer filter
+            self.reject_reason = self.rej_str_path_buffer
             return
 
         mean_dwell_dev_from_median = abs(

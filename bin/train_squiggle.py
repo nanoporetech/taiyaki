@@ -39,6 +39,10 @@ def get_parser():
         '--drop_slip', default=5, type=Maybe(Positive(int)), metavar='length',
         help='Drop chunks with slips greater than given length (None = off)')
     parser.add_argument(
+        '--filter_path_buffer', default=1.1, metavar='ratio', type=float,
+        help='Drop chunks with small ratio of signal length to bases * ' +
+        'model stride, which would restrict potential CTC paths.')
+    parser.add_argument(
         '--full_filter_status', default=False, action=AutoBool,
         help='Output full chunk filtering statistics. ' +
         'Default: only proportion of filtered chunks.')
@@ -121,11 +125,13 @@ def main():
         exit(1)
     log.write('* Loaded {} reads.\n'.format(len(read_data)))
 
+    stride = 1
     # Get parameters for filtering by sampling a subset of the reads
     # Result is a tuple median mean_dwell, mad mean_dwell
     filter_parameters = chunk_selection.sample_filter_parameters(
         read_data, args.sample_nreads_before_filtering, args.target_len,
-        args.filter_mean_dwell, args.filter_max_dwell)
+        args.filter_mean_dwell, args.filter_max_dwell, stride,
+        args.filter_path_buffer)
 
     log.write(("* Sampled {} chunks: median(mean_dwell)={:.2f}, " +
                "mad(mean_dwell)={:.2f}\n").format(
