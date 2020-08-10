@@ -14,12 +14,12 @@ cdef extern from "c_crf_flipflop.h":
 cdef extern from "c_cat_mod_flipflop.h":
     void cat_mod_flipflop_grad(
         const float * logprob, size_t nstate, size_t nblk , size_t nbatch,
-        const int32_t * seqs, const int32_t * seqlen, const int32_t * mod_cats,
-        const int32_t * can_mods_offsets, const float * mod_cat_weights,
-        float mod_weight, float sharpfact, float * score, float * grad);
+        const size_t * moveidxs, const size_t * stayidxs,
+        const size_t * modmoveidxs, const float * modmovefacts,
+        const int32_t * seqlen, float sharpfact, float * score, float * grad);
 
     void cat_mod_flipflop_cost(
         const float * logprob, size_t nstate, size_t nblk , size_t nbatch,
-        const int32_t * seqs, const int32_t * seqlen, const int32_t * mod_cats,
-        const int32_t * can_mods_offsets, const float * mod_cat_weights,
-        float mod_weight, float sharpfact, float * grad);
+        const size_t * moveidxs, const size_t * stayidxs,
+        const size_t * modmoveidxs, const float * modmovefacts,
+        const int32_t * seqlen, float sharpfact, float * grad);

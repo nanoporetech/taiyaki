@@ -237,9 +237,9 @@ float crf_flipflop_backward(float const *restrict logprob, size_t nblk,
        nblk:  Number of blocks.
        nbatch:  Size of batch.
        moveidxs (array [sum(seqlen) - nbatch]):  Index for transitions moving
-     to next position in sequence.
+           to next position in sequence.
        stayidxs (array [sum(seqlen)]):  Index for transitions resulting in
-     staying in position of sequence.
+           staying in position of sequence.
        seqlen (array [nbatch]):  Length of sequences.
        sharpfact:  Sharpening factor, 1 = no sharpening.
        score (array [nbatch]):  OUT Forward scores
@@ -268,9 +268,8 @@ void crf_flipflop_cost(float const *logprob, size_t ntrans, size_t nblk,
 
         const size_t batch_offset = batch * ntrans;
         const size_t nseqposAligned = next_aligned(seqlen[batch], ALIGNMENT);
-        float *fwd =
-            aligned_alloc(4 * ALIGNMENT,
-                          (1 + nblk) * nseqposAligned * sizeof(float));
+        float *fwd = aligned_alloc(4 * ALIGNMENT,
+                                   (1 + nblk) * nseqposAligned * sizeof(float));
         if (NULL == fwd) {
             free(fwd);
             score[batch] = NAN;
@@ -333,9 +332,8 @@ void crf_flipflop_scores_bwd(float const *logprob, size_t ntrans, size_t nblk,
         }
         const size_t offset = batch * ntrans;
         const size_t nseqposAligned = next_aligned(seqlen[batch], ALIGNMENT);
-        float *bwd =
-            aligned_alloc(4 * ALIGNMENT,
-                          (1 + nblk) * nseqposAligned * sizeof(float));
+        float *bwd = aligned_alloc(4 * ALIGNMENT,
+                                   (1 + nblk) * nseqposAligned * sizeof(float));
         if (NULL == bwd) {
             free(bwd);
             score[batch] = NAN;
@@ -466,13 +464,11 @@ void crf_flipflop_grad(float const *logprob, size_t ntrans, size_t nblk,
         const size_t nseqpos = seqlen[batch];
         const size_t nseqposAligned = next_aligned(seqlen[batch], ALIGNMENT);
         // space for a forward matrix
-        float *fwd =
-            aligned_alloc(4 * ALIGNMENT,
-                          (nblk + 1) * nseqposAligned * sizeof(float));
+        float *fwd = aligned_alloc(4 * ALIGNMENT,
+                                   (nblk + 1) * nseqposAligned * sizeof(float));
         // ...and a backward matrix
-        float *bwd =
-            aligned_alloc(4 * ALIGNMENT,
-                          (nblk + 1) * nseqposAligned * sizeof(float));
+        float *bwd = aligned_alloc(4 * ALIGNMENT,
+                                   (nblk + 1) * nseqposAligned * sizeof(float));
         if (NULL == fwd || NULL == bwd) {
             free(fwd);
             free(bwd);
@@ -495,13 +491,12 @@ void crf_flipflop_grad(float const *logprob, size_t ntrans, size_t nblk,
 
         // Normalised transition matrix
         // loop over blocks
-        float *gradtmp =
-            aligned_alloc(4 * ALIGNMENT,
-                          (nseqposAligned + nseqposAligned) * sizeof(float));
+        float *gradtmp = aligned_alloc(4 * ALIGNMENT,
+                                       (nseqposAligned +
+                                        nseqposAligned) * sizeof(float));
         for (size_t blk = 0; blk < nblk; blk++) {
             // forward matrix column for this batch element and block
             float const *fwdcurr = fwd + blk * nseqposAligned;
-            float const *bwdcurr = bwd + blk * nseqposAligned;
             float const *bwdnext = bwd + blk * nseqposAligned + nseqposAligned;
             float const *logprobcurr = logprob + batch_offset + blk * ldp;
             // pointer to part of grad matrix referring to this batch element
@@ -711,32 +706,6 @@ int main(int argc, char *argv[]) {
     const float DELTA = 1e-2f;
     const float sharpfact = (argc > 1) ? atof(argv[1]) : 1.0f;
     const size_t msize = nblk * nstate * nbatch;
-
-    float T[16];
-    for (size_t t = 0; t < 16; t++) {
-        fprintf(stdout, "** t = %zu\n", t);
-        for (size_t i = 0; i < 16; i++) {
-            T[i] = (float) i;
-        }
-        T[0] = 17.0;
-        fprintf(stdout, "SSE fwd = %f\n", softmax_inplace_sse(T, sharpfact, 16 - t));
-        for (size_t i = 0; i < 16; i++) {
-            T[i] = (float) i;
-        }
-        T[0] = 17.0;
-        fprintf(stdout, "AVX fwd = %f\n", softmax_inplace_avx(T, sharpfact, 16 - t));
-        for (size_t i = 0; i < 16; i++) {
-            T[i] = (float) (16 - i);
-        }
-        T[0] = 17.0;
-        fprintf(stdout, "SSE bwd = %f\n", softmax_inplace_sse(T, sharpfact, 16 - t));
-        for (size_t i = 0; i < 16; i++) {
-            T[i] = (float) (16 - i);
-        }
-        T[0] = 17.0;
-        fprintf(stdout, "AVX bwd = %f\n", softmax_inplace_avx(T, sharpfact, 16 - t));
-    }
-
 
     for (size_t i = 0; i < msize; i++) {
         test_logprob1[i] = logf(test_logprob1[i]);
