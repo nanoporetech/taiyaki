@@ -49,7 +49,10 @@ def save_model(network, output, index=None, model_skeleton=None):
                          For use with DistributedDataParallel (see
                          below)
 
-    Note;
+    Returns:
+        str: file name to which model checkpoint has been saved
+
+    Note:
         The model_skeleton arg should be used when saving a
         DistributedDataParallel model.
         If model_skeleton is specified, then the parameters from the
@@ -72,6 +75,8 @@ def save_model(network, output, index=None, model_skeleton=None):
     torch.save(_network, model_file)
     params_file = os.path.join(output, basename + '.params')
     torch.save(_network.state_dict(), params_file)
+
+    return model_file
 
 
 def load_model(
@@ -131,6 +136,17 @@ def load_model(
     return network
 
 
+def get_model_device(net):
+    """ Get device on which network is resident
+    Args:
+        net (pytorch Module) : the network model
+
+    Returns:
+        torch.device: Device on which network resides
+    """
+    return next(net.parameters()).device
+
+
 def guess_model_stride(net, input_shape=(720, 1, 1)):
     """Infer the stride of a pytorch network by running it on some test input.
 
@@ -141,7 +157,7 @@ def guess_model_stride(net, input_shape=(720, 1, 1)):
     Returns:
         int : stride of the network model
     """
-    net_device = next(net.parameters()).device
+    net_device = get_model_device(net)
     out = net(torch.zeros(input_shape).to(net_device))
     return int(round(input_shape[0] / out.size()[0]))
 
@@ -281,52 +297,6 @@ class Logger(object):
         except IOError as e:
             print("Failed to write to log\n Message: {}\n Error: {}".format(
                 message, repr(e)))
-
-
-class BatchLog:
-    """Used to record three-column tsv file containing
-    loss, gradient norm and gradient norm cap
-    for every training step"""
-
-    def __init__(self, output_dir, filename='batch.log'):
-        """Open log in output_dir with given filename and write header line.
-
-        Args:
-            output_dir (str) : output directory
-            filename (str)   : filename to use for batch log. Do nothing if
-                               filename is None.
-        """
-        # Can't have unbuffered text I/O at the moment hence 'b' mode below.
-        # See currently open issue http://bugs.python.org/issue17404
-        log_file_name = os.path.join(output_dir, filename)
-        self.fh = open(log_file_name, 'wb', 0)
-        self.write("loss\tgradientnorm\tgradientcap\n")
-
-    def write(self, s):
-        """Write a string to the log.
-
-        Args:
-            s (str) : what to write
-        """
-        self.fh.write(s.encode('utf-8'))
-
-    def record(self, loss, gradientnorm, gradientcap, nonestring="NaN"):
-        """Write loss, gradient and cap to a row of the log.
-
-        If gradientcap is None, then write nonestring in its place.
-
-        Args:
-            loss (float) : training loss
-            gradientnorm (float) : L1 norm of gradient
-            gradientcap (float) : cap imposed on norm of gradient
-            nonestring (str) : string written instead of gradientcap when
-                               gradientcap is None
-        """
-        self.write("{:5.4f}\t{:5.4f}\t".format(loss, gradientnorm))
-        if gradientcap is None:
-            self.write("{}\n".format(nonestring))
-        else:
-            self.write("{:5.4f}\n".format(gradientcap))
 
 
 def file_md5(filename, nblock=1024):

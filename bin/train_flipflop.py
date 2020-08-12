@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from collections import defaultdict, namedtuple
+import math
 import numpy as np
 import os
 from shutil import copyfile
@@ -11,8 +12,9 @@ import torch
 from taiyaki import (
     chunk_selection, constants, ctc, flipflopfings, helpers, layers,
     mapped_signal_files, maths, signal_mapping)
-from taiyaki.constants import DOTROWLENGTH
-from taiyaki.helpers import guess_model_stride
+from taiyaki.constants import (
+    DOTROWLENGTH, MODEL_LOG_FILENAME, BATCH_LOG_FILENAME, VAL_LOG_FILENAME)
+from taiyaki.helpers import get_model_device, guess_model_stride
 from _bin_argparse import get_train_flipflop_parser
 
 
@@ -25,6 +27,9 @@ RESOURCE_INFO = namedtuple('RESOURCE_INFO', (
     'is_multi_gpu', 'is_lead_process', 'device'))
 
 MOD_INFO = namedtuple('MOD_INFO', ('mod_cat_weights', 'mod_factor'))
+
+LOGS = namedtuple('LOGS', ('main', 'batch', 'validation'))
+LOGS.__new__.__defaults__ = (None, None, None)
 
 NETWORK_METADATA = namedtuple('NETWORK_METADATA', (
     'reverse', 'standardize', 'is_cat_mod', 'can_mods_offsets',
@@ -41,9 +46,21 @@ TRAIN_PARAMS = namedtuple('TRAIN_PARAMS', (
     'min_sub_batch_size', 'sub_batches', 'save_every',
     'outdir', 'full_filter_status'))
 
-LOG_POLKA_TMPLT = (
-    ' {:5d} {:7.5f} {:7.5f}  {:5.2f}s ({:.2f} ksample/s {:.2f} ' +
+BATCH_FIELDS = [
+    'iter', 'loss', 'gradientnorm', 'gradientcap', 'learning_rate',
+    'chunk_len']
+BATCH_TMPLT = '\t'.join('{}' for _ in BATCH_FIELDS) + '\n'
+BATCH_HEADER = BATCH_TMPLT.format(*BATCH_FIELDS)
+VAL_FIELDS = ['iter', 'loss']
+VAL_TMPLT = '\t'.join('{}' for _ in VAL_FIELDS) + '\n'
+VAL_HEADER = VAL_TMPLT.format(*VAL_FIELDS)
+
+MAIN_LOG_POLKA_TMPLT = (
+    ' {:5d} {:7.5f}   {:5.2f}s ({:.2f} ksample/s {:.2f} ' +
     'kbase/s) lr={:.2e}')
+MAIN_LOG_VAL_TMPLT = (
+    'iteration: {} validation_loss: {:7.5f} ({:5.2} Mbase in {:5.2f} s, ' +
+    '{:.2f} kbase/s)\n')
 
 
 def parse_network_metadata(network):
@@ -78,9 +95,9 @@ def compute_grad_norm(network, norm_type=2):
 
 
 def prepare_random_batches(
-        device, read_data, batch_chunk_len, sub_batch_size, target_sub_batches,
+        read_data, batch_chunk_len, sub_batch_size, target_sub_batches,
         alphabet_info, filter_params, net_info, log,
-        select_strands_randomly=True, first_strand_index=0):
+        select_strands_randomly=True, first_strand_index=0, pin=True):
     total_sub_batches = 0
     if net_info.metadata.reverse:
         revop = np.flip
@@ -110,8 +127,10 @@ def prepare_random_batches(
         #     batch_chunk_len x sub_batch_size x 1
         stacked_current = np.vstack([
             revop(chunk.current) for chunk in chunk_batch]).T
-        indata = torch.tensor(stacked_current, device=device,
+        indata = torch.tensor(stacked_current, device='cpu',
                               dtype=torch.float32).unsqueeze(2)
+        if pin and torch.cuda.is_available():
+            indata = indata.pin_memory()
 
         # Prepare seqs, seqlens and (if necessary) mod_cats
         seqs, seqlens = [], []
@@ -158,7 +177,8 @@ def calculate_loss(
         total_chunk_count += sub_batch_size
 
         with torch.set_grad_enabled(calc_grads):
-            outputs = net_info.net(indata)
+            outputs = net_info.net(indata.to(
+                get_model_device(net_info.net), non_blocking=True))
             if net_info.metadata.is_cat_mod:
                 lossvector = ctc.cat_mod_flipflop_loss(
                     outputs, seqs, seqlens, mod_cats,
@@ -195,22 +215,38 @@ def parse_init_args(args):
     is_multi_gpu = (args.local_rank is not None)
     is_lead_process = (not is_multi_gpu) or args.local_rank == 0
 
-    if is_lead_process:
-        helpers.prepare_outdir(args.outdir, args.overwrite)
-        if args.model.endswith('.py'):
-            copyfile(args.model, os.path.join(args.outdir, 'model.py'))
-        batchlog = helpers.BatchLog(args.outdir)
-        logfile = os.path.join(args.outdir, 'model.log')
-    else:
-        logfile = batchlog = None
-    log = helpers.Logger(logfile, args.quiet)
-
     # if seed is provided use this else generate random seed value
     seed = (
         np.random.randint(0, np.iinfo(np.uint32).max, dtype=np.uint32)
         if args.seed is None else args.seed)
+
+    main_log_fn = os.path.join(args.outdir, MODEL_LOG_FILENAME)
     if is_lead_process:
-        log.write('* Using random seed: {}\n'.format(seed))
+        helpers.prepare_outdir(args.outdir, args.overwrite)
+        if args.model.endswith('.py'):
+            copyfile(args.model, os.path.join(args.outdir, 'model.py'))
+        logs = LOGS(
+            main=helpers.Logger(main_log_fn, args.quiet),
+            batch=open(os.path.join(args.outdir, BATCH_LOG_FILENAME), 'w'),
+            validation=open(os.path.join(args.outdir, VAL_LOG_FILENAME), 'w'))
+        logs.batch.write(BATCH_HEADER)
+        logs.validation.write(VAL_HEADER)
+
+        if args.save_every % DOTROWLENGTH != 0:
+            # Illegal save_every, change
+            se2 = int(math.ceil(args.save_every / DOTROWLENGTH)) * DOTROWLENGTH
+            logs.main.write('* --save_every {} not a multiple of {}, rounding '
+                            'to {}'.format(args.save_every, DOTROWLENGTH, se2))
+            args.save_every = se2
+
+        if args.chunk_len_min > args.chunk_len_max:
+            # Illegal chunk length parameters
+            raise ValueError('--chunk_len_min greater than --chunk_len_max')
+
+        logs.main.write('* Using random seed: {}\n'.format(seed))
+    else:
+        logs = LOGS(main=helpers.Logger(main_log_fn, args.quiet))
+
     if is_multi_gpu:
         # Use distributed parallel processing to run one process per GPU
         try:
@@ -227,6 +263,7 @@ def parse_init_args(args):
         seed += args.local_rank
     else:
         device = helpers.set_torch_device(args.device)
+    logs.main.write(helpers.formatted_env_info(device))
 
     # set random seed for this process
     np.random.seed(seed)
@@ -235,9 +272,7 @@ def parse_init_args(args):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-    log.write(helpers.formatted_env_info(device))
-
-    return RESOURCE_INFO(is_multi_gpu, is_lead_process, device), log, batchlog
+    return RESOURCE_INFO(is_multi_gpu, is_lead_process, device), logs
 
 
 def load_data(args, log, res_info):
@@ -457,7 +492,7 @@ def extract_reporting_data(
                    'held out of training. \n').format(len(report_read_data)))
     reporting_chunk_len = (args.chunk_len_min + args.chunk_len_max) // 2
     reporting_batch_list = list(prepare_random_batches(
-        res_info.device, report_read_data, reporting_chunk_len,
+        report_read_data, reporting_chunk_len,
         args.min_sub_batch_size, args.reporting_sub_batches, alphabet_info,
         filter_params, net_info, log, select_strands_randomly=False))
     log.write((
@@ -479,7 +514,7 @@ def parse_train_params(args):
 
 def train_model(
         train_params, net_info, optim_info, res_info, read_data, alphabet_info,
-        filter_params, mod_info, reporting_batch_list, log, batchlog):
+        filter_params, mod_info, reporting_batch_list, logs):
     # Set cap at very large value (before we have any gradient stats).
     gradient_cap = constants.LARGE_VAL
     score_smoothed = helpers.WindowedExpSmoother()
@@ -487,7 +522,7 @@ def train_model(
     # To count the numbers of different sorts of chunk rejection
     rejection_dict = defaultdict(int)
     time_last = time.time()
-    log.write('* Training\n')
+    logs.main.write('* Training\n')
     for curr_iter in range(train_params.niteration):
         sharpen = float(train_params.sharpen.min + (
             train_params.sharpen.max - train_params.sharpen.min) *
@@ -509,9 +544,9 @@ def train_model(
             train_params.min_sub_batch_size * train_params.chunk_len_max /
             batch_chunk_len + 0.5)
         main_batch_gen = prepare_random_batches(
-            res_info.device, read_data, batch_chunk_len, sub_batch_size,
+            read_data, batch_chunk_len, sub_batch_size,
             train_params.sub_batches, alphabet_info, filter_params, net_info,
-            log)
+            logs.main)
 
         # take optimiser step
         optim_info.optimiser.zero_grad()
@@ -530,9 +565,9 @@ def train_model(
 
         # record step information
         if res_info.is_lead_process:
-            batchlog.record(
-                fval, gradnorm_uncapped,
-                None if optim_info.rolling_quantile is None else gradient_cap)
+            logs.batch.write(BATCH_TMPLT.format(
+                curr_iter + 1, fval, gradnorm_uncapped, gradient_cap,
+                optim_info.lr_scheduler.get_last_lr()[0], batch_chunk_len))
 
         total_chunks += chunk_count
         total_samples += chunk_samples
@@ -541,22 +576,30 @@ def train_model(
         # Update counts of reasons for rejection
         for k, v in batch_rejections.items():
             rejection_dict[k] += v
-        if (curr_iter + 1) % train_params.save_every == 0 and \
-           res_info.is_lead_process:
-            helpers.save_model(
-                net_info.net, train_params.outdir,
-                (curr_iter + 1) // train_params.save_every,
-                net_info.net_clone)
-            log.write('C')
-        else:
-            log.write('.')
+
+        logs.main.write('.')
+
         if (curr_iter + 1) % DOTROWLENGTH == 0:
             log_polka(
-                net_info, reporting_batch_list, train_params, mod_info,
+                net_info, train_params,
                 optim_info, time_last, score_smoothed, curr_iter,
-                total_samples, total_bases, rejection_dict, res_info, log)
+                total_samples, total_bases, rejection_dict, res_info,
+                logs.main)
             time_last = time.time()
             total_bases = total_samples = 0
+
+        if (curr_iter + 1) % train_params.save_every == 0:
+            #  Save model and validate
+            if res_info.is_lead_process:
+                saved_filename = helpers.save_model(
+                    net_info.net, train_params.outdir,
+                    (curr_iter + 1) // train_params.save_every,
+                    net_info.net_clone)
+                logs.main.write("Model saved to {}.\n".format(saved_filename))
+
+                log_validation(net_info, reporting_batch_list, train_params,
+                               mod_info, curr_iter, logs)
+            time_last = time.time()
 
         # step learning rate scheduler
         optim_info.lr_scheduler.step()
@@ -577,16 +620,13 @@ if _DO_PROFILE:
 
 
 def log_polka(
-        net_info, reporting_batch_list, train_params, mod_info, optim_info,
+        net_info, train_params, optim_info,
         time_last, score_smoothed, curr_iter, total_samples, total_bases,
         rejection_dict, res_info, log):
-    # compute validation loss and log polka information
-    _, rloss, _, _, _ = calculate_loss(
-        net_info, reporting_batch_list, train_params.sharpen.max,
-        mod_info.mod_cat_weights, mod_info.mod_factor.final)
+    # Log polka information
     time_delta = time.time() - time_last
-    log.write(LOG_POLKA_TMPLT.format(
-        (curr_iter + 1) // DOTROWLENGTH, score_smoothed.value, rloss,
+    log.write(MAIN_LOG_POLKA_TMPLT.format(
+        (curr_iter + 1) // DOTROWLENGTH, score_smoothed.value,
         time_delta, total_samples / 1000.0 / time_delta,
         total_bases / 1000.0 / time_delta,
         optim_info.lr_scheduler.get_last_lr()[0]))
@@ -613,17 +653,33 @@ def log_polka(
             log.write("{}...{}\n".format(v, u))
 
 
+def log_validation(
+        net_info, reporting_batch_list, train_params, mod_info, curr_iter,
+        logs):
+    t0 = time.time()
+    _, rloss, _, total_bases, _ = calculate_loss(
+        net_info, reporting_batch_list, train_params.sharpen.max,
+        mod_info.mod_cat_weights, mod_info.mod_factor)
+    dt = time.time() - t0
+    kbases = total_bases / 1e3
+    logs.main.write(MAIN_LOG_VAL_TMPLT.format(
+        curr_iter + 1, rloss, kbases / 1e3, dt, kbases / dt))
+    logs.validation.write(VAL_TMPLT.format(curr_iter + 1, rloss))
+
+
 def main(args):
-    res_info, log, batchlog = parse_init_args(args)
-    read_data, alphabet_info, mod_info = load_data(args, log, res_info)
-    net_info, optim_info = load_network(args, alphabet_info, res_info, log)
-    filter_params = compute_filter_params(args, net_info, read_data, log)
+    res_info, logs = parse_init_args(args)
+    read_data, alphabet_info, mod_info = load_data(args, logs.main, res_info)
+    net_info, optim_info = load_network(
+        args, alphabet_info, res_info, logs.main)
+    filter_params = compute_filter_params(args, net_info, read_data, logs.main)
     reporting_batch_list = extract_reporting_data(
-        args, read_data, res_info, alphabet_info, filter_params, net_info, log)
+        args, read_data, res_info, alphabet_info, filter_params, net_info,
+        logs.main)
     train_params = parse_train_params(args)
     train_model(
         train_params, net_info, optim_info, res_info, read_data, alphabet_info,
-        filter_params, mod_info, reporting_batch_list, log, batchlog)
+        filter_params, mod_info, reporting_batch_list, logs)
 
 
 if __name__ == '__main__':

@@ -7,7 +7,7 @@ import numpy as np
 
 from taiyaki.cmdargs import Positive
 from taiyaki import fileio
-from taiyaki.constants import DOTROWLENGTH
+from taiyaki.constants import BATCH_LOG_FILENAME, VAL_LOG_FILENAME
 
 if True:
     #  Protect in block to prevent autopep8 refactoring
@@ -41,8 +41,8 @@ def get_parser():
         'output', help='Output png file')
     parser.add_argument(
         'input_directories',  nargs='+',
-        help='One or more directories containing model.log and ' +
-        'batch.log files')
+        help='One or more directories containing {} and {} files'.format(
+            BATCH_LOG_FILENAME, VAL_LOG_FILENAME))
 
     return parser
 
@@ -60,63 +60,32 @@ def moving_average(a, n=3):
     return x
 
 
-def read_training_log(filepath):
-    polkas, train_loss, val_loss, lr = [], [], [], []
-    with open(filepath, "r") as f:
-        for line in f:
-            if not ('*' in line):
-                splitline = line.split()
-                try:
-                    # This try...except is needed in the case where training
-                    # stops after some dots and before the numbers are written
-                    # to the file
-                    polkas.append(int(splitline[1]))
-                    train_loss.append(float(splitline[2]))
-                    val_loss.append(float(splitline[3]))
-                    lr.append(float(line.split('lr=')[1].split()[0]))
-                except Exception:
-                    break
-    return {'t': DOTROWLENGTH * np.array(polkas),
-            'training_loss': np.array(train_loss),
-            'validation_loss': np.array(val_loss),
-            'learning_rate': np.array(lr)}
-
-
-def read_batch_log(filepath):
-    t = fileio.readtsv(filepath)
-    return {'t': np.arange(len(t)),
-            'training_loss': t['loss'],
-            'gradientnorm': t['gradientnorm'],
-            'gradientcap': t['gradientcap']}
-
-
 def main():
     args = get_parser().parse_args()
 
-    logdata = {}
     batchdata = {}
+    valdata = {}
     for td in args.input_directories:
-        logdata[td] = read_training_log(os.path.join(td, 'model.log'))
-        batchdata[td] = read_batch_log(os.path.join(td, 'batch.log'))
+        batchdata[td] = fileio.readtsv(os.path.join(td, BATCH_LOG_FILENAME))
+        valdata[td] = fileio.readtsv(os.path.join(td, VAL_LOG_FILENAME))
         if args.mav is not None:
-            batchdata[td]['training_loss'] = moving_average(
-                batchdata[td]['training_loss'], args.mav)
+            batchdata[td]['loss'] = moving_average(
+                batchdata[td]['loss'], args.mav)
 
     # Plot validation and training loss
     plt.figure(figsize=(6, 4.8))
     colour_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
     for td, colour in zip(args.input_directories, colour_cycle):
         label = os.path.basename(os.path.normpath(td))
-        plt.plot(batchdata[td]['t'], batchdata[td]['training_loss'],
+        plt.plot(batchdata[td]['iter'], batchdata[td]['loss'],
                  color=colour, label=label + ' (training)', alpha=0.5,
                  linewidth=0.5)
-        if len(logdata[td]['t']) == 0:
-            print("No log data for {} - perhaps <{} iterations complete?".
-                  format(td, DOTROWLENGTH))
+        if len(valdata[td]['iter']) == 0:
+            print(('No validtion log data for {}. The first validation run ' +
+                   'has likely not completed.').format(td))
             continue
-        plt.plot(logdata[td]['t'], logdata[td]['validation_loss'],
-                 color=colour, label=label + ' (validation)',
-                 linewidth=0.5)
+        plt.plot(valdata[td]['iter'], valdata[td]['loss'],
+                 color=colour, label=label + ' (validation)', linewidth=0.5)
 
     plt.grid()
     plt.xlabel('Iterations')
