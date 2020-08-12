@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from taiyaki.helpers import guess_model_stride
+from taiyaki.helpers import get_model_device, guess_model_stride
 
 
 _DEFAULT_CHUNK_SIZE = 1000
@@ -132,14 +132,14 @@ def run_model(
         If `return_numpy` is True, the return type is converted to a
         :class:`ndarray` and remains in host memory.
     """
-    device = next(model.parameters()).device
+    device = get_model_device(model)
     stride = guess_model_stride(model)
     chunk_size *= stride
     overlap *= stride
 
     chunks, chunk_starts, chunk_ends = chunk_read(
         normed_signal, chunk_size, overlap)
-    device = next(model.parameters()).device
+
     chunks = torch.tensor(chunks)
     with torch.no_grad():
         if max_concur_chunks is None:

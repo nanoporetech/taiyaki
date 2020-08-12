@@ -128,7 +128,7 @@ def get_train_flipflop_parser():
         'fields are ignored. If not provided reporting strands will be ' +
         'randomly selected.')
     data_grp.add_argument(
-        '--reporting_sub_batches', default=10, metavar='sub_batches',
+        '--reporting_sub_batches', default=100, metavar='sub_batches',
         type=Positive(int),
         help='Number of sub-batches to use for std loss reporting')
     data_grp.add_argument(

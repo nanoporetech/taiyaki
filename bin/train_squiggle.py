@@ -11,7 +11,7 @@ from taiyaki import (activation, chunk_selection, helpers, layers,
                      mapped_signal_files, signal_mapping)
 from taiyaki.cmdargs import AutoBool, FileExists, Maybe, Positive, proportion
 from taiyaki.common_cmdargs import add_common_command_args
-from taiyaki.constants import DOTROWLENGTH
+from taiyaki.constants import DOTROWLENGTH, MODEL_LOG_FILENAME
 from taiyaki.squiggle_match import squiggle_match_loss, embed_sequence
 
 
@@ -97,7 +97,8 @@ def main():
 
     device = helpers.set_torch_device(args.device)
 
-    log = helpers.Logger(os.path.join(args.outdir, 'model.log'), args.quiet)
+    log = helpers.Logger(
+        os.path.join(args.outdir, MODEL_LOG_FILENAME), args.quiet)
     log.write(helpers.formatted_env_info(device))
 
     if args.input_strand_list is not None:

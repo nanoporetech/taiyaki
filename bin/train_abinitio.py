@@ -13,6 +13,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from taiyaki import alphabet, constants, ctc, flipflopfings, helpers, maths
 from taiyaki.cmdargs import FileExists, Maybe, NonNegative, Positive
+from taiyaki.constants import MODEL_LOG_FILENAME
 from taiyaki.common_cmdargs import add_common_command_args
 
 
@@ -112,7 +113,8 @@ if __name__ == '__main__':
 
     copyfile(args.model, os.path.join(args.outdir, 'model.py'))
 
-    log = helpers.Logger(os.path.join(args.outdir, 'model.log'), args.quiet)
+    log = helpers.Logger(
+        os.path.join(args.outdir, MODEL_LOG_FILENAME), args.quiet)
     log.write(helpers.formatted_env_info(device))
     log.write('* Loading data from {}\n'.format(args.chunks))
     log.write('* Per read file MD5 {}\n'.format(helpers.file_md5(args.chunks)))
