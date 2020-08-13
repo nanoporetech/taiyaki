@@ -4,28 +4,9 @@
 import argparse
 import numpy as np
 import sys
-from taiyaki import alphabet, mapped_signal_files
 
-parser = argparse.ArgumentParser(
-    description='Combine HDF5 mapped-signal files into a single file. ' +
-    'Checks that alphabets are compatible.')
-parser.add_argument('output', help='Output filename')
-parser.add_argument('input', nargs='+', help='One or more input files')
-parser.add_argument(
-    '--limit', type=int, default=None,
-    help='Max number of reads to include in total (default no max)')
-parser.add_argument(
-    '--per_file_limit', type=int, default=None,
-    help='Max number of reads to include from a single file (default no max)')
-parser.add_argument(
-    '--seed', type=int, default=None,
-    help='Seed for randomly selected reads when limits are set ' +
-    '(default random seed)')
-parser.add_argument(
-    '--allow_mod_merge', action='store_true',
-    help='Allow merging of data sets with different modified bases. While ' +
-    'alphabets may differ, incompatible alphabets are not allowed ' +
-    '(e.g. same single letter code used for different canonical bases).')
+from taiyaki import alphabet, mapped_signal_files
+from taiyaki.cmdargs import Maybe, NonNegative
 
 
 # To convert to any new mapped read format (e.g. mapped_signal_files.SQL)
@@ -33,6 +14,34 @@ parser.add_argument(
 # new classes.
 MAPPED_SIGNAL_WRITER = mapped_signal_files.HDF5Writer
 MAPPED_SIGNAL_READER = mapped_signal_files.HDF5Reader
+
+
+def get_parser():
+    parser = argparse.ArgumentParser(
+        description='Combine HDF5 mapped-signal files into a single file. ' +
+        'Checks that alphabets are compatible.')
+    parser.add_argument('output', help='Output filename')
+
+    parser.add_argument(
+        '--input', required=True, nargs=2, action='append',
+        metavar=('mapped_signal_file', 'num_reads'),
+        help='Mapped signal filename and the number of reads to merge from ' +
+        'this file. Specify "None" to merge all reads from a file.')
+    parser.add_argument(
+        '--seed', type=Maybe(NonNegative(int)), default=None,
+        help='Seed for randomly selected reads when limits are set ' +
+        '(default random seed)')
+    parser.add_argument(
+        '--allow_mod_merge', action='store_true',
+        help='Allow merging of data sets with different modified bases. ' +
+        'While alphabets may differ, incompatible alphabets are not allowed ' +
+        '(e.g. same single letter code used for different canonical bases).')
+
+    return parser
+
+
+def none_or_int(num):
+    return None if num == 'None' else int(num)
 
 
 def check_version(file_handle, filename):
@@ -157,22 +166,22 @@ def convert_reference(read, file_alphabet_conv):
 
 
 def add_file_reads(
-        hin, hout, infile, allow_mod_merge, merge_alphabet_info,
-        global_limit, per_file_limit, reads_written):
-    file_num_reads_added = 0
+        hin, hout, input_fn, allow_mod_merge, merge_alphabet_info, input_limit,
+        reads_written):
     if allow_mod_merge:
         # create integer alphabet conversion array
         file_alphabet_conv = create_alphabet_conversion(
             hin, merge_alphabet_info)
 
+    start_reads_written = len(reads_written)
     read_ids = hin.get_read_ids()
-    if global_limit is not None or per_file_limit is not None:
+    if input_limit is not None:
         np.random.shuffle(read_ids)
     for read_id in read_ids:
         if read_id in reads_written:
             sys.stderr.write((
                 "* Read {} already present: not copying from " +
-                "{}.\n").format(read_id, infile))
+                "{}.\n").format(read_id, input_fn))
             continue
 
         read = hin.get_read(read_id)
@@ -180,44 +189,43 @@ def add_file_reads(
             read = convert_reference(read, file_alphabet_conv)
         hout.write_read(read.get_read_dictionary())
         reads_written.add(read_id)
-        file_num_reads_added += 1
-        # check if either global or per-file reads limit has been achieved
-        if ((global_limit is not None and len(reads_written) >= global_limit)
-            or
-            (per_file_limit is not None and
-             file_num_reads_added >= per_file_limit)):
+        # check if reads limit has been achieved
+        if input_limit is not None and \
+           len(reads_written) - start_reads_written >= input_limit:
             break
+    sys.stderr.write("Copied {} reads from {}.\n".format(
+        len(reads_written) - start_reads_written, input_fn))
 
-    return file_num_reads_added, reads_written
+    return reads_written
 
 
 def main():
-    args = parser.parse_args()
+    args = get_parser().parse_args()
+    # convert input limits to integers or None since we can't use argparse
+    # types and action='append'
+    input_fns, input_limits = [], []
+    for input_fn, input_limit in args.input:
+        input_fns.append(input_fn)
+        input_limits.append(none_or_int(input_limit))
+
     if args.allow_mod_merge:
-        merge_alphabet_info = validate_and_merge_alphabets(args.input)
+        merge_alphabet_info = validate_and_merge_alphabets(input_fns)
         sys.stderr.write('Merged alphabet contains: {}\n'.format(
             str(merge_alphabet_info)))
     else:
-        merge_alphabet_info = assert_all_alphabets_equal(args.input)
+        merge_alphabet_info = assert_all_alphabets_equal(input_fns)
 
     if args.seed is not None:
         np.random.seed(args.seed)
     reads_written = set()
     sys.stderr.write("Writing reads to {}\n".format(args.output))
     with MAPPED_SIGNAL_WRITER(args.output, merge_alphabet_info) as hout:
-        for infile in args.input:
-            with MAPPED_SIGNAL_READER(infile) as hin:
-                file_num_reads_added, reads_written = add_file_reads(
-                    hin, hout, infile, args.allow_mod_merge,
-                    merge_alphabet_info, args.limit, args.per_file_limit,
-                    reads_written)
-            sys.stderr.write("Copied {} reads from {}.\n".format(
-                file_num_reads_added, infile))
-            if args.limit is not None and len(reads_written) >= args.limit:
-                break
+        for input_fn, input_limit in zip(input_fns, input_limits):
+            with MAPPED_SIGNAL_READER(input_fn) as hin:
+                reads_written = add_file_reads(
+                    hin, hout, input_fn, args.allow_mod_merge,
+                    merge_alphabet_info, input_limit, reads_written)
     sys.stderr.write("Copied {} reads in total.\n".format(len(reads_written)))
-
-    return
 
 
 if __name__ == '__main__':
