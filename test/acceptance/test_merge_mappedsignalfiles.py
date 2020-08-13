@@ -61,8 +61,8 @@ class AcceptanceTest(unittest.TestCase):
         # Merge two mapped signal files
         cmd = [self.merge_script,
                merged_mapped_signal_file,
-               self.mapped_signal_file0,
-               self.mapped_signal_file1]
+               "--input", self.mapped_signal_file0, "None",
+               "--input", self.mapped_signal_file1, "None"]
         util.run_cmd(self, cmd)
 
         # Output of print statements only becomes accessible if test fails
