@@ -32,7 +32,7 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
                       np.ndarray[np.uintp_t, ndim=1, mode="c"] moveidxs,
                       np.ndarray[np.uintp_t, ndim=1, mode="c"] stayidxs,
                       np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen,
-                      sharpfact, pin=False):
+                      pin=False):
     """
 
     Args:
@@ -40,7 +40,6 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
         moveidxs (array [sum(seqlen) - nseq]):  Transition indicies for moves.
         stayidxs (array [sum(seqlen)]):  Transition indicies for stays.
         seqlen (array [nseq]): Length of sequences.
-        sharpfact (float): Path sharpening factor (1 = no sharpening).
         pin (bool): Whether to pin memory of returned tensors
 
     Returns:
@@ -59,7 +58,7 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
     cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs_np = costs.numpy()
     libctc.crf_flipflop_cost(&logprob[0, 0, 0], nstate, nblk, nbatch,
                              &moveidxs[0], &stayidxs[0], &seqlen[0],
-                             sharpfact, &costs_np[0])
+                             &costs_np[0])
     assert np.all(costs_np <= 0.), (
         "Error: costs must not be positive, got {}").format(costs_np)
     return -costs / nblk
@@ -71,7 +70,7 @@ def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
                       np.ndarray[np.uintp_t, ndim=1, mode="c"] moveidxs,
                       np.ndarray[np.uintp_t, ndim=1, mode="c"] stayidxs,
                       np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen,
-                      sharpfact, pin=False):
+                      pin=False):
     """
 
     Args:
@@ -102,7 +101,7 @@ def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
     cdef np.ndarray[np.float32_t, ndim=3, mode="c"] grads_np = grads.numpy()
     libctc.crf_flipflop_grad(&logprob[0, 0, 0], nstate, nblk, nbatch,
                              &moveidxs[0], &stayidxs[0], &seqlen[0],
-                             sharpfact, &costs_np[0], &grads_np[0, 0, 0])
+                             &costs_np[0], &grads_np[0, 0, 0])
     assert np.all(costs_np <= 0.), (
         "Error: costs must not be positive, got {}").format(costs_np)
     assert np.all(np.isfinite(grads_np)), "Gradients not finite"
@@ -112,10 +111,9 @@ def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
 class FlipFlopCRF(torch.autograd.Function):
     @staticmethod
     def forward(ctx, logprob, seqs, seqlen, sharpfact : float):
-        lp = logprob.detach().cpu().numpy().astype(np.float32)
+        lp = (sharpfact * logprob).detach().float().cpu().numpy()
         seqs = seqs.cpu().numpy().astype(np.int32)
         seqlen = seqlen.cpu().numpy().astype(np.int32)
-        sharpfact = float(sharpfact)
 
         ntrans = lp.shape[2]
         nbase = flipflopfings.nbase_flipflop(ntrans)
@@ -132,13 +130,12 @@ class FlipFlopCRF(torch.autograd.Function):
 
         if logprob.requires_grad:
             cost, grads = crf_flipflop_grad(lp, moveidxs, stayidxs, seqlen,
-                                            sharpfact,
                                             pin=torch.cuda.is_available())
             ctx.save_for_backward(grads.to(logprob.device, non_blocking=True))
         else:
-            cost = crf_flipflop_cost(lp, moveidxs, stayidxs, seqlen, sharpfact,
+            cost = crf_flipflop_cost(lp, moveidxs, stayidxs, seqlen,
                                      pin=torch.cuda.is_available())
-        return cost.to(logprob.device, non_blocking=True)
+        return (cost / sharpfact).to(logprob.device, non_blocking=True)
 
     @staticmethod
     def backward(ctx, output_grads):
@@ -162,7 +159,7 @@ def cat_mod_flipflop_cost(
         np.ndarray[np.uintp_t, ndim=1, mode="c"] modmoveidxs,
         np.ndarray[np.float32_t, ndim=1, mode="c"] modmovefacts,
         np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen,
-        sharpfact, pin=False):
+        pin=False):
     """
 
     Args:
@@ -174,7 +171,6 @@ def cat_mod_flipflop_cost(
         modmovefacts (array [sum(seqlen) - nseq]):  Transition indicies for
             modbase moves.
         seqlen (array [nseq]): Length of sequences.
-        sharpfact (float): Path sharpening factor (1 = no sharpening).
         pin (bool): Whether to pin memory of returned tensors
 
     Returns:
@@ -191,7 +187,7 @@ def cat_mod_flipflop_cost(
     cdef np.ndarray[np.float32_t, ndim=1, mode="c"] costs_np = costs.numpy()
     libctc.cat_mod_flipflop_cost(
         &logprob[0, 0, 0], nstate, nblk, nbatch, &moveidxs[0], &stayidxs[0],
-        &modmoveidxs[0], &modmovefacts[0], &seqlen[0], sharpfact, &costs_np[0])
+        &modmoveidxs[0], &modmovefacts[0], &seqlen[0], &costs_np[0])
     assert np.all(costs_np <= 0.), (
         "Error: costs must not be positive, got {}").format(costs_np)
     return -costs / nblk
@@ -206,7 +202,7 @@ def cat_mod_flipflop_grad(
         np.ndarray[np.uintp_t, ndim=1, mode="c"] modmoveidxs,
         np.ndarray[np.float32_t, ndim=1, mode="c"] modmovefacts,
         np.ndarray[np.int32_t, ndim=1, mode="c"] seqlen,
-        sharpfact, pin=False):
+        pin=False):
     """
 
     Args:
@@ -218,7 +214,6 @@ def cat_mod_flipflop_grad(
         modmovefacts (array [sum(seqlen) - nseq]):  Transition indicies for
             modbase moves.
         seqlen (array [nseq]): Length of sequences.
-        sharpfact (float): Path sharpening factor (1 = no sharpening).
         pin (bool): Whether to pin memory of returned tensors
 
     Returns:
@@ -240,7 +235,7 @@ def cat_mod_flipflop_grad(
     cdef np.ndarray[np.float32_t, ndim=3, mode="c"] grads_np = grads.numpy()
     libctc.cat_mod_flipflop_grad(
         &logprob[0, 0, 0], nstate, nblk, nbatch, &moveidxs[0], &stayidxs[0],
-        &modmoveidxs[0], &modmovefacts[0], &seqlen[0], sharpfact, &costs_np[0],
+        &modmoveidxs[0], &modmovefacts[0], &seqlen[0], &costs_np[0],
         &grads_np[0, 0, 0])
     assert np.all(costs_np <= 0.), (
         "Error: costs must not be positive, got {}").format(costs_np)
@@ -251,16 +246,18 @@ def cat_mod_flipflop_grad(
 class CatModFlipFlop(torch.autograd.Function):
     @staticmethod
     def forward(ctx, logprob, seqs, seqlen, mod_cats, can_mods_offsets,
-                mod_cat_weights, sharpfact):
+                mod_cat_weights, sharpfact : float):
+        ntrans = logprob.shape[2]
+        n_can_trans = ntrans - can_mods_offsets[-1]
+        nbase = flipflopfings.nbase_flipflop(n_can_trans)
+        trans_sharp = torch.ones(
+            ntrans, device=logprob.device, dtype=logprob.dtype)
+        trans_sharp[:n_can_trans] = sharpfact
         lp = np.ascontiguousarray(
-            logprob.detach().cpu().numpy().astype(np.float32))
+            (logprob * trans_sharp).detach().float().cpu().numpy())
         seqs = seqs.cpu().numpy().astype(np.int32)
         seqlen = seqlen.cpu().numpy().astype(np.int32)
         mod_cats = mod_cats.cpu().numpy().astype(np.int32)
-        sharpfact = float(sharpfact)
-
-        ntrans = lp.shape[2]
-        nbase = flipflopfings.nbase_flipflop(ntrans - can_mods_offsets[-1])
 
         #  Calculate indices -- seqlen[0:-1] ensures input to split is array
         seq_starts = np.cumsum(seqlen[:-1])
@@ -285,13 +282,13 @@ class CatModFlipFlop(torch.autograd.Function):
         if logprob.requires_grad:
             cost, grads = cat_mod_flipflop_grad(
                 lp, moveidxs, stayidxs, modmoveidxs, modmovefacts, seqlen,
-                sharpfact, pin=torch.cuda.is_available())
+                pin=torch.cuda.is_available())
             ctx.save_for_backward(grads.to(logprob.device, non_blocking=True))
         else:
             cost = cat_mod_flipflop_cost(
                 lp, moveidxs, stayidxs, modmoveidxs, modmovefacts, seqlen,
-                sharpfact, pin=torch.cuda.is_available())
-        return cost.to(logprob.device, non_blocking=True)
+                pin=torch.cuda.is_available())
+        return (cost / sharpfact).to(logprob.device, non_blocking=True)
 
     @staticmethod
     def backward(ctx, output_grads):

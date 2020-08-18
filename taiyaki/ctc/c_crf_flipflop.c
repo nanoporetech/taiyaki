@@ -26,7 +26,6 @@
            in position of sequence.
        nseqpos:  Length of sequence.
        fwdcurr (array [nseqpos]): OUT Forward probs for next block.
-       sharpfact:  Sharpening factor, 1 = no sharpening.
 
     Returns:
        void:  Forward probabilities for next block writen to `fwdcurr`
@@ -36,7 +35,7 @@ float crf_flipflop_forward_step(float const *restrict logprob,
                                 size_t const *restrict moveidx,
                                 size_t const *restrict stayidx,
                                 size_t nseqpos, float *restrict fwdcurr,
-                                float *restrict fwdtmp, float sharpfact) {
+                                float *restrict fwdtmp) {
 
     assert(nseqpos > 0);
     assert(NULL != logprob);
@@ -59,7 +58,7 @@ float crf_flipflop_forward_step(float const *restrict logprob,
         // in non-log space, we now have
         // fwdcurr[s] = fwdprev[s] * stayprob + fwdprev[s-1] * stepprob
     }
-    logaddexpf_avx(fwdtmp, fwdcurr, sharpfact, nseqpos);
+    logaddexpf_avx(fwdtmp, fwdcurr, nseqpos);
 
     const float factor = fmaxf_avx(fwdcurr, nseqpos);
     for (size_t pos = 0; pos < nseqpos; pos++) {
@@ -79,7 +78,6 @@ float crf_flipflop_forward_step(float const *restrict logprob,
        stayidx (array [nseqpos]):  Index for transitions resulting in staying
            in position of sequence.
        nseqpos:  Length of sequence.
-       sharpfact:  Sharpening factor, 1 = no sharpening.
        fwd (array [(nblk+1) x nseqpos]):  OUT Forward probabilities
 
     Returns:
@@ -89,7 +87,7 @@ float crf_flipflop_forward_step(float const *restrict logprob,
 float crf_flipflop_forward(float const *restrict logprob, size_t nblk,
                            size_t ldp, size_t const *restrict moveidx,
                            size_t const *restrict stayidx, size_t nseqpos,
-                           float sharpfact, float *restrict fwd) {
+                           float *restrict fwd) {
 
     assert(nseqpos > 0);
     assert(NULL != logprob);
@@ -115,7 +113,7 @@ float crf_flipflop_forward(float const *restrict logprob, size_t nblk,
 
         score +=
             crf_flipflop_forward_step(logprobcurr, fwdprev, moveidx, stayidx,
-                                      nseqpos, fwdcurr, fwdtmp, sharpfact);
+                                      nseqpos, fwdcurr, fwdtmp);
     }
     free(fwdtmp);
 
@@ -135,7 +133,6 @@ float crf_flipflop_forward(float const *restrict logprob, size_t nblk,
            in position of sequence.
        nseqpos:  Length of sequence.
        bwdcurr (array [nseqpos]): OUT Backward probs for next block.
-       sharpfact:  Sharpening factor, 1 = no sharpening.
 
     Returns:
        void:  Backward probabilities for next block writen to `bwdcurr`
@@ -145,7 +142,7 @@ float crf_flipflop_backward_step(float const *restrict logprob,
                                  size_t const *restrict moveidx,
                                  size_t const *restrict stayidx,
                                  size_t nseqpos, float *restrict bwdcurr,
-                                 float *restrict bwdtmp, float sharpfact) {
+                                 float *restrict bwdtmp) {
 
     assert(nseqpos > 0);
     assert(NULL != logprob);
@@ -165,7 +162,7 @@ float crf_flipflop_backward_step(float const *restrict logprob,
         bwdtmp[pos - 1] = bwdprev[pos] + logprob[moveidx[pos - 1]];
     }
 
-    logaddexpf_avx(bwdtmp, bwdcurr, sharpfact, nseqpos);
+    logaddexpf_avx(bwdtmp, bwdcurr, nseqpos);
 
     const float factor = fmaxf_avx(bwdcurr, nseqpos);
     for (size_t pos = 0; pos < nseqpos; pos++) {
@@ -185,7 +182,6 @@ float crf_flipflop_backward_step(float const *restrict logprob,
        stayidx (array [nseqpos]):  Index for transitions resulting in staying
            in position of sequence.
        nseqpos:  Length of sequence.
-       sharpfact:  Sharpening factor, 1 = no sharpening.
        bwd (array [(nblk+1) x nseqpos]):  OUT Backward probabilities
 
     Returns:
@@ -195,7 +191,7 @@ float crf_flipflop_backward_step(float const *restrict logprob,
 float crf_flipflop_backward(float const *restrict logprob, size_t nblk,
                             size_t ldp, size_t const *restrict moveidx,
                             size_t const *restrict stayidx, size_t nseqpos,
-                            float sharpfact, float *restrict bwd) {
+                            float *restrict bwd) {
     assert(nseqpos > 0);
     assert(NULL != logprob);
     assert(NULL != moveidx);
@@ -221,7 +217,7 @@ float crf_flipflop_backward(float const *restrict logprob, size_t nblk,
 
         score +=
             crf_flipflop_backward_step(logprobcurr, bwdprev, moveidx, stayidx,
-                                       nseqpos, bwdcurr, bwdtmp, sharpfact);
+                                       nseqpos, bwdcurr, bwdtmp);
     }
 
     free(bwdtmp);
@@ -241,7 +237,6 @@ float crf_flipflop_backward(float const *restrict logprob, size_t nblk,
        stayidxs (array [sum(seqlen)]):  Index for transitions resulting in
            staying in position of sequence.
        seqlen (array [nbatch]):  Length of sequences.
-       sharpfact:  Sharpening factor, 1 = no sharpening.
        score (array [nbatch]):  OUT Forward scores
 
     Returns:
@@ -250,7 +245,7 @@ float crf_flipflop_backward(float const *restrict logprob, size_t nblk,
 void crf_flipflop_cost(float const *logprob, size_t ntrans, size_t nblk,
                        size_t nbatch, size_t const *moveidxs,
                        size_t const *stayidxs, int32_t const *seqlen,
-                       float sharpfact, float *score) {
+                       float *score) {
 
     const size_t ldp = nbatch * ntrans;
     size_t seqidx[nbatch];
@@ -279,7 +274,7 @@ void crf_flipflop_cost(float const *logprob, size_t ntrans, size_t nblk,
                                             //  1 less move per sequence than positions
                                             moveidxs + seqidx[batch] - batch,
                                             stayidxs + seqidx[batch],
-                                            seqlen[batch], sharpfact, fwd);
+                                            seqlen[batch], fwd);
         free(fwd);
     }
 }
@@ -289,9 +284,9 @@ void crf_flipflop_cost(float const *logprob, size_t ntrans, size_t nblk,
 void crf_flipflop_scores_fwd(float const *logprob, size_t ntrans, size_t nblk,
                              size_t nbatch, size_t const *moveidxs,
                              size_t const *stayidxs, int32_t const *seqlen,
-                             float sharpfact, float *score) {
+                             float *score) {
     crf_flipflop_cost(logprob, ntrans, nblk, nbatch, moveidxs, stayidxs,
-                      seqlen, sharpfact, score);
+                      seqlen, score);
 }
 
 /*   Calculate backward probabilities for a flip-flop model for each element
@@ -307,7 +302,6 @@ void crf_flipflop_scores_fwd(float const *logprob, size_t ntrans, size_t nblk,
        stayidxs (array [sum(seqlen)]):  Index for transitions resulting in
            staying in position of sequence.
        seqlen (array [nbatch]):  Length of sequences.
-       sharpfact:  Sharpening factor, 1 = no sharpening.
        score (array [nbatch]):  OUT Backward scores
 
     Returns:
@@ -316,7 +310,7 @@ void crf_flipflop_scores_fwd(float const *logprob, size_t ntrans, size_t nblk,
 void crf_flipflop_scores_bwd(float const *logprob, size_t ntrans, size_t nblk,
                              size_t nbatch, size_t const *moveidxs,
                              size_t const *stayidxs, int32_t const *seqlen,
-                             float sharpfact, float *score) {
+                             float *score) {
     const size_t ldp = nbatch * ntrans;
     size_t seqidx[nbatch];
     seqidx[0] = 0;
@@ -343,7 +337,7 @@ void crf_flipflop_scores_bwd(float const *logprob, size_t ntrans, size_t nblk,
                                              //  1 less move per sequence than sequence
                                              moveidxs + seqidx[batch] - batch,
                                              stayidxs + seqidx[batch],
-                                             seqlen[batch], sharpfact, bwd);
+                                             seqlen[batch], bwd);
         free(bwd);
     }
 }
@@ -361,8 +355,6 @@ void crf_flipflop_scores_bwd(float const *logprob, size_t ntrans, size_t nblk,
        nseqpos:  Length of sequence.
        grad (array[ntrans]):  OUT  Gradients for block.
        ntrans:  Number of possible transitions.
-       fact:  Scaling factor (log partition function).
-       sharpfact:  Sharpening factor, 1 = no sharpening.
 
     Returns:
        void:  Gradients written to `grad`.
@@ -373,7 +365,7 @@ void crf_flipflop_grad_step(float const *restrict fwdcurr,
                             size_t const *restrict moveidx,
                             size_t const *restrict stayidx, size_t nseqpos,
                             float *restrict grad, float *restrict gradtmp,
-                            size_t ntrans, float fact, float sharpfact) {
+                            size_t ntrans) {
 
     assert(NULL != fwdcurr);
     assert(NULL != bwdnext);
@@ -396,7 +388,7 @@ void crf_flipflop_grad_step(float const *restrict fwdcurr,
     }
 
     const size_t N = nseqpos + nseqpos - 1;
-    softmax_inplace_avx(gradtmp, sharpfact, N);
+    softmax_inplace_avx(gradtmp, N);
 
     for (size_t pos = 0; pos < nseqpos; pos++) {
         // Stay state
@@ -423,7 +415,6 @@ void crf_flipflop_grad_step(float const *restrict fwdcurr,
        stayidxs (array [sum(seqlen)]):  Index for transitions resulting in
            staying in position of sequence.
        seqlen (array [nbatch]):  Length of sequences.
-       sharpfact:  Sharpening factor, 1 = no sharpening.
        score (array [nbatch]):  OUT scores
        grad (array [nblk x nbatch x ntrans]):  OUT Gradients
 
@@ -433,7 +424,7 @@ void crf_flipflop_grad_step(float const *restrict fwdcurr,
 void crf_flipflop_grad(float const *logprob, size_t ntrans, size_t nblk,
                        size_t nbatch, size_t const *moveidxs,
                        size_t const *stayidxs, int32_t const *seqlen,
-                       float sharpfact, float *score, float *grad) {
+                       float *score, float *grad) {
 
     assert(NULL != logprob);
     assert(NULL != moveidxs);
@@ -480,13 +471,13 @@ void crf_flipflop_grad(float const *logprob, size_t ntrans, size_t nblk,
         // Calculate forward score and forward matrix for one batch element
         score[batch] =
             crf_flipflop_forward(logprob + batch_offset, nblk, ldp, moveidx,
-                                 stayidx, nseqpos, sharpfact, fwd);
+                                 stayidx, nseqpos, fwd);
         // TODO compute backwards while computing gradient to reduce memory
         // footprint
         // backward matrix for one batch element
         score[batch] += crf_flipflop_backward(logprob + batch_offset, nblk, ldp,
                                               moveidx, stayidx, nseqpos,
-                                              sharpfact, bwd);
+                                              bwd);
         score[batch] *= 0.5;
 
         // Normalised transition matrix
@@ -505,8 +496,7 @@ void crf_flipflop_grad(float const *logprob, size_t ntrans, size_t nblk,
 
             // put gradients into gradcurr
             crf_flipflop_grad_step(fwdcurr, bwdnext, logprobcurr, moveidx,
-                                   stayidx, nseqpos, gradcurr, gradtmp, ntrans,
-                                   score[batch], sharpfact);
+                                   stayidx, nseqpos, gradcurr, gradtmp, ntrans);
         }
 
         free(gradtmp);
@@ -704,7 +694,6 @@ int main(int argc, char *argv[]) {
     float score[2] = { 0.0f };
     float score2[2] = { 0.0f };
     const float DELTA = 1e-2f;
-    const float sharpfact = (argc > 1) ? atof(argv[1]) : 1.0f;
     const size_t msize = nblk * nstate * nbatch;
 
     for (size_t i = 0; i < msize; i++) {
@@ -715,16 +704,16 @@ int main(int argc, char *argv[]) {
     //    F / B calculations
     //
     crf_flipflop_scores_fwd(test_logprob1, nstate, nblk, nbatch, test_move1,
-                            test_stay1, test_seqlen1, sharpfact, score);
+                            test_stay1, test_seqlen1, score);
     printf("Forwards scores: %f %f\n", score[0], score[1]);
 
     crf_flipflop_scores_bwd(test_logprob1, nstate, nblk, nbatch, test_move1,
-                            test_stay1, test_seqlen1, sharpfact, score);
+                            test_stay1, test_seqlen1, score);
     printf("Backwards scores: %f %f\n", score[0], score[1]);
 
     float *grad = calloc(msize, sizeof(float));
     crf_flipflop_grad(test_logprob1, nstate, nblk, nbatch, test_move1,
-                      test_stay1, test_seqlen1, sharpfact, score2, grad);
+                      test_stay1, test_seqlen1, score2, grad);
     float maxdelta = 0.0;
     for (size_t blk = 0; blk < nblk; blk++) {
         const size_t offset = blk * nbatch * nstate;
@@ -746,14 +735,14 @@ int main(int argc, char *argv[]) {
             test_logprob1[offset + st] = orig + DELTA;
             crf_flipflop_scores_fwd(test_logprob1, nstate, nblk, nbatch,
                                     test_move1, test_stay1, test_seqlen1,
-                                    sharpfact, score);
+                                    score);
             fscore[0] = score[0];
             fscore[1] = score[1];
             // Negative difference
             test_logprob1[offset + st] = orig - DELTA;
             crf_flipflop_scores_fwd(test_logprob1, nstate, nblk, nbatch,
                                     test_move1, test_stay1, test_seqlen1,
-                                    sharpfact, score);
+                                    score);
             fscore[0] = (fscore[0] - score[0]) / (2.0f * DELTA);
             fscore[1] = (fscore[1] - score[1]) / (2.0f * DELTA);
             // Report and reset
@@ -790,7 +779,6 @@ size_t state_of_stay(size_t state, size_t nbase) {
 int main(int argc, char *argv[]) {
     const size_t nbase = 4;
     const size_t ntrans = 40;
-    const float sharpfact = 1.0f;
 
     if (argc != 5) {
         fputs("Usage: nbatch nblock ntimes seed\n", stderr);
@@ -843,7 +831,7 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < ntimes; i++) {
             fprintf(stdout, "Round %zu:\n", i);
             crf_flipflop_scores_fwd(logprob, ntrans, nblock, nbatch,
-                                    moves, stays, seqlen, sharpfact, score);
+                                    moves, stays, seqlen, score);
             for (size_t j = 0; j < nbatch; j++) {
                 fprintf(stdout, "%f\n", score[j]);
             }
@@ -865,7 +853,7 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < ntimes; i++) {
             fprintf(stdout, "Round %zu:\n", i);
             crf_flipflop_scores_bwd(logprob, ntrans, nblock, nbatch,
-                                    moves, stays, seqlen, sharpfact, score);
+                                    moves, stays, seqlen, score);
             for (size_t j = 0; j < nbatch; j++) {
                 fprintf(stdout, "%f\n", score[j]);
             }
@@ -887,7 +875,7 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < ntimes; i++) {
             fprintf(stdout, "Round %zu:\n", i);
             crf_flipflop_grad(logprob, ntrans, nblock, nbatch,
-                              moves, stays, seqlen, sharpfact, score, grad);
+                              moves, stays, seqlen, score, grad);
             for (size_t j = 0; j < nbatch; j++) {
                 fprintf(stdout, "%f\n", score[j]);
             }
