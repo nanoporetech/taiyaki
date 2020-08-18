@@ -77,20 +77,19 @@ static inline float logsumexpf_avx(const float *restrict x, size_t n) {
 }
 
 static inline void logaddexpf_avx(const float *restrict x, float *restrict y,
-                                  float sharp, size_t n) {
+                                  size_t n) {
     const size_t n4 = n >> 3;
     const __m256 *restrict xV = (const __m256 * restrict) x;
     __m256 *restrict yV = (__m256 * restrict) y;
 
-    const __m256 sharpV = _mm256_set1_ps(sharp);
     const __m256 ones = _mm256_set1_ps(1.0f);
     for (size_t i = 0; i < n4; i++) {
         const __m256 delta = xV[i] - yV[i];
-        const __m256 abs_delta = _mm256_max_ps(-delta, delta) * sharpV;
+        const __m256 abs_delta = _mm256_max_ps(-delta, delta);
         yV[i] =
             _mm256_max_ps(xV[i],
                           yV[i]) + log256_ps(ones +
-                                             exp256_ps(-abs_delta)) / sharpV;
+                                             exp256_ps(-abs_delta));
     }
 
     for (size_t i = (n4 << 3); i < n; i++) {
@@ -98,21 +97,19 @@ static inline void logaddexpf_avx(const float *restrict x, float *restrict y,
         y[i] =
             fmaxf(x[i],
                   y[i]) + logf(1.0f +
-                               expf(-sharp * fabsf(x[i] - y[i]))) / sharp;
+                               expf(-fabsf(x[i] - y[i])));
     }
 }
 
-static inline float softmax_inplace_avx(float *restrict x, float sharp,
-                                        size_t n) {
+static inline float softmax_inplace_avx(float *restrict x, size_t n) {
     const size_t n4 = n >> 3;
     __m256 *restrict xV = (__m256 * restrict) x;
 
-    const __m256 sharpV = _mm256_set1_ps(sharp);
     const float xmax = fmaxf_avx(x, n);
     const __m256 xmaxV = _mm256_set1_ps(xmax);
     __m256 Z = _mm256_setzero_ps();
     for (size_t i = 0; i < n4; i++) {
-        xV[i] = exp256_ps(sharpV * (xV[i] - xmaxV));
+        xV[i] = exp256_ps(xV[i] - xmaxV);
         Z += xV[i];
     }
 
@@ -125,7 +122,7 @@ static inline float softmax_inplace_avx(float *restrict x, float sharp,
 
     for (size_t i = (n4 << 3); i < n; i++) {
         //  Deal with remaining
-        x[i] = expf(sharp * (x[i] - xmax));
+        x[i] = expf(x[i] - xmax);
         Zout += x[i];
     }
 
