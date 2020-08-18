@@ -665,6 +665,7 @@ def log_validation(
     logs.main.write(MAIN_LOG_VAL_TMPLT.format(
         curr_iter + 1, rloss, kbases / 1e3, dt, kbases / dt))
     logs.validation.write(VAL_TMPLT.format(curr_iter + 1, rloss))
+    logs.validation.flush()
 
 
 def main(args):
