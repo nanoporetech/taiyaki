@@ -20,7 +20,8 @@ install_requires = [
     "ont_fast5_api >= 1.2.0",
     "matplotlib >= 2.0.0",
     "pysam >= 0.15.0",
-    "scipy >= 1",
+    #  Scipy 1.5.1 last version to support Python 3.5
+    "scipy >= 1, <=1.5.1",
     "statsmodels >= 0.10.1",
     "torch >= 1.5"
 ]
