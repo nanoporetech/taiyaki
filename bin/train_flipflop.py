@@ -659,7 +659,7 @@ def log_validation(
     t0 = time.time()
     _, rloss, _, total_bases, _ = calculate_loss(
         net_info, reporting_batch_list, train_params.sharpen.max,
-        mod_info.mod_cat_weights, mod_info.mod_factor)
+        mod_info.mod_cat_weights, mod_info.mod_factor.final)
     dt = time.time() - t0
     kbases = total_bases / 1e3
     logs.main.write(MAIN_LOG_VAL_TMPLT.format(
