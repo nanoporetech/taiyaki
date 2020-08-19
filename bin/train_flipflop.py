@@ -225,10 +225,14 @@ def parse_init_args(args):
         helpers.prepare_outdir(args.outdir, args.overwrite)
         if args.model.endswith('.py'):
             copyfile(args.model, os.path.join(args.outdir, 'model.py'))
+        # note buffering=1 to enforce line buffering and enable
+        # inspection/plotting during a run
         logs = LOGS(
             main=helpers.Logger(main_log_fn, args.quiet),
-            batch=open(os.path.join(args.outdir, BATCH_LOG_FILENAME), 'w'),
-            validation=open(os.path.join(args.outdir, VAL_LOG_FILENAME), 'w'))
+            batch=open(os.path.join(args.outdir, BATCH_LOG_FILENAME),
+                       'w', buffering=1),
+            validation=open(os.path.join(args.outdir, VAL_LOG_FILENAME),
+                            'w', buffering=1))
         logs.batch.write(BATCH_HEADER)
         logs.validation.write(VAL_HEADER)
 
@@ -665,7 +669,6 @@ def log_validation(
     logs.main.write(MAIN_LOG_VAL_TMPLT.format(
         curr_iter + 1, rloss, kbases / 1e3, dt, kbases / dt))
     logs.validation.write(VAL_TMPLT.format(curr_iter + 1, rloss))
-    logs.validation.flush()
 
 
 def main(args):
