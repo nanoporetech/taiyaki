@@ -80,14 +80,14 @@ test: unittest acctest
 
 
 .PHONY: unittest
-unittest: rebuild
+unittest: rebuild clean_unittest
 	source venv/bin/activate && \
 		mkdir -p ${buildDir}/unittest && \
 		cd ${buildDir}/unittest && ${PYTHON} -m pytest ${pyTestArgs} ../../test/unit
 
 
 .PHONY: acctest
-acctest: rebuild
+acctest: rebuild clean_acctest
 	source venv/bin/activate && \
 		mkdir -p ${buildDir}/acctest && \
 		${PYTHON} venv/bin/pip install -r test/acceptance/requirements.txt && \
@@ -100,6 +100,14 @@ clean:
 	rm -f taiyaki/ctc/ctc.c taiyaki/squiggle_match/squiggle_match.c
 	find . -name '*.pyc' -delete
 	find . -name '*.so' -delete
+
+.PHONY: clean_acctest
+clean_acctest:
+	rm -rf ${buildDir}/acctest
+
+.PHONY: clean_unittest
+clean_unittest:
+	rm -rf ${buildDir}/unittest
 
 
 .PHONY: autopep8 pep8
