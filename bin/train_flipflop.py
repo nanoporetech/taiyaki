@@ -188,19 +188,19 @@ def calculate_loss(
                 lossvector = ctc.crf_flipflop_loss(
                     outputs, seqs, seqlens, sharpen)
 
-            non_zero_seqlens = (seqlens > 0.0).float().sum()
             # In multi-GPU mode, gradients are synchronised when
             # loss.backward() is called. We need to make sure we are
             # calculating a gradient that can be synchronised across processes
             # - so loss must be per-block-in-batch
-            loss = lossvector.sum() / non_zero_seqlens
-            fval = float(loss)
-        total_fval += fval
-        total_samples += int(indata.nelement())
-        total_bases += int(seqlens.sum())
+            loss = lossvector.mean()
 
         if calc_grads:
             loss.backward()
+
+        fval = float(loss)
+        total_fval += fval
+        total_samples += int(indata.nelement())
+        total_bases += int(seqlens.sum())
 
     if calc_grads:
         for p in net_info.net.parameters():
