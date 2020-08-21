@@ -131,7 +131,9 @@ class FlipFlopCRF(torch.autograd.Function):
         if logprob.requires_grad:
             cost, grads = crf_flipflop_grad(lp, moveidxs, stayidxs, seqlen,
                                             pin=torch.cuda.is_available())
-            ctx.save_for_backward(grads.to(logprob.device, non_blocking=True))
+            grad_gpu = torch.empty_like(grads, device=logprob.device)
+            ctx.save_for_backward(grad_gpu)
+            grad_gpu.copy_(grads, non_blocking=True)
         else:
             cost = crf_flipflop_cost(lp, moveidxs, stayidxs, seqlen,
                                      pin=torch.cuda.is_available())
