@@ -43,6 +43,10 @@ def get_parser():
         help='Drop chunks with small ratio of signal length to bases * ' +
         'model stride, which would restrict potential CTC paths.')
     parser.add_argument(
+        '--filter_min_pass_fraction', default=0.5, metavar='fraction',
+        type=Maybe(Positive(float)),
+        help='Halt if fraction of chunks passing tests is less than this')
+    parser.add_argument(
         '--full_filter_status', default=False, action=AutoBool,
         help='Output full chunk filtering statistics. ' +
         'Default: only proportion of filtered chunks.')
@@ -131,7 +135,8 @@ def main():
     # Result is a tuple median mean_dwell, mad mean_dwell
     filter_parameters = chunk_selection.sample_filter_parameters(
         read_data, args.sample_nreads_before_filtering, args.target_len,
-        args.filter_mean_dwell, args.filter_max_dwell, stride,
+        args.filter_mean_dwell, args.filter_max_dwell,
+        args.filter_min_pass_fraction, stride,
         args.filter_path_buffer)
 
     log.write(("* Sampled {} chunks: median(mean_dwell)={:.2f}, " +

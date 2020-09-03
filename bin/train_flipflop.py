@@ -97,7 +97,8 @@ def compute_grad_norm(network, norm_type=2):
 def prepare_random_batches(
         read_data, batch_chunk_len, sub_batch_size, target_sub_batches,
         alphabet_info, filter_params, net_info, log,
-        select_strands_randomly=True, first_strand_index=0, pin=True):
+        select_strands_randomly=True, first_strand_index=0, pin=True,
+        min_pass_fraction=0.5):
     total_sub_batches = 0
     if net_info.metadata.reverse:
         revop = np.flip
@@ -111,7 +112,8 @@ def prepare_random_batches(
             read_data, sub_batch_size, batch_chunk_len, filter_params,
             standardize=net_info.metadata.standardize,
             select_strands_randomly=select_strands_randomly,
-            first_strand_index=first_strand_index)
+            first_strand_index=first_strand_index,
+            min_pass_fraction=min_pass_fraction)
         first_strand_index += sum(batch_rejections.values())
         if len(chunk_batch) < sub_batch_size:
             log.write(('* Warning: only {} chunks passed filters ' +
@@ -459,7 +461,8 @@ def compute_filter_params(args, net_info, read_data, log):
         sampling_chunk_len // net_info.stride) * net_info.stride
     filter_params = chunk_selection.sample_filter_parameters(
         read_data, args.sample_nreads_before_filtering, sampling_chunk_len,
-        args.filter_mean_dwell, args.filter_max_dwell, net_info.stride,
+        args.filter_mean_dwell, args.filter_max_dwell,
+        args.filter_min_pass_fraction, net_info.stride,
         args.filter_path_buffer)
     log.write((
         '* Sampled {} chunks: median(mean_dwell)={:.2f}, mad(mean_dwell)=' +
@@ -498,7 +501,8 @@ def extract_reporting_data(
     reporting_batch_list = list(prepare_random_batches(
         report_read_data, reporting_chunk_len,
         args.min_sub_batch_size, args.reporting_sub_batches, alphabet_info,
-        filter_params, net_info, log, select_strands_randomly=False))
+        filter_params, net_info, log, select_strands_randomly=False,
+        min_pass_fraction=args.filter_min_pass_fraction))
     log.write((
         '* Standard loss report: chunk length = {} & sub-batch size = {} ' +
         'for {} sub-batches. \n').format(
@@ -518,7 +522,7 @@ def parse_train_params(args):
 
 def train_model(
         train_params, net_info, optim_info, res_info, read_data, alphabet_info,
-        filter_params, mod_info, reporting_batch_list, logs):
+        filter_params, mod_info, reporting_batch_list, logs, min_pass_fraction):
     # Set cap at very large value (before we have any gradient stats).
     gradient_cap = constants.LARGE_VAL
     score_smoothed = helpers.WindowedExpSmoother()
@@ -550,7 +554,7 @@ def train_model(
         main_batch_gen = prepare_random_batches(
             read_data, batch_chunk_len, sub_batch_size,
             train_params.sub_batches, alphabet_info, filter_params, net_info,
-            logs.main)
+            logs.main, min_pass_fraction=min_pass_fraction)
 
         # take optimiser step
         optim_info.optimiser.zero_grad()
@@ -683,7 +687,8 @@ def main(args):
     train_params = parse_train_params(args)
     train_model(
         train_params, net_info, optim_info, res_info, read_data, alphabet_info,
-        filter_params, mod_info, reporting_batch_list, logs)
+        filter_params, mod_info, reporting_batch_list, logs,
+        args.filter_min_pass_fraction)
 
 
 if __name__ == '__main__':

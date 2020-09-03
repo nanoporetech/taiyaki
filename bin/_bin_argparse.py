@@ -80,6 +80,10 @@ def get_train_flipflop_parser():
         help='Drop chunks with mean dwell more than radius deviations ' +
         'from the median (over chunks)')
     data_grp.add_argument(
+        '--filter_min_pass_fraction', default=0.5, metavar='fraction',
+        type=Maybe(Positive(float)),
+        help='Halt if fraction of chunks passing tests is less than this')
+    data_grp.add_argument(
         '--filter_path_buffer', default=1.1, metavar='ratio',
         type=Bounded(float, lower=1.0),
         help='Drop chunks with small ratio of signal length to bases * ' +
