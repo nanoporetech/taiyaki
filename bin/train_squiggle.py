@@ -187,6 +187,7 @@ def main():
         # chunk_batch is a list of dicts.
         chunk_batch, batch_rejections = chunk_selection.sample_chunks(
             read_data, args.batch_size, args.target_len, filter_parameters,
+            args.filter_min_pass_fraction,
             chunk_len_means_sequence_len=True)
         if len(chunk_batch) < args.batch_size:
             log.write('* Warning: only {} chunks passed filters.\n'.format(

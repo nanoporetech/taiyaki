@@ -25,7 +25,7 @@ class FILTER_PARAMETERS(namedtuple(
 
 
 def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
-                  min_pass_fraction=0.5,
+                  min_pass_fraction,
                   chunk_len_means_sequence_len=False,
                   standardize=True, select_strands_randomly=True,
                   first_strand_index=0):
