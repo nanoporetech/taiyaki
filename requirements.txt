@@ -18,4 +18,4 @@ pytz==2020.1
 scipy==1.4.1
 six==1.15.0
 statsmodels==0.11.1
-torch=1.5.1
+torch==1.5.1
