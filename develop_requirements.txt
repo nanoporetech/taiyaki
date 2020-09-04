@@ -10,7 +10,6 @@ parso==0.7.1
 pep8==1.7.0
 pexpect==4.8.0
 pickleshare==0.7.5
-pkg-resources
 prompt-toolkit==1.0.18
 ptyprocess==0.6.0
 py==1.9.0
