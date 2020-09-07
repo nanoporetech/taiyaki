@@ -1,3 +1,4 @@
+#  Do not edit.  Generate using `pip freeze`
 biopython==1.76
 cycler==0.10.0
 Cython==0.29.21
