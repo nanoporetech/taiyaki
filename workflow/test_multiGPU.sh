@@ -40,7 +40,6 @@ RESULT_DIR=${TAIYAKI}/workflow/multiGPU_test_results
 
 LR_MAX=0.003
 LR_MIN=0.00015
-LR_COSINE_ITERS=20000
 
 ITERATIONS=100
 WARMUP=10
@@ -48,7 +47,7 @@ WARMUP=10
 python -m torch.distributed.launch --nproc_per_node ${NGPU}\
         --master_addr 127.0.0.2 --master_port 29501\
         ${TAIYAKI}/bin/train_flipflop.py\
-        --overwrite --lr_cosine_iters ${LR_COSINE_ITERS}\
+        --overwrite \
         --min_sub_batch_size 32\
         --warmup_batches ${WARMUP} --niteration ${ITERATIONS}\
         --lr_max ${LR_MAX} --lr_min ${LR_MIN}\
