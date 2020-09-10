@@ -39,10 +39,12 @@ def get_train_flipflop_parser():
         type=NonNegative(float),
         help='Adam weight decay (L2 normalisation penalty)')
     trn_grp.add_argument(
-        '--gradient_cap_fraction', default=0.05, metavar='f',
+        '--gradient_clip_num_mads', default=0, metavar='num_MADs',
         type=Maybe(NonNegative(float)),
-        help='Cap L2 norm of gradient so that a fraction f of gradients ' +
-        'are capped. Use --gradient_cap_fraction None for no capping.')
+        help='Clip gradients (by value) at num_MADs above the median of ' +
+        'the last 1000 parameter gradient maximums. Gradient threshold ' +
+        'values are computed for each parameter group independently. Use ' +
+        '"--gradient_clip_num_mads None" for no clipping.')
     trn_grp.add_argument(
         '--lr_max', default=4.0e-3, metavar='rate', type=Positive(float),
         help='Max learning rate, reached at --warmup_batches iterations.')
