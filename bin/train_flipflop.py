@@ -10,7 +10,7 @@ import time
 import torch
 
 from taiyaki import (
-    chunk_selection, constants, ctc, flipflopfings, helpers, layers,
+    chunk_selection, ctc, flipflopfings, helpers, layers,
     mapped_signal_files, maths, signal_mapping)
 from taiyaki.constants import (
     DOTROWLENGTH, MODEL_LOG_FILENAME, BATCH_LOG_FILENAME, VAL_LOG_FILENAME)
@@ -39,7 +39,7 @@ NETWORK_INFO = namedtuple('NETWORK_INFO', (
     'net', 'net_clone', 'metadata', 'stride'))
 
 OPTIM_INFO = namedtuple('OPTIM_INFO', (
-    'optimiser', 'lr_warmup', 'lr_scheduler', 'rolling_quantile'))
+    'optimiser', 'lr_warmup', 'lr_scheduler', 'rolling_mads'))
 
 TRAIN_PARAMS = namedtuple('TRAIN_PARAMS', (
     'niteration', 'sharpen', 'chunk_len_min', 'chunk_len_max',
@@ -47,7 +47,7 @@ TRAIN_PARAMS = namedtuple('TRAIN_PARAMS', (
     'outdir', 'full_filter_status'))
 
 BATCH_FIELDS = [
-    'iter', 'loss', 'gradientnorm', 'gradientcap', 'learning_rate',
+    'iter', 'loss', 'gradientmax', 'gradientcap', 'learning_rate',
     'chunk_len']
 BATCH_TMPLT = '\t'.join('{}' for _ in BATCH_FIELDS) + '\n'
 BATCH_HEADER = BATCH_TMPLT.format(*BATCH_FIELDS)
@@ -72,26 +72,6 @@ def parse_network_metadata(network):
             network.sublayers[-1].mod_labels)
     return NETWORK_METADATA(
         network.metadata['reverse'], network.metadata['standardize'], False)
-
-
-def compute_grad_norm(network, norm_type=2):
-    """ Compute the norm of the gradients in a network. Code adapted from
-    `torch.nn.utils.clip_grad_norm_`, but without clipping.
-
-    Args:
-        network: A taiyaki neural network object.
-        norm_type: Norm type as defined in `torch.norm`.
-
-    Returns:
-        Float norm computed from network
-    """
-    parameters = list(filter(lambda p: p.grad is not None,
-                             network.parameters()))
-    if len(parameters) == 0:
-        return 0.0
-    return float(torch.norm(
-        torch.stack([torch.norm(p.grad.detach(), norm_type)
-                     for p in parameters]), norm_type))
 
 
 def prepare_random_batches(
@@ -209,6 +189,20 @@ def calculate_loss(
 
     return total_chunk_count, total_fval / n_subbatches, \
         total_samples, total_bases, rejection_dict
+
+
+def apply_clipping(net_info, grad_max_threshs):
+    parameters = [p for p in net_info.net.parameters() if p.requires_grad]
+    grad_maxs = [
+        float(torch.max(torch.abs(param_group.grad.detach())))
+        for param_group in parameters]
+    if grad_max_threshs is not None:
+        for grp_gm, grp_gmt, grp_params in zip(
+                grad_maxs, grad_max_threshs, parameters):
+            if grp_gm > grp_gmt:
+                # clip norm by value
+                grp_params.grad.data.clamp_(min=-grp_gmt, max=grp_gmt)
+    return grad_maxs
 
 
 def parse_init_args(args):
@@ -430,21 +424,28 @@ def load_network(args, alphabet_info, res_info, log):
                    args.lr_max, args.lr_min,
                    args.niteration - args.warmup_batches))
 
-    if args.gradient_cap_fraction is None:
-        log.write('* No gradient capping\n')
-        rolling_quantile = None
+    if args.gradient_clip_num_mads is None:
+        log.write('* No gradient clipping\n')
+        rolling_mads = None
     else:
-        rolling_quantile = maths.RollingQuantile(args.gradient_cap_fraction)
-        log.write('* Gradient L2 norm cap will be upper' +
-                  ' {:3.2f} quantile of the last {} norms.\n'.format(
-                      args.gradient_cap_fraction, rolling_quantile.window))
+        nparams = len([p for p in network.parameters() if p.requires_grad])
+        if nparams == 0:
+            rolling_mads = None
+            log.write('* No gradient clipping due to missing parameters\n')
+        else:
+            rolling_mads = maths.RollingMAD(
+                nparams, args.gradient_clip_num_mads)
+            log.write((
+                '* Gradients will be clipped (by value) at {:3.2f} MADs ' +
+                'above the median of the last {} gradient maximums.\n').format(
+                    rolling_mads.n_mads, rolling_mads.window))
 
     net_info = NETWORK_INFO(
         net=network, net_clone=net_clone, metadata=network_metadata,
         stride=stride)
     optim_info = OPTIM_INFO(
         optimiser=optimiser, lr_warmup=lr_warmup, lr_scheduler=lr_scheduler,
-        rolling_quantile=rolling_quantile)
+        rolling_mads=rolling_mads)
 
     return net_info, optim_info
 
@@ -520,7 +521,8 @@ def train_model(
         train_params, net_info, optim_info, res_info, read_data, alphabet_info,
         filter_params, mod_info, reporting_batch_list, logs):
     # Set cap at very large value (before we have any gradient stats).
-    gradient_cap = constants.LARGE_VAL
+    grad_max_threshs = None
+    grad_max_thresh_str = 'NaN'
     score_smoothed = helpers.WindowedExpSmoother()
     total_bases = total_samples = total_chunks = 0
     # To count the numbers of different sorts of chunk rejection
@@ -558,20 +560,19 @@ def train_model(
             calculate_loss(
                 net_info, main_batch_gen, sharpen, mod_info.mod_cat_weights,
                 mod_factor, calc_grads=True)
-        if optim_info.rolling_quantile is None:
-            gradnorm_uncapped = compute_grad_norm(net_info.net)
-        else:
-            gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
-                net_info.net.parameters(), gradient_cap)
-            gradient_cap = optim_info.rolling_quantile.update(
-                gradnorm_uncapped)
+        grad_maxs = apply_clipping(net_info, grad_max_threshs)
         optim_info.optimiser.step()
-
+        if optim_info.rolling_mads is not None:
+            grad_max_threshs = optim_info.rolling_mads.update(grad_maxs)
         # record step information
         if res_info.is_lead_process:
+            grad_max_thresh_str = ','.join((
+                'NA' if l_gmt is None else str(float(l_gmt))
+                for l_gmt in grad_maxs))
             logs.batch.write(BATCH_TMPLT.format(
-                curr_iter + 1, fval, gradnorm_uncapped, gradient_cap,
-                optim_info.lr_scheduler.get_last_lr()[0], batch_chunk_len))
+                curr_iter + 1, fval, ','.join(map(str, grad_maxs)),
+                grad_max_thresh_str, optim_info.lr_scheduler.get_last_lr()[0],
+                batch_chunk_len))
 
         total_chunks += chunk_count
         total_samples += chunk_samples
