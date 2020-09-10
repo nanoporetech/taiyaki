@@ -9,6 +9,7 @@ from taiyaki.maths import med_mad
 class FILTER_PARAMETERS(namedtuple(
         'FILTER_PARAMETERS', (
             'filter_mean_dwell', 'filter_max_dwell',
+            'filter_min_pass_fraction',
             'median_meandwell', 'mad_meandwell', 'model_stride',
             'path_buffer'))):
     """ Parameters to filter signal chunk selections
@@ -16,6 +17,7 @@ class FILTER_PARAMETERS(namedtuple(
     Args:
         filter_mean_dwell (float) : Number of deviations from median
         filter_max_dwell (float): Multiple of median dwell
+        filter_min_pass_fraction (float) : Stop if fraction of passes < this
         median_meandwell (float): Median of mean dwells from data
         mad_meandwell (float): MAD of mean dwells from data
         model_stride (int): Stride of the model
@@ -25,16 +27,16 @@ class FILTER_PARAMETERS(namedtuple(
 
 
 def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
-                  fraction_of_fails_allowed=0.5,
                   chunk_len_means_sequence_len=False,
                   standardize=True, select_strands_randomly=True,
                   first_strand_index=0):
     """ Sample <number_to_sample> chunks from a list of read_data, returning
     a tuple (chunklist, rejection_dict).
 
-    Random read sampling continues until <number_to_sample> chunks that pass
-    filter_params have been sampled or <fraction_of_fails_allowed> has been
-    reached.
+    Random read sampling continues until <number_to_sample> chunks have been
+    accepted by the filter, or an upper limit of tries has been reached.
+    The upper limit on the number of tries is
+    (number_to_sample / filter_params.filter_min_pass_fraction)
 
     rejection_dict is a dictionary with keys describing the reasons for
     rejection and values being the number rejected for that reason. E.g.
@@ -47,9 +49,6 @@ def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
             same number of chunks as the number of read_data items supplied.
         chunk_len: desired length of chunk in samples, or length of
             sequence in bases if chunk_len_means_sequence_len
-        fraction_of_fails_allowed: Visit a maximum of
-            (number_to_sample / fraction_of_fails_allowed) reads before
-            stopping.
         filter_params: taiyaki.chunk_selection.FILTER_PARAMETERS namedtuple
         chunk_len_means_sequence_len: if this is False (the default) then
             chunk_len determines the length in samples of the chunk, and we
@@ -70,7 +69,7 @@ def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
     else:
         number_to_sample_used = number_to_sample
     maximum_attempts_allowed = int(
-        number_to_sample_used / fraction_of_fails_allowed)
+        number_to_sample_used / filter_params.filter_min_pass_fraction)
     chunks = []
     # Will contain counts of numbers of rejects and passes
     rejection_reasons = defaultdict(lambda: 0)
@@ -98,6 +97,7 @@ def sample_chunks(read_data, number_to_sample, chunk_len, filter_params,
 
 def sample_filter_parameters(read_data, number_to_sample, chunk_len,
                              filter_mean_dwell, filter_max_dwell,
+                             filter_min_pass_fraction,
                              model_stride, path_buffer,
                              chunk_len_means_sequence_len=False):
     """ Sample number_to_sample reads from read_data, calculate median and MAD
@@ -108,6 +108,7 @@ def sample_filter_parameters(read_data, number_to_sample, chunk_len,
     """
     no_filter_params = FILTER_PARAMETERS(
         filter_mean_dwell=filter_mean_dwell, filter_max_dwell=filter_max_dwell,
+        filter_min_pass_fraction=filter_min_pass_fraction,
         median_meandwell=None, mad_meandwell=None,
         model_stride=None, path_buffer=None)
     chunks, _ = sample_chunks(
@@ -117,5 +118,6 @@ def sample_filter_parameters(read_data, number_to_sample, chunk_len,
     median_meandwell, mad_meandwell = med_mad(meandwells)
     return FILTER_PARAMETERS(
         filter_mean_dwell=filter_mean_dwell, filter_max_dwell=filter_max_dwell,
+        filter_min_pass_fraction=filter_min_pass_fraction,
         median_meandwell=median_meandwell, mad_meandwell=mad_meandwell,
         model_stride=model_stride, path_buffer=path_buffer)
