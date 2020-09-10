@@ -1,4 +1,4 @@
-#  Do not edit.  Generate using `pip freeze`
+#  Do not edit.  Generate using `pip freeze --all`
 biopython==1.76
 cycler==0.10.0
 Cython==0.29.21
@@ -17,6 +17,7 @@ pysam==0.16.0.1
 python-dateutil==2.8.1
 pytz==2020.1
 scipy==1.4.1
+setuptools==50.3.0
 six==1.15.0
 statsmodels==0.11.1
 torch==1.5.1
