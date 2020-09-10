@@ -97,8 +97,7 @@ def compute_grad_norm(network, norm_type=2):
 def prepare_random_batches(
         read_data, batch_chunk_len, sub_batch_size, target_sub_batches,
         alphabet_info, filter_params, net_info, log,
-        select_strands_randomly=True, first_strand_index=0, pin=True,
-        min_pass_fraction=0.5):
+        select_strands_randomly=True, first_strand_index=0, pin=True):
     total_sub_batches = 0
     if net_info.metadata.reverse:
         revop = np.flip
@@ -112,8 +111,7 @@ def prepare_random_batches(
             read_data, sub_batch_size, batch_chunk_len, filter_params,
             standardize=net_info.metadata.standardize,
             select_strands_randomly=select_strands_randomly,
-            first_strand_index=first_strand_index,
-            min_pass_fraction=min_pass_fraction)
+            first_strand_index=first_strand_index)
         first_strand_index += sum(batch_rejections.values())
         if len(chunk_batch) < sub_batch_size:
             log.write(('* Warning: only {} chunks passed filters ' +
@@ -501,8 +499,7 @@ def extract_reporting_data(
     reporting_batch_list = list(prepare_random_batches(
         report_read_data, reporting_chunk_len,
         args.min_sub_batch_size, args.reporting_sub_batches, alphabet_info,
-        filter_params, net_info, log, select_strands_randomly=False,
-        min_pass_fraction=args.filter_min_pass_fraction))
+        filter_params, net_info, log, select_strands_randomly=False))
     log.write((
         '* Standard loss report: chunk length = {} & sub-batch size = {} ' +
         'for {} sub-batches. \n').format(
@@ -522,7 +519,7 @@ def parse_train_params(args):
 
 def train_model(
         train_params, net_info, optim_info, res_info, read_data, alphabet_info,
-        filter_params, mod_info, reporting_batch_list, logs, min_pass_fraction):
+        filter_params, mod_info, reporting_batch_list, logs):
     # Set cap at very large value (before we have any gradient stats).
     gradient_cap = constants.LARGE_VAL
     score_smoothed = helpers.WindowedExpSmoother()
@@ -554,7 +551,7 @@ def train_model(
         main_batch_gen = prepare_random_batches(
             read_data, batch_chunk_len, sub_batch_size,
             train_params.sub_batches, alphabet_info, filter_params, net_info,
-            logs.main, min_pass_fraction=min_pass_fraction)
+            logs.main)
 
         # take optimiser step
         optim_info.optimiser.zero_grad()
@@ -687,8 +684,7 @@ def main(args):
     train_params = parse_train_params(args)
     train_model(
         train_params, net_info, optim_info, res_info, read_data, alphabet_info,
-        filter_params, mod_info, reporting_batch_list, logs,
-        args.filter_min_pass_fraction)
+        filter_params, mod_info, reporting_batch_list, logs)
 
 
 if __name__ == '__main__':
