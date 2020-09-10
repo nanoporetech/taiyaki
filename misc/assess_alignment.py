@@ -92,7 +92,7 @@ def samacc(align_fn, min_coverage=0.6):
     res = []
     with pysam.AlignmentFile(align_fn, 'r') as sf:
         for read in sf.fetch(until_eof=True):
-            if read.is_unmapped or read.is_secondary:
+            if read.flag != 0 and read.flag != 16:
                 continue
             coverage = float(read.query_alignment_length) / read.query_length
             if coverage < min_coverage:
