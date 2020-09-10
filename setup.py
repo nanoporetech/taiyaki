@@ -12,7 +12,7 @@ version = taiyaki.__version__
 # Minimal list of requirements for the package to work once installed
 # Used by pip
 install_requires = [
-    "h5py >= 2.2.1",
+    "h5py >= 2.10.0",
     "numpy >= 1.14.5",
     #  Biopython 1.76 last version to support Python 3.5
     "biopython >= 1.63, <=1.76",
