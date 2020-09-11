@@ -166,7 +166,7 @@ def get_train_flipflop_parser():
         '--quiet', default=False, action=AutoBool,
         help="Don't print progress information to stdout")
     out_grp.add_argument(
-        '--save_every', metavar='x', type=Positive(int), default=10000,
+        '--save_every', metavar='x', type=Positive(int), default=2500,
         help='Save model every x batches')
 
     mod_grp = parser.add_argument_group('Modified Base Arguments')
