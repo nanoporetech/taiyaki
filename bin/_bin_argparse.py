@@ -13,7 +13,7 @@ def get_train_flipflop_parser():
 
     mdl_grp = parser.add_argument_group('Model Arguments')
     mdl_grp.add_argument(
-        '--size', default=256, metavar='neurons',
+        '--size', default=384, metavar='neurons',
         type=Positive(int), help='Base layer size for model')
     mdl_grp.add_argument(
         '--stride', default=5, metavar='samples',
@@ -33,7 +33,7 @@ def get_train_flipflop_parser():
         type=Positive(float), help='Small value to stabilise optimiser')
     trn_grp.add_argument(
         '--niteration', metavar='batches', type=Positive(int),
-        default=100000, help='Maximum number of batches to train for')
+        default=150000, help='Maximum number of batches to train for')
     trn_grp.add_argument(
         '--weight_decay', default=0.0, metavar='penalty',
         type=NonNegative(float),
@@ -170,7 +170,7 @@ def get_train_flipflop_parser():
         '--quiet', default=False, action=AutoBool,
         help="Don't print progress information to stdout")
     out_grp.add_argument(
-        '--save_every', metavar='x', type=Positive(int), default=1000,
+        '--save_every', metavar='x', type=Positive(int), default=2500,
         help='Save model every x batches')
 
     mod_grp = parser.add_argument_group('Modified Base Arguments')
