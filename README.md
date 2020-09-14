@@ -14,14 +14,15 @@ complex signal from a nanopore device, using techniques inspired by state-of-the
 language processing.
 
 Taiyaki is used to train the models used to basecall DNA and RNA found in Oxford Nanopore's 
-Guppy basecaller (version 2.2 at time of writing). This includes the flip-flop models,
+Guppy basecaller and for modified base detection with
+[megalodon](https://github.com/nanoporetech/megalodon). This includes the flip-flop models,
 which are trained using a technique inspired by Connectionist Temporal Classification
 (Graves et al 2006).
 
 Main features:
 *  Prepare data for training basecallers by remapping signal to reference sequence
 *  Train neural networks for flip-flop basecalling and squiggle prediction
-*  Export basecaller models for use in Guppy
+*  Export basecaller models for use in Guppy and megalodon
 
 Taiyaki is built on top of pytorch and is compatible with Python 3.5 or later.
 It is aimed at advanced users, and it is an actively evolving research project, so
