@@ -183,75 +183,33 @@ Depending the speed of the GPU used, this process can take several days.
 |  modbase.hdf5                                |  Mapped reads file created by ``prepare_mapped_reads.py``   |
 +----------------------------------------------+-------------------------------------------------------------+
 
-Basecall
---------
-.. _`file formats`: FILE_FORMATS.md
+Modified base calling
+---------------------
 
-The basecalls produced use the canonical base alphabet, information about putative modifed base calls is written out to the specified file, ``basecalls.hdf5``.
+The trained model can be exported for use with basecallers that support modified bases: either Guppy or Megalodon.
+[Megalodon](https://nanoporetech.github.io/megalodon/index.html) is the recommended tool, and it uses either Guppy 
+or Taiyaki as a backend for modified base calling. The Guppy backend is typically faster, but only a limited range 
+of models are supported.
 
+If you wish to use Taiyaki as your Megalodon backend, then you can use your trained model checkpoint directly.
+You will need to have both Megalodon and Taiyaki installed, then
+see [this section](https://nanoporetech.github.io/megalodon/advanced_arguments.html#taiyaki-backend-arguments)
+of the Megalodon documentation for how to use Taiyaki as your backend.
+
+The default backend for Megalodon is Guppy. See the Megalodon documentation for more details.
+You will have to convert your model checkpoint to JSON format that can be read by Guppy:
 
 .. code-block:: bash
 
-     basecall.py --device 0 --modified_base_output basecalls.hdf5 reads training/model_final.checkpoint > basecalls.fa
+     dump_json.py training/model_final.checkpoint --output training/model.json
 
-+----------------------------------------------+-------------------------------------------------------------+
-|  --device 0                                  |  Use CUDA device 0                                          |
-+----------------------------------------------+-------------------------------------------------------------+
-|  --modified_base_output basecalls.hdf5       |  Output modifed base information to ``basecalls.hdf5``      |
-+----------------------------------------------+-------------------------------------------------------------+
-|  reads                                       |  Directory contain reads in *fast5* format                  |
 +----------------------------------------------+-------------------------------------------------------------+
 |  training/model_final.checkpoint             |  Trained model file                                         |
 +----------------------------------------------+-------------------------------------------------------------+
-|  > basecalls.fa                              |  Redirect output basecalls to ``modbase.tsv`` file.         |
+|  --output training/model.json                |  Write model to this file in JSON format                    |
 |                                              |  Default is to write to ``stdout``                          |
 +----------------------------------------------+-------------------------------------------------------------+
 
-Modified Base File
-..................
+After exporting your model to JSON, you should create a Guppy config file pointing to your JSON model. The
+easiest way to do this is to copy and modify an existing Guppy config file.
 
-The modified base output file, ``basecalls.hdf5`` in this example, stores the information about the presence of modifications given the basecall.
-The information is stored in a per-read dataset, containing the conditional (log) probability of modification for each position of the *basecall*.
-The calls are ordered according to the names given in the ``mod_long_names`` dataset.
-Impossible calls, where the canonical basecall position and modification are incompatible, are indicated by ``nan`` values.
-
-.. code-block::
-
-    HDF5_file/
-    ├── dataset: mod_long_names
-    └── group: Reads/
-        ├── dataset: <read_id_1>
-        ├── dataset: <read_id_2>
-        ├── dataset: <read_id_3>
-        .
-        .
-
-Quick analysis
-..............
-
-.. code-block:: python
-
-    import h5py
-    import numpy as np
-
-    # Read in information for first 120 positions of a2cd3a8c-dc41-4404-9dda-8ebffc6fd9e0
-    with h5py.File('intermediate_files/basecalls.hdf5', 'r') as h5:
-        cond_logprobs = h5['Reads/a2cd3a8c-dc41-4404-9dda-8ebffc6fd9e0'][:120]
-        print(h5['mod_long_names'][()])
-
-    # > Reference
-    #                   CTCTGTCTCTGAGTCTCTGTCTTCTZGGAAGGACAACAGTCAGTGGATZGGGCACTTTCTGZGCAAGCATTZGTTT-ACCCTAAZGTGCTCAZGGCTACATTA
-    #                                            m                      m            m         m            m       m
-    # > Basecall
-    # ACCCACAGTTTGTGTGCTCTCTGTCTCTGAGTCTCTGTCTTCTCGGAAGGACAACAGTCAGTGGATCGGGCACTTTCTGCGCAAGCATTCGTTTTACC-TAACGTGCTCACGGCTACATTA 
-    # Expecting 5mC modification at basecall positions: 43 66 79 89 101 109
-
-    #  First column of cond_logprob corresponds to 6mA, second is 5mC
-    #  Possible positions of methylation (non-nan entries)
-    print(np.where(~np.isnan(cond_logprobs))[0])
-    #  Probable methyation calls -- gives 43, 66, 79, 89, 101, 109
-    print(np.where(cond_probs[:,1] > np.log(0.5)))
-    #  Confident methyation calls -- gives 43, 66, 79, 89, 101, 109
-    print(np.where(cond_probs[:,1] > np.log(0.9)))
-    #  Most confident 6mA call -- gives 2.8e-06
-    print(np.exp(np.nanmax(cond_probs[:,0])))
