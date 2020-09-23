@@ -6,7 +6,7 @@ import numpy as np
 import sys
 
 from taiyaki import alphabet, mapped_signal_files
-from taiyaki.cmdargs import Maybe, NonNegative
+from taiyaki.cmdargs import AutoBool, Maybe, NonNegative
 
 
 # To convert to any new mapped read format (e.g. mapped_signal_files.SQL)
@@ -27,6 +27,10 @@ def get_parser():
         metavar=('mapped_signal_file', 'num_reads'),
         help='Mapped signal filename and the number of reads to merge from ' +
         'this file. Specify "None" to merge all reads from a file.')
+    parser.add_argument(
+        '--load_in_mem', action=AutoBool, default=False,
+        help='Load each input file into memory before processing. ' +
+        'Potentially large increase in speed but also increased memory usage')
     parser.add_argument(
         '--seed', type=Maybe(NonNegative(int)), default=None,
         help='Seed for randomly selected reads when limits are set ' +
@@ -221,7 +225,8 @@ def main():
     sys.stderr.write("Writing reads to {}\n".format(args.output))
     with MAPPED_SIGNAL_WRITER(args.output, merge_alphabet_info) as hout:
         for input_fn, input_limit in zip(input_fns, input_limits):
-            with MAPPED_SIGNAL_READER(input_fn) as hin:
+            with MAPPED_SIGNAL_READER(input_fn,
+                                      load_in_mem=args.load_in_mem) as hin:
                 reads_written = add_file_reads(
                     hin, hout, input_fn, args.allow_mod_merge,
                     merge_alphabet_info, input_limit, reads_written)

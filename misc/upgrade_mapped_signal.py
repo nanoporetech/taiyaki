@@ -64,7 +64,7 @@ def main():
 
     copyfile(args.input, args.output)
 
-    with h5py.File(args.output, 'r+') as h5:
+    with h5py.File(args.output, 'r+', libver='v108') as h5:
         convert_7_to_8(h5)
 
 

@@ -122,7 +122,7 @@ if __name__ == '__main__':
     if args.limit is not None:
         log.write('* Limiting number of strands to {}\n'.format(args.limit))
 
-    with h5py.File(args.chunks, 'r') as h5:
+    with h5py.File(args.chunks, 'r', libver='v108') as h5:
         chunks = h5['chunks'][:args.limit]
     log.write('* Loaded {} reads from {}.\n'.format(len(chunks), args.chunks))
 
