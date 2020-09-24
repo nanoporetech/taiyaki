@@ -116,7 +116,7 @@ def main():
             new_collapse_alphabet, new_alphabet, new_mod_long_names)):
         sys.stderr.write('No new alphabet information provided.\n')
         sys.exit(1)
-    with h5py.File(args.input, 'r+', libver='v108') as msf:
+    with h5py.File(args.input, 'r+', libver='v110') as msf:
         if new_alphabet is not None:
             sys.stderr.write('Converting alphabet from "{}" to "{}".\n'.format(
                 alphabet_info.alphabet, new_alphabet))
