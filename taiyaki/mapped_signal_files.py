@@ -299,6 +299,16 @@ class HDF5Reader(AbstractMappedSignalReader):
             'Incorrect file version, got {} expected {}').format(
                 self.version, _version)
 
+    def reads(self):
+        """ Generator returning read object containing all elements of the read.
+
+        Yields:
+            :class:`signal_mapping.SignalMapping`: information about read
+                mapping.
+        """
+        for name, h5obj in self.hdf5[READS_ROOT_TEXT].items():
+            yield self._get_read(h5obj)
+
     def close(self):
         """ Close file handle.
         """
@@ -314,13 +324,24 @@ class HDF5Reader(AbstractMappedSignalReader):
             :class:`signal_mapping.SignalMapping`: information about read
                 mapping.
         """
-        h = self.hdf5[_get_hdf5_read_path(read_id)]
+        return self._get_read(self.hdf5[_get_hdf5_read_path(read_id)])
+
+    def _get_read(self, h5obj):
+        """ Return a read object containing all elements of the read.
+
+        Args:
+            read_id (:class:`h5py.Group`): HDF5 group for read
+
+        Returns:
+            :class:`signal_mapping.SignalMapping`: information about read
+                mapping.
+        """
         d = {}
         # Iterate over datasets (the read group should have no subgroups)
-        for k, v in h.items():
+        for k, v in h5obj.items():
             d[k] = v[()]
         # iterate over attributes
-        for k, v in h.attrs.items():
+        for k, v in h5obj.attrs.items():
             d[k] = v
         return signal_mapping.SignalMapping(**d)
 
