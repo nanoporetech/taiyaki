@@ -28,7 +28,7 @@ def get_parser():
         help='Mapped signal filename and the number of reads to merge from ' +
         'this file. Specify "None" to merge all reads from a file.')
     parser.add_argument(
-        '--load_in_mem', action=AutoBool, default=False,
+        '--load_in_mem', action=AutoBool, default=True,
         help='Load each input file into memory before processing. ' +
         'Potentially large increase in speed but also increased memory usage')
     parser.add_argument(
