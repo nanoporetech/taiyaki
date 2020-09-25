@@ -184,10 +184,13 @@ class SignalMapping:
                 setattr(self, opt_name, getattr(self.opt_data_types, opt_name)(
                     getattr(self, opt_name)))
 
-        self.siglen = self.Dacs.shape[0]
-        self.reflen = self.Reference.shape[0]
+    @property
+    def reflen(self):
+        return self.Reference.shape[0]
 
-        return
+    @property
+    def siglen(self):
+        return self.Dacs.shape[0]
 
     @staticmethod
     def get_integer_reference(string_reference, alphabet):
@@ -422,6 +425,21 @@ class SignalMapping:
         seq_end = np.searchsorted(
             self.Ref_to_signal, signal_location_vector[1], 'left')
         return np.array([seq_start, seq_end])
+
+    def get_reference(self, region=None):
+        """Get reference for read
+
+        Args:
+            region (tuple of two ints or None):
+                                region = (start_inclusive, end_exclusive)
+
+        Returns:
+            np float array : reference[start_inclusive:end_exclusive]
+        """
+        if region is None:
+            return self.Reference
+
+        return self.Reference[region[0]:region[1]]
 
     def get_dacs(self, region=None):
         """Get vector of DAC levels
