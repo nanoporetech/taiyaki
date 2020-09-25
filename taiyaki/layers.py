@@ -1159,6 +1159,22 @@ class DeltaSample(nn.Module):
         return torch.cat((output, padding), dim=0)
 
 
+def is_delta_model(net):
+    """ Is model a delta-scaling model
+
+    Args:
+        net (:nn:`Module`):  A Taiyaki network
+
+    Raises:
+        AssertionError: Outer later of network is not :class:`Serial`
+
+    Returns:
+        bool: True if initial layer is DeltaSample layer, False otherwise
+    """
+    assert isinstance(net, Serial)
+    return isinstance(net.sublayers[0], DeltaSample)
+
+
 class Window(nn.Module):
     """  Create a sliding window over input
 

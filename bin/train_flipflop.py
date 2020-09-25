@@ -365,6 +365,11 @@ def load_network(args, alphabet_info, res_info, log):
                     'specified, but mapped signal file does contains ' +
                     'modified bases.')
                 sys.exit(1)
+        if layers.is_delta_model(net_clone) and model_metadata.standardize:
+            log.write(
+                '*' * 60 + '\n* WARNING: Delta-scaling models are only ' +
+                'intended to be trained with --no-standardize option.\n' +
+                '*' * 60)
         log.write('* Dumping initial model\n')
         helpers.save_model(net_clone, args.outdir, 0)
     else:
