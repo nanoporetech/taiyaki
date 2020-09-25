@@ -114,9 +114,10 @@ clean_unittest:
 pyDirs := taiyaki test bin models misc
 pyFiles := $(shell find *.py ${pyDirs} -type f -name "*.py")
 autopep8:
-	autopep8 -i ${pyFiles}
+	autopep8 -i ${pyFiles} --max-line-length=79
+
 pep8:
-	pep8 --ignore E203,E402 --max-line-length=120 ${pyFiles}
+	pep8 --ignore E203,E402 --max-line-length=79 ${pyFiles}
 
 
 .PHONY: workflow
