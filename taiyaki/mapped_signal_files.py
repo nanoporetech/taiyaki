@@ -288,13 +288,14 @@ class HDF5Reader(AbstractMappedSignalReader):
         version (int): Version of file
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, load_in_mem=False):
         """ Open file and initialise
 
         Args:
             filename (str): name of file to open.
         """
-        self.hdf5 = h5py.File(filename, 'r')
+        self.hdf5 = h5py.File(filename, 'r', libver='v108',
+                              driver='core' if load_in_mem else None)
         assert self.version == _version, (
             'Incorrect file version, got {} expected {}').format(
                 self.version, _version)
@@ -410,7 +411,7 @@ class HDF5Writer(AbstractMappedSignalWriter):
             alphabet_info (:class:`alphabet.AlphabetInfo`):  Alphabet to write
         """
         # mode 'w' to preserve behaviour, 'x' would be more appropraite
-        self.hdf5 = h5py.File(filename, 'w')
+        self.hdf5 = h5py.File(filename, 'w', libver='v108', track_order=True)
         self._write_version()
         self._write_alphabet_info(alphabet_info)
         # collect read_ids for storage since listing HDF5 keys can be very slow

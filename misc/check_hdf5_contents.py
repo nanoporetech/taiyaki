@@ -14,7 +14,7 @@ parser.add_argument("keys", nargs="+", help="Keys to check")
 
 def main():
     args = parser.parse_args()
-    with h5py.File(args.input, 'r') as h5:
+    with h5py.File(args.input, 'r', libver='v108') as h5:
         for key in args.keys:
             assert key in h5
             print("Key ", key, "present in", args.input)
