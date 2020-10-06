@@ -145,6 +145,7 @@ def prepare_random_batches(
 def calculate_loss(
         net_info, batch_gen, sharpen, mod_cat_weights=None, mod_factor=None,
         calc_grads=False):
+    can_mods_offsets = net_info.metadata.can_mods_offsets
     total_chunk_count = total_fval = total_samples = total_bases = \
         n_subbatches = 0
     rejection_dict = defaultdict(int)
@@ -160,14 +161,19 @@ def calculate_loss(
         with torch.set_grad_enabled(calc_grads):
             outputs = net_info.net(indata.to(
                 get_model_device(net_info.net), non_blocking=True))
+            nblk = float(outputs.shape[0])
+            ntrans = outputs.shape[2]
             if net_info.metadata.is_cat_mod:
                 lossvector = ctc.cat_mod_flipflop_loss(
-                    outputs, seqs, seqlens, mod_cats,
-                    net_info.metadata.can_mods_offsets,
+                    outputs, seqs, seqlens, mod_cats, can_mods_offsets,
                     mod_cat_weights * mod_factor, sharpen)
+                ntrans -= can_mods_offsets[-1]
             else:
                 lossvector = ctc.crf_flipflop_loss(
                     outputs, seqs, seqlens, sharpen)
+
+            lossvector += layers.flipflop_logpartition(
+                outputs[:, :, :ntrans]) / nblk
 
             # In multi-GPU mode, gradients are synchronised when
             # loss.backward() is called. We need to make sure we are

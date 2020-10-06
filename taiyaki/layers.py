@@ -1330,14 +1330,12 @@ class GlobalNormFlipFlop(nn.Module):
         linear (:nn:`Module`):  PyTorch module implementing linear
             transformation.
         scale (float):  Scaling factor to apply.
-        _never_use_cupy (bool):  If True, never use accelerated cupy routine
-            even if it is available.
 
     Returns:
         :torch:`Tensor`: scores after global normalization.
     """
 
-    def __init__(self, insize, nbase, has_bias=True, _never_use_cupy=False,
+    def __init__(self, insize, nbase, has_bias=True,
                  fun=activation.tanh, scale=5.0):
         """  Constructor for `GlobalNormFlipFlop` layer
 
@@ -1346,9 +1344,6 @@ class GlobalNormFlipFlop(nn.Module):
             nbase (int):  Number bases
             has_bias (bool, optional):  Whether layer has bias.  If `False`,
                 bias is initialised to zero and not trained.
-            _never_use_cupy (bool, optional):  If True, never use accelerated
-                cupy routine even if it is available.  Default will use cupy if
-                available.
             fun (<function>, optional):  Function that applies elementwise
                 activation to output of linear transform (before global
                 normalisation).  Default tanh.
@@ -1364,7 +1359,6 @@ class GlobalNormFlipFlop(nn.Module):
         self.linear = nn.Linear(insize, self.size, bias=has_bias)
         self.reset_parameters()
         self.scale = scale
-        self._never_use_cupy = _never_use_cupy
 
     def json(self):
         """  Create structured output describing layer for converting to json
@@ -1400,34 +1394,6 @@ class GlobalNormFlipFlop(nn.Module):
             binit = truncated_normal(list(self.linear.bias.shape), sd=0.5)
             init_(self.linear.bias, binit)
 
-    def _use_cupy(self, x):
-        """  Determine whether cupy should be used
-
-        Note:
-            getattr used instead of simple look-up for backwards compatibility
-
-        Args:
-            x (:torch:`Tensor`): Sample input.
-
-        Returns:
-            bool: True if cupy available and `_never_use_cupy` is False.  False
-                otherwise.
-        """
-        # getattr in stead of simple look-up for backwards compatibility
-        if self._never_use_cupy:
-            return False
-
-        if not x.is_cuda:
-            return False
-
-        try:
-            from .cupy_extensions import flipflop
-            # does nothing but satisfies flake8
-            flipflop
-            return True
-        except ImportError:
-            return False
-
     def forward(self, x):
         """  Forward method for layer
 
@@ -1437,13 +1403,7 @@ class GlobalNormFlipFlop(nn.Module):
         Returns:
             :torch:`Tensor`: Output of layer
         """
-        y = self.scale * self.activation(self.linear(x))
-
-        if self._use_cupy(x):
-            from .cupy_extensions import flipflop
-            return flipflop.global_norm(y)
-        else:
-            return global_norm_flipflop(y)
+        return self.scale * self.activation(self.linear(x))
 
 
 class GlobalNormFlipFlopCatMod(nn.Module):
@@ -1534,8 +1494,7 @@ class GlobalNormFlipFlopCatMod(nn.Module):
                 [0], np.arange(curr_n_mods + 1, curr_n_mods + 1 + bi_nmods)]))
             curr_n_mods += bi_nmods
 
-    def __init__(self, insize, alphabet_info, has_bias=True,
-                 _never_use_cupy=False):
+    def __init__(self, insize, alphabet_info, has_bias=True):
         """ Constructor for `GlobalNormFlipFlopCatMod` layer
 
         Args:
@@ -1545,9 +1504,6 @@ class GlobalNormFlipFlopCatMod(nn.Module):
                 equivalents.
             has_bias (bool, optional): Whether layer has bias. If `False`,
                 bias is initialised to zero and not trained.
-            _never_use_cupy (bool, optional):  If True, never use accelerated
-                cupy routine even if it is available.  Default will use cupy if
-                available.
         """
         # IMPORTANT these attributes (can_nmods, output_alphabet and
         # modified_base_long_names) are stable and depended upon by external
@@ -1555,7 +1511,6 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         super().__init__()
         self.insize = insize
         self.has_bias = has_bias
-        self._never_use_cupy = _never_use_cupy
 
         # Extract necessary values from alphabet_info
         self.alphabet = alphabet_info.alphabet
@@ -1622,33 +1577,6 @@ class GlobalNormFlipFlopCatMod(nn.Module):
             binit = truncated_normal(list(self.linear.bias.shape), sd=0.5)
             init_(self.linear.bias, binit)
 
-    def _use_cupy(self, x):
-        """ Determine whether cupy should be used
-
-        Note:
-            getattr used instead of simple look-up for backwards compatibility
-
-        Args:
-            x (:torch:`Tensor`): Sample input.
-
-        Returns:
-            bool: True if cupy available and `_never_use_cupy` is False.  False
-                otherwise.
-        """
-        if self._never_use_cupy or not x.is_cuda:
-            return False
-
-        if not x.is_cuda:
-            return False
-
-        try:
-            from .cupy_extensions import flipflop
-            # does nothing but satisfies flake8
-            flipflop
-            return True
-        except ImportError:
-            return False
-
     def get_softmax_cat_mods(self, cat_mod_scores):
         """ Get categorical modified base log probabilities from raw neural
         network outputs.
@@ -1692,19 +1620,13 @@ class GlobalNormFlipFlopCatMod(nn.Module):
             'Expected: {}  got: {}'.format(self.nmod_base + 1,
                                            cat_mod_scores.shape[2]))
 
-        if self._use_cupy(x):
-            from .cupy_extensions import flipflop
-            norm_trans_scores = flipflop.global_norm(trans_scores)
-        else:
-            norm_trans_scores = global_norm_flipflop(trans_scores)
-
         cat_mod_scores = self.get_softmax_cat_mods(cat_mod_scores)
         assert cat_mod_scores.shape[2] == self.nmod_base + self.ncan_base, (
             'Invalid softmax categorical mod scores:  ' +
             'Expected: {}  got: {}'.format(self.nmod_base + self.ncan_base,
                                            cat_mod_scores.shape[2]))
 
-        return torch.cat((norm_trans_scores, cat_mod_scores), dim=2)
+        return torch.cat((trans_scores, cat_mod_scores), dim=2)
 
 
 def is_cat_mod_model(net):
@@ -1916,3 +1838,42 @@ def DownUpSample(layer, nfold):
     """
     assert layer.size % nfold == 0, "Output of layer not divisible by nfold"
     return Serial([DownSample(nfold), layer, UpSample(nfold)])
+
+
+def _use_cupy(x):
+    """  Determine whether cupy should be used
+
+    Args:
+        x (:torch:`Tensor`): Sample input.
+
+    Returns:
+        bool: True if cupy available, False otherwise.
+    """
+    if not x.is_cuda:
+        return False
+
+    try:
+        from .cupy_extensions import flipflop
+        # does nothing but satisfies flake8
+        flipflop
+        return True
+    except ImportError:
+        return False
+
+
+def flipflop_logpartition(x, _never_use_cupy=False):
+    """  Log-partition function for flipflop model
+
+    Args:
+            x (:class:`tensor`): CRF weights output by network (T B W)
+    _never_use_cupy (bool): Don'y use accelerated function, even if
+        available.
+
+    Returns:
+            :class:`tensor`: log-partition for each batch
+    """
+    if _use_cupy(x) and not _never_use_cupy:
+        from .cupy_extensions import flipflop
+        return flipflop.logz(x)
+    else:
+        return log_partition_flipflop(x).squeeze(1)
