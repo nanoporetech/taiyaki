@@ -63,7 +63,7 @@ def get_parser():
     parser.add_argument('--scaling', action=FileExists, default=None,
                         help='Path to TSV containing per-read scaling params')
     parser.add_argument('--temperature', default=1.0, type=float,
-                        help='Scaling factor applied to network outputs before decoding')
+        help='Scaling factor applied to network outputs before decoding')
     parser.add_argument(
         "model", action=FileExists,
         help="Model checkpoint file to use for basecalling")
@@ -270,7 +270,8 @@ def main():
     initargs = [args.device, args.model, args.chunk_size, args.overlap,
                 all_read_params, args.alphabet,
                 args.max_concurrent_chunks, args.fastq, args.qscore_scale,
-                args.qscore_offset, args.beam, args.posterior, args.temperature]
+                args.qscore_offset, args.beam, args.posterior,
+                args.temperature]
     pool = Pool(args.jobs, initializer=worker_init, initargs=initargs)
     with open_file_or_stdout(args.output) as fh:
         for read_id, basecall, qstring, read_nsample in \
