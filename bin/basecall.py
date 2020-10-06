@@ -31,8 +31,8 @@ def get_parser():
         recursive version""".split())
 
     parser.add_argument('--beam', default=None, metavar=('width', 'guided'),
-        nargs=2, type=(int, bool), action=ParseToNamedTuple,
-        help='Use beam search decoding')
+                        nargs=2, type=(int, bool), action=ParseToNamedTuple,
+                        help='Use beam search decoding')
     parser.add_argument(
         "--chunk_size", type=Positive(int), metavar="blocks",
         default=basecall_helpers._DEFAULT_CHUNK_SIZE,
@@ -49,7 +49,7 @@ def get_parser():
         default=basecall_helpers._DEFAULT_OVERLAP,
         help="Overlap between signal chunks sent to GPU")
     parser.add_argument('--posterior', default=True, action=AutoBool,
-        help='Use posterior-viterbi decoding')
+                        help='Use posterior-viterbi decoding')
     parser.add_argument(
         "--qscore_offset", type=float,
         default=0.0,
@@ -60,10 +60,10 @@ def get_parser():
     parser.add_argument(
         '--reverse', default=False, action=AutoBool,
         help='Reverse sequences in output')
-    parser.add_argument( '--scaling', action=FileExists, default=None,
-        help='Path to TSV containing per-read scaling params')
+    parser.add_argument('--scaling', action=FileExists, default=None,
+                        help='Path to TSV containing per-read scaling params')
     parser.add_argument('--temperature', default=1.0, type=float,
-        help='Scaling factor applied to network outputs before decoding')
+                        help='Scaling factor applied to network outputs before decoding')
     parser.add_argument(
         "model", action=FileExists,
         help="Model checkpoint file to use for basecalling")
