@@ -30,9 +30,10 @@ def get_parser():
         input_strand_list jobs limit output quiet
         recursive version""".split())
 
-    parser.add_argument('--beam', default=None, metavar=('width', 'guided'),
-                        nargs=2, type=(int, bool), action=ParseToNamedTuple,
-                        help='Use beam search decoding')
+    parser.add_argument(
+        '--beam', default=None, metavar=('width', 'guided'), nargs=2,
+        type=(int, bool), action=ParseToNamedTuple,
+        help='Use beam search decoding')
     parser.add_argument(
         "--chunk_size", type=Positive(int), metavar="blocks",
         default=basecall_helpers._DEFAULT_CHUNK_SIZE,
@@ -41,18 +42,18 @@ def get_parser():
         '--fastq', default=False, action=AutoBool,
         help='Write output in fastq format (default is fasta)')
     parser.add_argument(
-        "--max_concurrent_chunks", type=Positive(int),
-        default=128, help="Maximum number of chunks to call at "
+        "--max_concurrent_chunks", type=Positive(int), default=128,
+        help="Maximum number of chunks to call at "
         "once. Lower values will consume less (GPU) RAM.")
     parser.add_argument(
         "--overlap", type=NonNegative(int), metavar="blocks",
         default=basecall_helpers._DEFAULT_OVERLAP,
         help="Overlap between signal chunks sent to GPU")
-    parser.add_argument('--posterior', default=True, action=AutoBool,
-                        help='Use posterior-viterbi decoding')
     parser.add_argument(
-        "--qscore_offset", type=float,
-        default=0.0,
+        '--posterior', default=True, action=AutoBool,
+        help='Use posterior-viterbi decoding')
+    parser.add_argument(
+        "--qscore_offset", type=float, default=0.0,
         help="Offset to apply to q scores in fastq (after scale)")
     parser.add_argument(
         "--qscore_scale", type=float, default=1.0,
@@ -60,8 +61,9 @@ def get_parser():
     parser.add_argument(
         '--reverse', default=False, action=AutoBool,
         help='Reverse sequences in output')
-    parser.add_argument('--scaling', action=FileExists, default=None,
-                        help='Path to TSV containing per-read scaling params')
+    parser.add_argument(
+        '--scaling', action=FileExists, default=None,
+        help='Path to TSV containing per-read scaling params')
     parser.add_argument(
         '--temperature', default=1.0, type=float,
         help='Scaling factor applied to network outputs before decoding')
@@ -174,7 +176,8 @@ def process_read(
         qscore_scale (float): Scaling factor for Q score calibration.
         qscore_offset (float): Offset for Q score calibration.
         beam (None or NamedTuple): Use beam search decoding
-        temperature (float): multiplier for network output
+        posterior (bool): Decode using posterior probability of transitions
+        temperature (float): Multiplier for network output
 
     Returns:
         tuple of str and str and int: strings containing the called bases and
