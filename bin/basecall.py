@@ -62,7 +62,8 @@ def get_parser():
         help='Reverse sequences in output')
     parser.add_argument('--scaling', action=FileExists, default=None,
                         help='Path to TSV containing per-read scaling params')
-    parser.add_argument('--temperature', default=1.0, type=float,
+    parser.add_argument(
+        '--temperature', default=1.0, type=float,
         help='Scaling factor applied to network outputs before decoding')
     parser.add_argument(
         "model", action=FileExists,
