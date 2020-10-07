@@ -113,11 +113,13 @@ clean_unittest:
 .PHONY: autopep8 pep8
 pyDirs := taiyaki test bin models misc
 pyFiles := $(shell find *.py ${pyDirs} -type f -name "*.py")
-autopep8:
-	autopep8 -i ${pyFiles} --max-line-length=79
+autopep8: venv
+	source venv/bin/activate && \
+		autopep8 -i ${pyFiles} --max-line-length=79
 
-pep8:
-	pep8 --ignore E203,E402 --max-line-length=79 ${pyFiles}
+pep8: venv
+	source venv/bin/activate && \
+		pep8 --ignore E203,E402 --max-line-length=79 ${pyFiles}
 
 
 .PHONY: workflow
