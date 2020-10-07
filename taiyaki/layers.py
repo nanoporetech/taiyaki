@@ -58,7 +58,7 @@ def random_orthonormal(n, m=None):
     """
     m = n if m is None else m
     assert m >= n
-    x = np.random.rand(m, m)
+    x = np.random.randn(m, m)
     Q, r = linalg.qr(x, mode='economic')
     # Make diag matrix which flips first element of each row of r to positive
     flipper = np.diag(np.sign(np.diag(r)))
