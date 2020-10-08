@@ -340,22 +340,24 @@ float flipflop_beamsearch(const float * score, size_t nbase, size_t nblock,
 
     beamelt * currbeam = calloc(real_max_beam_width, sizeof(beamelt));
     beamelt * prevbeam = calloc(real_max_beam_width, sizeof(beamelt));
-    for(size_t i=0 ; i< nbase ; i++){
+    for(size_t i=0 ; i < nbase ; i++){
         currbeam[i] = beamelt_init(i, seed);
     }
     size_t beam_width = nbase;
 
     for(size_t blk=0 ; blk < nblock ; blk++){
+        //  Iterate block at a time, trying all extensions of beam
         size_t nelt = 0;
         const float * currscore = score + blk * ntrans;
         const float * bwdscore = bwd + blk * nstate + nstate;
         {
+            //  Swap previous and current arrays of beam elements
             beamelt * tmp = prevbeam;
             prevbeam = currbeam;
             currbeam = tmp;
         }
 
-        //  Good lower bound on max score
+        //  Good lower bound on max score for beam cutting
         float max_score = NAN;
         {
             size_t prevbase = yastring_lastchar(prevbeam[0].seq);
@@ -372,11 +374,12 @@ float flipflop_beamsearch(const float * score, size_t nbase, size_t nblock,
 
 
         for(size_t i=0 ; i < beam_width ; i++){
-            //     Deal with all extensions of beam.
+            //  Iterate through all element of beam trying all extensions
             //  Since elements of beam are unique, so are the extensions
             const beamelt pelt = prevbeam[i];
             const base_t prevbase = yastring_lastchar(pelt.seq);
             for(size_t base=0 ; base < nbase ; base++){
+                //  Try extension with base.  `newbase` is flip-flop encoding
                 uint64_t newbase = (base != prevbase) ? base : (prevbase + nbase);
                 float newscore = pelt.score + currscore[MOVE_IDX(prevbase, newbase, nbase)] + bwdscore[newbase];
                 if(newscore < max_score + logbeamcut){
@@ -386,6 +389,7 @@ float flipflop_beamsearch(const float * score, size_t nbase, size_t nblock,
                 if(newscore > max_score){
                     max_score = newscore;
                 }
+                //  Add to array of beam extension records
                 uint64_t newhash = chainfasthash64(pelt.hash, newbase);
                 beamext[nelt] = (beamrec){newhash, newbase, newscore, i};
                 nelt += 1;
@@ -393,6 +397,8 @@ float flipflop_beamsearch(const float * score, size_t nbase, size_t nblock,
         }
 
         for(size_t i=0 ; i < beam_width ; i++){
+            //  Iterate through all element of beam trying all stays
+            //  May be equal (by hash) to a previous record, merged later
             const beamelt pelt = prevbeam[i];
             const base_t base = yastring_lastchar(pelt.seq);
             const float newscore = pelt.score + currscore[STAY_IDX(base, nbase)] + bwdscore[base];
@@ -403,6 +409,7 @@ float flipflop_beamsearch(const float * score, size_t nbase, size_t nblock,
             if(newscore > max_score){
                 max_score = newscore;
             }
+            //  Add to array of beam extension records
             beamrec newrec = {pelt.hash, -1, newscore, i};
             beamext[nelt] = newrec;
             nelt += 1;
@@ -413,8 +420,9 @@ float flipflop_beamsearch(const float * score, size_t nbase, size_t nblock,
         size_t nelt_uniq = 1;
         for(size_t i=1, j=0 ; i < nelt ; i++){
             if(beamext[i].hash == beamext[j].hash){
+                //  Have same hash, merge
                 beamext[j].score = logsumexpf(beamext[i].score, beamext[j].score);
-                beamext[i].score = -HUGE_VAL;  // End up last, sorted by score
+                beamext[i].score = -HUGE_VAL;  // End up last, when sorted by score
             } else {
                 j = i;
                 nelt_uniq += 1;
@@ -426,7 +434,7 @@ float flipflop_beamsearch(const float * score, size_t nbase, size_t nblock,
         assert(isordered(beamext, nelt, sizeof(beamrec), beamrec_cmpscore));
         size_t new_beam_width = MIN(max_beam_width, nelt_uniq);
         for(size_t i=0 ; i < new_beam_width ; i++){
-            // Copy best elements
+            // Copy best elements into current beam
             currbeam[i] = beamelt_copy(prevbeam[beamext[i].origbeam]);
             if(beamext[i].base != -1){
                 // Not a stay -- hash and state sequence have changed
