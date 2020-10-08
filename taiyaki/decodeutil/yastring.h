@@ -7,8 +7,8 @@
 #include <stdlib.h>
 
 typedef struct _yastring {
-    char * str;
-    size_t len, cap;
+    char * str;       // Memory to store string
+    size_t len, cap;  // length of string and total capacity
 } yastring;
 
 

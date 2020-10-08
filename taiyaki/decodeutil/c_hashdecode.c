@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "c_hashdecode.h"
 #include "fasthash.h"
 #include "qsort.h"
 #include "yastring.h"
@@ -13,39 +14,71 @@
 #define MOVE_IDX(FROM, TO, N) ((FROM) + 2 * (N) * (((TO) < (N)) ? (TO) : (N)))
 #define STAY_IDX(A, N) MOVE_IDX(A, A, N)
 
-typedef int8_t base_t;
 
+/**  Stable calculation of logsumexp
+ *
+ *   Calculates log(exp(x) + exp(y)) in a stable fashion as
+ *   max(x, y) + log(1 + exp(min(x, y) - max(x, y)))
+ *
+ *   @param x
+ *   @param t
+ *
+ *   @returns Logsumexp of x and y.
+ **/
 float logsumexpf(float x, float y){
     float absdif = fabsf(x - y);
+    // expf(-17.0f) is too small to be represented, so short-circuit calculation
     return fmaxf(x, y) + ((absdif < 17.0f) ? log1pf(expf(-absdif)) : 0.0f);
 }
 
 
+/**  Number of flip-flop states
+ *
+ *   @param nbase      Number of bases
+ *
+ *   @returns Number of flip-flop states
+ **/
 size_t nstate_from_nbase(size_t nbase){
     return nbase + nbase;
 }
 
 
+/**  Number of flip-flop transitions
+ *
+ *   @param nbase      Number of bases
+ *
+ *   @returns Number of flip-flop transitions
+ **/
 size_t ntrans_from_nbase(size_t nbase){
     return (nbase + nbase) * (nbase + 1);
 }
 
 
+/**  Element of beam
+ **/
 typedef struct _beamelt {
-    yastring seq;
-    uint64_t hash;
-    float score;
+    yastring seq;    //  Sequence
+    uint64_t hash;   //  Hash of sequence
+    float score;     //  Score of sequence
 } beamelt;
 
-
+/**  Record of beam extension
+ **/
 typedef struct _beamrec {
-    uint64_t hash;
-    base_t base;
-    float score;
-    size_t origbeam;
+    uint64_t hash;    //  Hash of extending beam sequence by base
+    base_t base;      //  Base which sequence of beam was extended by
+    float score;      //  Score of extension
+    size_t origbeam;  //  Which element of beam was extended
 } beamrec;
 
 
+/**  Pretty print beam extension record
+ *
+ *   @param fh     File handle
+ *   @param elt    Beam extension record to print
+ *
+ *   @returns void
+ **/
 void beamrec_fprint(FILE * fh, const beamrec elt){
     fprintf(fh, "%lx from beam %zu + %d has score %f\n",
             elt.hash, elt.origbeam, elt.base, elt.score);
@@ -53,6 +86,13 @@ void beamrec_fprint(FILE * fh, const beamrec elt){
 
 
 static const char ALPHA[9] = "ACGTacgt";
+/**  Pretty print beam element
+ *
+ *   @param fh     File handle
+ *   @param elt    Beam element
+ *
+ *   @returns void
+ **/
 void beamelt_fprint(FILE * fh, const beamelt elt){
     fprintf(fh, "%lx has score %f\n", elt.hash, elt.score);
     for(size_t i=0 ; i < elt.seq.len ; i++){
@@ -62,6 +102,16 @@ void beamelt_fprint(FILE * fh, const beamelt elt){
 }
 
 
+/**  Sort array of beam extension records by hash
+ *
+ *   Inplace sort of array of beam extension records,
+ *     ordered by hash value
+ *
+ *   @param A  Array[n] of beam extension records
+ *   @param n  Number of beam extension records to sort
+ *
+ *   @returns void
+ **/
 void beamrec_sorthash(beamrec * A, size_t n){
     beamrec tmp;
 #define LESS(i, j) A[i].hash > A[j].hash
@@ -70,6 +120,16 @@ void beamrec_sorthash(beamrec * A, size_t n){
 }
 
 
+/**  Sort array of beam extension records by score
+ *
+ *   Inplace sort of array of beam extension records,
+ *     ordered by score
+ *
+ *   @param A  Array[n] of beam extension records
+ *   @param n  Number of beam extension records to sort
+ *
+ *   @returns void
+ **/
 void beamrec_sortscore(beamrec * A, size_t n){
     beamrec tmp;
 #define LESS(i, j) A[i].score > A[j].score
@@ -78,6 +138,16 @@ void beamrec_sortscore(beamrec * A, size_t n){
 }
 
 
+/**  Binary search (hash-ordered) array of beam extension records
+ *
+ *   Records are considered equivalent if they have the same hash
+ *
+ *   @param elt    Beam extension record to search for
+ *   @param A      Array[n] of beam extension records
+ *   @param n      Number of beam extension records to sort
+ *
+ *   @returns
+ **/
 beamrec * beamrec_bsearchhash(beamrec elt, beamrec * A, size_t n){
 	if(NULL == A || 0 == n){ return NULL;}
     int64_t lp = 0;
@@ -102,7 +172,14 @@ beamrec * beamrec_bsearchhash(beamrec elt, beamrec * A, size_t n){
 }
 
 
-
+/**  Compare two beam extension records by hash
+ *
+ *   @param rec1    First beam extension record
+ *   @param rec2    First beam extension record
+ *
+ *   @returns 0 if two records are equivalent, positive if the second record
+ *   has the greater hash, and negative if the first is greater.
+ **/
 int beamrec_cmphash(const void * rec1, const void *rec2){
     assert(NULL != rec1);
     assert(NULL != rec2);
@@ -114,7 +191,14 @@ int beamrec_cmphash(const void * rec1, const void *rec2){
     return (hash1 < hash2) - (hash1 > hash2);
 }
 
-
+/**  Compare two beam extension records by score
+ *
+ *   @param rec1    First beam extension record
+ *   @param rec2    First beam extension record
+ *
+ *   @returns 0 if two records have equal scores, positive if the second
+ *   record has the greater score, and negative if the first is greater.
+ **/
 int beamrec_cmpscore(const void * rec1, const void *rec2){
     assert(NULL != rec1);
     assert(NULL != rec2);
@@ -127,6 +211,13 @@ int beamrec_cmpscore(const void * rec1, const void *rec2){
 }
 
 
+/**  Create a beam element
+ *
+ *   @param state   Initial state of beam
+ *   @param seed    Seed for hash
+ *
+ *   @returns new beam element
+ **/
 beamelt beamelt_init(char state, uint64_t seed){
     return (beamelt){.seq=yastring_append(yastring_new(), state),
                      .hash=chainfasthash64(seed, state),
@@ -134,10 +225,26 @@ beamelt beamelt_init(char state, uint64_t seed){
 }
 
 
+/**  Free beam element
+ *
+ *   After freeing, the pointer in the input beam element is
+ *     no longer valid.
+ *
+ *   @param elt  beam element to free
+ *
+ *   @returns void
+ **/
 void beamelt_free(beamelt elt){
     yastring_free(elt.seq);
 }
 
+
+/**  Copy beam element
+ *
+ *   @param elt  beam element to copy
+ *
+ *   @returns void
+ **/
 beamelt beamelt_copy(const beamelt elt){
     return (beamelt){.seq = yastring_copy(elt.seq),
                      .hash = elt.hash,
@@ -145,6 +252,14 @@ beamelt beamelt_copy(const beamelt elt){
 }
 
 
+/**  Compare two beam elements by score
+ *
+ *   @param rec1    First beam element
+ *   @param rec2    First beam element
+ *
+ *   @returns 0 if two elements have equal scores, positive if the second
+ *   record has the greater score, and negative if the first is greater.
+ **/
 int beamelt_cmpscore(void * elt1, void * elt2){
     const beamelt _elt1 = *(beamelt *) elt1;
     const beamelt _elt2 = *(beamelt *) elt2;
@@ -155,6 +270,14 @@ int beamelt_cmpscore(void * elt1, void * elt2){
 }
 
 
+/**  Compare two beam elements by hash
+ *
+ *   @param rec1    First beam element
+ *   @param rec2    First beam element
+ *
+ *   @returns 0 if two elements have equal hashes, positive if the second
+ *   record has the greater hash, and negative if the first is greater.
+ **/
 int beamelt_cmpstate(void * elt1, void * elt2){
     const beamelt _elt1 = *(beamelt *) elt1;
     const beamelt _elt2 = *(beamelt *) elt2;
@@ -165,6 +288,18 @@ int beamelt_cmpstate(void * elt1, void * elt2){
 }
 
 
+
+/**  Is an array ordered?
+ *
+ *   Short-circuits if two elements are found to be out of order
+ *
+ *   @param x       Array[nelt] of elements, each `size` bytes
+ *   @param nelt    Number of elements in array
+ *   @param size    Size of each element
+ *   @param cmp     Comparision function
+ *
+ *   @returns `true` if array is order, `false` otherwise
+ **/
 bool isordered(void * x, size_t nelt, size_t size, int (*cmp)(const void *, const void*)){
     size_t xc = (size_t) x;
     for(size_t i=size ; i < nelt * size ; i+=size){
@@ -177,16 +312,15 @@ bool isordered(void * x, size_t nelt, size_t size, int (*cmp)(const void *, cons
 
 /**  Beam-search to determine best flip-flop sequence
  *
- *   Args:
- *       score:           Array [nblock x ntrans] of scores
- *       nbase:           Number of bases for flip-flop
- *       nblock:          Number blocks for which scores are provided
- *       bwd:             Array [nblock x nstate] of backwards scores
- *       max_beam_width:  Width of beam (number of values retained between steps).
- *       seq [out]:       Buffer to write-out sequence found.  Should contain
- *   sufficient space for output (maximum nblock).
+ *   @param score           Array [nblock x ntrans] of scores
+ *   @param nbase           Number of bases for flip-flop
+ *   @param nblock          Number blocks for which scores are provided
+ *   @param bwd             Array [nblock x nstate] of backwards scores
+ *   @param max_beam_width  Width of beam (number of values retained between steps).
+ *   @param seq [out]       Buffer to write-out sequence found.  Should contain
+ *      sufficient space for output (maximum nblock).
  *
- *   Returns: score of best sequence found.  Best sequence is written to `seq`
+ *   @Returns score of best sequence found.  Best sequence is written to `seq`
  **/
 float flipflop_beamsearch(const float * score, size_t nbase, size_t nblock,
         const float * bwd, int max_beam_width, float beamcut, base_t * seq){
@@ -336,6 +470,13 @@ float flipflop_beamsearch(const float * score, size_t nbase, size_t nblock,
 #ifdef DECODEUTIL_TEST
 #include <stdio.h>
 
+
+/**  Uniform random float
+ *
+ *   Interval closed on both sides [0, 1] (check)
+ *
+ *   @returns random float
+ **/
 float randomf(void){
     float res = (float)((double)random() / RAND_MAX);
     assert(res >= 0.0f);
@@ -344,6 +485,14 @@ float randomf(void){
 }
 
 
+/**  Observation from standard normal distribution
+ *
+ *   Box-Muller method.
+ *
+ *   @note  Uses static memory, not thread-safe.
+ *
+ *   @returns random float
+ **/
 float randn(void){
     static float _randn_state = NAN;
     if(finitef(_randn_state)){
