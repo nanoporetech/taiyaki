@@ -8,7 +8,9 @@ from taiyaki.flipflopfings import nbase_flipflop
 from taiyaki.layers import log_partition_flipflop
 from taiyaki.maths import logsumexp
 
+
 class TestDecodeutilFlipflop(unittest.TestCase):
+
     @classmethod
     def setUpClass(self):
         np.random.seed(0xdeadbeef)
@@ -28,7 +30,6 @@ class TestDecodeutilFlipflop(unittest.TestCase):
         print(decodeutil.forward(self.weights, init=None)[1])
         self.assertAlmostEqual(fwd_score, self.tensor_score, places=5)
 
-
     def test_bwd_equals_global_norm(self):
         nbase = int(nbase_flipflop(self.weights.shape[1]))
         nstate = nbase + nbase
@@ -36,18 +37,17 @@ class TestDecodeutilFlipflop(unittest.TestCase):
         bwd_score = float(logsumexp(bwd[0, :nbase], axis=0))
         self.assertAlmostEqual(bwd_score, self.tensor_score, places=5)
 
-
     def test_fwd_score_equals_bwd_score(self):
         bwd, _ = decodeutil.backward(self.weights)
         bwd_score = float(logsumexp(bwd[0], axis=0))
         fwd, _ = decodeutil.forward(self.weights)
         fwd_score = float(logsumexp(fwd[-1], axis=0))
-        print(fwd_score, bwd_score, logsumexp(self.weights.reshape(-1), axis=0))
+        print(fwd_score, bwd_score, logsumexp(
+            self.weights.reshape(-1), axis=0))
         print(fwd, bwd)
         self.assertAlmostEqual(bwd_score, self.expt_score, places=5)
         self.assertAlmostEqual(fwd_score, self.expt_score, places=5)
         self.assertAlmostEqual(fwd_score, bwd_score, places=5)
-
 
     def test_score_consistent(self):
         nt, ns = self.weights.shape
