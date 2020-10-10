@@ -52,7 +52,7 @@ def beamsearch(np.ndarray[np.float32_t, ndim=2, mode="c"] score,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def backward(np.ndarray[np.float32_t, ndim=2, mode="c"] score):
+def backward(np.ndarray[np.float32_t, ndim=2, mode="c"] score, init=None):
     """  Backwards calculation of flipflop scores
 
     Performs backward algorithm back the flipflop CRF, returning the backward
@@ -60,6 +60,8 @@ def backward(np.ndarray[np.float32_t, ndim=2, mode="c"] score):
 
     Args:
         score (:class:`ndarray`): input scores (output of network) for decoding
+        init (None or :class:`ndarray`): Array[nbase+nbase] containing initial
+           state or None.
 
     Returns:
         Tuple[:class:`ndarray`, float]: backward scores and log-partition
@@ -70,6 +72,9 @@ def backward(np.ndarray[np.float32_t, ndim=2, mode="c"] score):
     nbase = nbase_flipflop(nf)
 
     cdef np.ndarray[np.float32_t, ndim=2, mode="c"] res = np.zeros((nt + 1, nbase + nbase), dtype='f4')
+    if init is not None:
+        res[nt] = init
+
     read_score = libdecodeutil.flipflop_backward(&score[0,0], nbase, nt, &res[0, 0])
 
     return res, read_score
@@ -77,7 +82,7 @@ def backward(np.ndarray[np.float32_t, ndim=2, mode="c"] score):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def forward(np.ndarray[np.float32_t, ndim=2, mode="c"] score):
+def forward(np.ndarray[np.float32_t, ndim=2, mode="c"] score, init=None):
     """  Forwards calculation of flipflop scores
 
     Performs forward algorithm for the flipflop CRF, returning the forward
@@ -85,6 +90,8 @@ def forward(np.ndarray[np.float32_t, ndim=2, mode="c"] score):
 
     Args:
         score (:class:`ndarray`): input scores (output of network) for decoding
+        init (None or :class:`ndarray`): Array[nbase+nbase] containing initial
+           state or None.
 
     Returns:
         Tuple[:class:`ndarray`, float]: forward scores and log-partition
@@ -95,6 +102,9 @@ def forward(np.ndarray[np.float32_t, ndim=2, mode="c"] score):
     nbase = nbase_flipflop(nf)
 
     cdef np.ndarray[np.float32_t, ndim=2, mode="c"] res = np.zeros((nt + 1, nbase + nbase), dtype='f4')
+    if init is not None:
+        print('init is', init)
+        res[0] = init
     read_score = libdecodeutil.flipflop_forward(&score[0,0], nbase, nt, &res[0, 0])
 
     return res, read_score

@@ -30,7 +30,8 @@ static float logsumexpf(float x, float y){
  *    @param score      Array containing scores (nblock, ntrans)
  *    @param nbase      Number of bases
  *    @param nblock     Number of block (time-points) in score
- *    @param bwd [out]  Array for backwards scores (nblock + 1, nstate)
+ *    @param bwd [out]  Array for backwards scores (nblock + 1, nstate).  Last nstates
+ *                         elements of array should be set to initial values on input.
  *
  *    @returns score
  **/
@@ -41,13 +42,6 @@ float flipflop_backward(const float * score, size_t nbase, size_t nblock, float 
     const size_t nstate = nbase + nbase;
     const size_t ntrans = nstate * (nbase + 1);
 
-    {
-        // Initialise first scores
-        const size_t offset = nblock * nstate;
-        for(size_t i=0 ; i < nstate ; i++){
-            bwd[offset + i] = 0.0f;
-        }
-    }
 
     for(size_t blk=nblock ; blk > 0 ; blk--){
         const size_t blkm1 = blk - 1;
@@ -97,7 +91,8 @@ float flipflop_backward(const float * score, size_t nbase, size_t nblock, float 
  *    @param score      Array containing scores (nblock, ntrans)
  *    @param nbase      Number of bases
  *    @param nblock     Number of block (time-points) in score
- *    @param fwd [out]  Array for forwards scores (nblock + 1, nstate)
+ *    @param fwd [out]  Array for forwards scores (nblock + 1, nstate).  First nstate
+ *                         elements of array should be set to initial values on input.
  *
  *    @returns score
  **/
@@ -107,13 +102,6 @@ float flipflop_forward(const float * score, size_t nbase, size_t nblock, float *
 
     const size_t nstate = nbase + nbase;
     const size_t ntrans = nstate * (nbase + 1);
-
-    {
-        // Initialise first scores
-        for(size_t i=0 ; i < nstate ; i++){
-            fwd[i] = 0.0f;
-        }
-    }
 
     for(size_t blk=0 ; blk < nblock ; blk++){
         const size_t blkp1 = blk + 1;
