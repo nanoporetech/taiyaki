@@ -32,7 +32,6 @@ class TestDecodeutilFlipflop(unittest.TestCase):
 
     def test_bwd_equals_global_norm(self):
         nbase = int(nbase_flipflop(self.weights.shape[1]))
-        nstate = nbase + nbase
         bwd, _ = decodeutil.backward(self.weights)
         bwd_score = float(logsumexp(bwd[0, :nbase], axis=0))
         self.assertAlmostEqual(bwd_score, self.tensor_score, places=5)
