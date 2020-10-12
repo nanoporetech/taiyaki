@@ -14,7 +14,7 @@ def beamsearch(np.ndarray[np.float32_t, ndim=2, mode="c"] score,
       calls.
 
     Notes:
-        Beams are cut in log-space, so `beam_cut` of 0.0 mean no beam are cut.
+        Beams are cut in log-space, so `beam_cut` of 0.0 means no beams are cut.
           Value of beam_cut is approximately the Bayes factor between the
           proposed and best element of the beam.  Because best is updated
           continuously as base extensions are proposed, elements of the beam
@@ -23,7 +23,8 @@ def beamsearch(np.ndarray[np.float32_t, ndim=2, mode="c"] score,
 
     Args:
         score (:class:`ndarray`): input scores (output of network) for decoding
-        beam_cut (float): minidifference between
+        beam_cut (float): discard beam extensions whose score is `beam_cut` or
+           more worse than the best found.
         beam_width (int): Maximum width (number of elements) in beam
         guided (bool): Whether to inform decoding using backwards scores
 
