@@ -256,25 +256,34 @@ With the default settings, the script `taiyaki/bin/basecall.py` produces `fasta`
 
 ## Modified Bases
 
-Taiyaki enables the training of models to predict the presence of modified bases (a.k.a. non-canonical or alternative bases) alongside the standard flip-flop canonical base probabilities via an alteration to the model architecture (model architecture referred to as categorical modifications, or `cat_mod` for short).
-This alteration results in a second stream of data from the neural network which represents the probability that any base is canonical or modified (potentially including any number of modifications).
+Taiyaki enables the training of modified base basecalling (modbase) models.
+Modbase models will produce standard canonical basecalls along with the probability that each base is actually a modified alternative (e.g. 5mC, 5hmC, 6mA, etc.).
 
-A number of adjustments to the training workflow are required to train a modified base model.
-These adjustments begin with the “FASTA with reference sequence for each read” which is input to the `prepare_mapped_reads.py` command.
-This FASTA file should contain ground truth per-read references annotated with modified base locations.
+Modified base training requires the ground truth modified base content of each training read.
+This is provided as the input to the `prepare_mapped_reads.py` step of the training pipeline.
+Alternatively, Megalodon provides options to produce modified base mapped signal file in a single command for certain sample types.
+See [documentation for these options here](https://nanoporetech.github.io/megalodon/modbase_training.html).
 
-The single letter codes used to represent modified bases can be arbitrary and are defined using the `--mod` command line argument to the `prepare_mapped_reads.py` command.
-The `--mod` argument takes three parameters: the letter representing the modified base, the letter representing its canonical representation, and a long name.
-The `--mod` argument should be repeated once for each modification.
-For example, to encode 5-methyl-cytosine and 6-methyl-adenosine with the single letter codes `Z` and `Y` respectively, the following commandline arguments would be added `--mod Z C 5mC --mod Y A 6mA`.
-These values will be stored in the prepared signal mapped HDF5 output file for use in training downstream.
+In either case, the accuracy of this modified base markup is essential to producing a highly accurate modified base model.
 
-Next the `mapped-signal-file` is passed into the `train_flipflop.py` command.
-This script requires a `cat_mod` model to be provided (e.g. `taiyaki/models/mGru_cat_mod_flipflop.py`).
+Modifed bases in the references FASTA file provided to `prepare_mapped_reads.py` are represented by a single letter code.
+Each modified base must be annotated with its corresponding canonical base as well as a "long name".
+This specification is provided via the `--mod` argument to `prepare_mapped_reads.py`, which takes 3 arguments
+1. Single letter modified base code (used in references FASTA file)
+2. Corresponging single letter canonical base code (`A`, `C`, `G, or `T`)
+3. Modified base long name (e.g. `5mC`, `5hmC`, `6mA`, etc.)
+These values will be stored in the mapped signal file and later the produced model.
+It is recommended that modified base codes follow [specifications from the DNAmod database](https://dnamod.hoffmanlab.org/) if possible (though many single letter codes are not defined).
+For example, to encode 5-methyl-cytosine and 6-methyl-adenosine with the single letter codes `m` and `a` respectively, the following command line arguments would be added `--mod m C 5mC --mod a A 6mA`.
+
+In addition to the modbase training data, a modbase model requires a categorical modifications (`cat_mod`) model architecture.
+This model replaces the flip-flop layer with a similar layer adding the logic to produce modified base probabilities.
+The recommended architecture is found in `models/mLstm_cat_mod_flipflop.py` and should be passed to `train_flipflop.py` command as first `model` argument.
+
 The `--mod_factor` argument controls the proportion of the training loss attributed to the modified base output stream in comparison to the canonical base output stream.
-When training a model from scratch it is generally recommended to set this factor to a lower value (`0.01` for example) to train the model to call canonical bases and then restart training with a larger value, `0.1 -- 1`, value in order to train the model to identify modified bases.
+The default value of `1` should provide a high quality model in most cases (note this is different from previous recommendations).
 
-Modified base models can be used in `guppy` to call modified base anchored to the basecalls or `megalodon` to call modified bases anchored to a reference.
+Modified base models can be used in `Guppy` to call modified base anchored to the basecalls or `Megalodon` to call modified bases anchored to a reference.
 
 ## Abinitio training
 
