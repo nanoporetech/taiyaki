@@ -5,7 +5,7 @@ import re
 import sys
 import h5py
 import argparse
-from taiyaki import mapped_signal_files
+from taiyaki.mapped_signal_files import MappedSignalReader
 
 
 def get_parser():
@@ -41,10 +41,10 @@ def get_parser():
 
 def main():
     args = get_parser().parse_args()
-    with mapped_signal_files.HDF5Reader(args.input) as hin:
-        alphabet_info = hin.get_alphabet_information()
+    with MappedSignalReader(args.input) as msr:
+        alphabet_info = msr.get_alphabet_information()
         if args.print_read_total:
-            n_reads = len(hin.get_read_ids())
+            n_reads = len(msr.get_read_ids())
     sys.stderr.write('File, "{}", currently contains: {}\n'.format(
         args.input, str(alphabet_info)))
     if args.print_read_total:

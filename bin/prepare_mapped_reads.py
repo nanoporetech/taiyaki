@@ -33,6 +33,12 @@ def get_parser():
     parser.add_argument(
         '--mod', nargs=3, metavar=('base', 'canonical', 'name'),
         default=[], action='append', help='Modified base description')
+    parser.add_argument(
+        '--batch_format', action='store_true',
+        help='Output batched mapped signal file format. This can ' +
+        'significantly improve I/O performance and use less ' +
+        'disk space. An entire batch must be loaded into memory in order ' +
+        'access any read potentailly increasing RAM requirements.')
 
     parser.add_argument(
         'input_per_read_params', action=FileExists,
@@ -116,7 +122,8 @@ def main():
 
     # results is an iterable of dicts
     # each dict is a set of return values from a single read
-    generate_output_from_results(results, args.output, alphabet_info)
+    generate_output_from_results(
+        results, args.output, alphabet_info, args.batch_format)
 
 
 if __name__ == '__main__':

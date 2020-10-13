@@ -94,14 +94,15 @@ class TestMappedReadFiles(unittest.TestCase):
             testfilepath = fh.name
         alphabet_info = alphabet.AlphabetInfo(
             DEFAULT_ALPHABET, DEFAULT_ALPHABET)
-        with mapped_signal_files.HDF5Writer(testfilepath, alphabet_info) as f:
+        with mapped_signal_files.MappedSignalWriter(
+                testfilepath, alphabet_info) as f:
             f.write_read(read_object.get_read_dictionary())
 
         print("Current dir = ", os.getcwd())
         print("File written to ", testfilepath)
 
         print("\nOpening file for reading")
-        with mapped_signal_files.HDF5Reader(testfilepath) as f:
+        with mapped_signal_files.MappedSignalReader(testfilepath) as f:
             ids = f.get_read_ids()
             print("Read ids=", ids[0])
             print("Version number = ", f.version)
@@ -111,7 +112,7 @@ class TestMappedReadFiles(unittest.TestCase):
             print("Test report:", file_test_report)
             self.assertEqual(file_test_report, "pass")
 
-            read_list = f.get_multiple_reads("all")
+            read_list = list(f.reads())
 
         recovered_read = read_list[0]
         reflen = len(recovered_read.Reference)
@@ -183,7 +184,8 @@ class TestMappedReadFiles(unittest.TestCase):
         with tempfile.NamedTemporaryFile(
                 delete=True, dir=self.testset_work_dir) as fh:
             testfilepath = fh.name
-        with mapped_signal_files.HDF5Writer(testfilepath, alphabet_info) as f:
+        with mapped_signal_files.MappedSignalWriter(
+                testfilepath, alphabet_info) as f:
             try:
                 f.write_read(invalid_read_object.get_read_dictionary())
             except signal_mapping.TaiyakiSigMapError:
@@ -195,7 +197,8 @@ class TestMappedReadFiles(unittest.TestCase):
         with tempfile.NamedTemporaryFile(
                 delete=False, dir=self.testset_work_dir) as fh:
             testfilepath = fh.name
-        with mapped_signal_files.HDF5Writer(testfilepath, alphabet_info) as f:
+        with mapped_signal_files.MappedSignalWriter(
+                testfilepath, alphabet_info) as f:
             try:
                 f.write_read(valid_read_object.get_read_dictionary())
             except signal_mapping.TaiyakiSigMapError:
@@ -205,7 +208,7 @@ class TestMappedReadFiles(unittest.TestCase):
         print("File written to ", testfilepath)
 
         print("\nOpening valid file for reading")
-        with mapped_signal_files.HDF5Reader(testfilepath) as f:
+        with mapped_signal_files.MappedSignalReader(testfilepath) as f:
             ids = f.get_read_ids()
             print("Read ids=", ids[0])
             print("Version number = ", f.version)

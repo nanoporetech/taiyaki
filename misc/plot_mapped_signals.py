@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from taiyaki.cmdargs import Positive
-from taiyaki import mapped_signal_files
+from taiyaki.mapped_signal_files import MappedSignalReader
 
 if True:
     #  Protect in block to prevent autopep8 refactoring
@@ -33,7 +33,7 @@ def get_parser():
     parser.add_argument(
         '--read_ids',  nargs='+', default=[],
         help='One or more read_ids. If not present, plots the first ' +
-        'NREADS in each file')
+        '[--nreads] in each file')
     parser.add_argument(
         '--xmin', default=None, type=float,
         help='Minimum x for plot')
@@ -58,8 +58,8 @@ def get_parser():
         help='Do not display status messages.')
 
     parser.add_argument(
-        'mapped_read_files',  nargs='+',
-        help='Inputs: one or more mapped read files')
+        'mapped_signal_files',  nargs='+',
+        help='Inputs: one or more mapped signal files')
 
     return parser
 
@@ -69,9 +69,9 @@ def main():
     if args.output is not None:
         plt.figure(figsize=(12, 10))
     reads_sofar = 0
-    for nfile, mapped_read_file in enumerate(args.mapped_read_files):
-        with mapped_signal_files.HDF5Reader(mapped_read_file) as h5:
-            all_read_ids = h5.get_read_ids()
+    for nfile, ms_fn in enumerate(args.mapped_signal_files):
+        with MappedSignalReader(ms_fn) as msr:
+            all_read_ids = msr.get_read_ids()
             if len(args.read_ids) > 0:
                 read_ids = args.read_ids
             else:
@@ -79,19 +79,17 @@ def main():
                 if not args.quiet:
                     sys.stderr.write(
                         "Reading first {} read ids in file {}\n".format(
-                            args.nreads, mapped_read_file))
-            for nread, read_id in enumerate(read_ids):
-                r = h5.get_read(read_id)
-                mapping = r.Ref_to_signal
-                f = mapping >= 0
+                            args.nreads, ms_fn))
+            for nread, read in enumerate(msr.reads(read_ids)):
+                f = read.Ref_to_signal >= 0
                 if sum(f) == 0:
                     continue
                 if args.zero_signal_start:
-                    mapping[f] -= mapping[f][0]
-                maplen = len(mapping)
+                    read.Ref_to_signal[f] -= read.Ref_to_signal[f][0]
+                maplen = len(read.Ref_to_signal)
                 read_info_text = (
                     'file {} read {}:{} reflen:{}, daclen:{}').format(
-                        nfile, nread, read_id, maplen - 1, len(r.Dacs))
+                        nfile, nread, read.read_id, maplen - 1, len(read.Dacs))
                 if not args.quiet:
                     sys.stdout.write(read_info_text + '\n')
 
@@ -99,7 +97,7 @@ def main():
                     label = (read_info_text
                              if reads_sofar < args.maxlegendsize
                              else None)
-                    x, y = np.arange(maplen)[f], mapping[f]
+                    x, y = np.arange(maplen)[f], read.Ref_to_signal[f]
                     if args.xmin is not None:
                         xf = x >= args.xmin
                         x, y = x[xf], y[xf]

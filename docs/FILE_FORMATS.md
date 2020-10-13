@@ -42,7 +42,7 @@ These are fasta files where the comment line for each sequence is the UUID:
 ## Mapped signal files (v. 8)
 
 Data for training is stored in mapped signal files.
-The class **HDF5** in **taiyaiki/mapped_signal_files.py** provides an API for reading and writing these files, and also
+The **MappedSignalReader** and **MappedSignalWriter** in **taiyaiki/mapped_signal_files.py** provides an API for reading and writing these files, and also
 methods for checking that a file conforms to the specification.
 
 The files are HDF5 files with the following structure.
@@ -79,8 +79,12 @@ Each read_id is a UUID, and the data in each read group is:
 The current in pA is calculated from the integers in Dacs by the equation
 
     current = (Dacs + offset ) * range / digitisation
-    
-    
+
+The batched variant of the HDF5 mapped signal format was introduced in version 5.2.
+This variant replaces the ``Reads`` group with a ``Batches`` group.
+Each group within the ``Batches`` group contain the same set of attributes and datasets listed in the table above, but these values for a set of reads are concatenated together into one dataset per batch.
+For each variable length dataset, a new [dataset_name]_lengths dataset is added in order to split the data set by read (e.g. with ``numpy.split``).
+The batched format is readalbe via the same API within the ``mapped_signal_files`` modeule.
 
 ## Model files
 

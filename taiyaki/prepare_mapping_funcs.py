@@ -6,9 +6,9 @@ import numpy as np
 import torch
 
 from ont_fast5_api import fast5_interface
-from taiyaki import (
-    flipflop_remap, helpers, mapped_signal_files, signal_mapping, signal)
+from taiyaki import flipflop_remap, helpers, signal_mapping, signal
 from taiyaki.fileio import readtsv
+from taiyaki.mapped_signal_files import MappedSignalWriter
 
 
 class RemapResult(enum.Enum):
@@ -108,7 +108,8 @@ def oneread_remap(
     return sig_mapping_dict, RemapResult.SUCCESS
 
 
-def generate_output_from_results(results, output, alphabet_info, verbose=True):
+def generate_output_from_results(
+        results, output, alphabet_info, verbose=True, batch_format=True):
     """
     Given an iterable of dictionaries, each representing the results of mapping
     a single read, output a mapped-read file.
@@ -120,17 +121,19 @@ def generate_output_from_results(results, output, alphabet_info, verbose=True):
         results (iterable): an iterable of read dictionaries (with mappings)
         output (str): output filename
         alphabet_info (AlphabetInfo object): alphabet
+        verbose (bool): Write progress
+        batch_format (bool): Write signal mappings in batched format
     """
     progress = helpers.Progress(quiet=not verbose)
     err_types = defaultdict(int)
-    with mapped_signal_files.HDF5Writer(output, alphabet_info) as f:
+    with MappedSignalWriter(output, alphabet_info, batch_format) as msw:
         for resultdict, mesg in results:
             # filter out error messages for reporting later
             if resultdict is None:
                 err_types[mesg] += 1
             else:
                 progress.step()
-                f.write_read(resultdict)
+                msw.write_read(resultdict)
     sys.stderr.write('\n')
 
     # report errors at the end to avoid spamming stderr

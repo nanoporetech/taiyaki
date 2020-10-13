@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from collections import defaultdict, namedtuple
+from itertools import islice
 import math
 import numpy as np
 import os
@@ -283,16 +284,15 @@ def load_data(args, log, res_info):
                    'by read_ids in input strand list\n').format(len(read_ids)))
     else:
         log.write('* Reads not filtered by id\n')
-        read_ids = 'all'
+        read_ids = None
 
     if args.limit is not None:
         log.write('* Limiting number of strands to {}\n'.format(args.limit))
 
-    with mapped_signal_files.HDF5Reader(args.input) as per_read_file:
-        alphabet_info = per_read_file.get_alphabet_information()
+    with mapped_signal_files.MappedSignalReader(args.input) as msr:
+        alphabet_info = msr.get_alphabet_information()
         # load list of signal_mapping.SignalMapping objects
-        read_data = per_read_file.get_multiple_reads(
-            read_ids, max_reads=args.limit)
+        read_data = list(islice(msr.reads(read_ids), args.limit))
     log.write('* Using alphabet definition: {}\n'.format(str(alphabet_info)))
 
     if len(read_data) == 0:
