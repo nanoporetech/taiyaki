@@ -46,10 +46,12 @@ def fasta_file_to_dict(fasta_file_name, filter_ambig=True, flatten_ambig=True,
 
     Args:
         fasta_file_name (str): Path to FASTA file
-        filter_ambig (bool): Drop sequences with characters not found in
-          alphabet
-        flatten_ambig (bool): Flatten all characters not found in alphabet
-          to N's
+        filter_ambig (bool, optional): Drop sequences with characters not found
+          in alphabet
+        flatten_ambig (bool, optional): Flatten all characters not found in
+          alphabet to N's
+        alphabet (str, optional): Valid sequence alphabet found in
+          fasta_file_name
 
     Returns:
         Dictionary contraining ID keys pointing to sequence values.
