@@ -1,24 +1,19 @@
 #!/usr/bin/env python3
-# Combine mapped-read files in HDF5 format into a single file
+# Combine mapped signal files into a single file
 
 import argparse
 import numpy as np
 import sys
 
-from taiyaki import alphabet, mapped_signal_files
+from taiyaki import alphabet
 from taiyaki.cmdargs import AutoBool, Maybe, NonNegative
-
-
-# To convert to any new mapped read format (e.g. mapped_signal_files.SQL)
-# we should be able to just change MAPPED_SIGNAL_WRITER amd READER to equal the
-# new classes.
-MAPPED_SIGNAL_WRITER = mapped_signal_files.HDF5Writer
-MAPPED_SIGNAL_READER = mapped_signal_files.HDF5Reader
+from taiyaki.mapped_signal_files import (
+    MappedSignalReader, MappedSignalWriter, _version as msf_version)
 
 
 def get_parser():
     parser = argparse.ArgumentParser(
-        description='Combine HDF5 mapped-signal files into a single file. ' +
+        description='Combine mapped-signal files into a single file. ' +
         'Checks that alphabets are compatible.')
     parser.add_argument('output', help='Output filename')
 
@@ -40,6 +35,12 @@ def get_parser():
         help='Allow merging of data sets with different modified bases. ' +
         'While alphabets may differ, incompatible alphabets are not allowed ' +
         '(e.g. same single letter code used for different canonical bases).')
+    parser.add_argument(
+        '--batch_format', action='store_true',
+        help='Output batched mapped signal file format. This can ' +
+        'significantly improve I/O performance and use less ' +
+        'disk space. An entire batch must be loaded into memory in order ' +
+        'access any read potentailly increasing RAM requirements.')
 
     return parser
 
@@ -48,15 +49,15 @@ def none_or_int(num):
     return None if num == 'None' else int(num)
 
 
-def check_version(file_handle, filename):
-    """Check to make sure version agrees with the file format version in
-    this edition of Taiyaki. If not, throw an exception."""
-    if mapped_signal_files._version != file_handle.version:
+def check_version(msr, filename):
+    """ Check to make sure version agrees with the file format version in
+    this edition of Taiyaki. If not, throw an exception.
+    """
+    if msr.version != msf_version:
         raise Exception(
             ("File version of mapped signal file ({}, version {}) does " +
              "not match this version of Taiyaki (file version {})").format(
-                 filename, file_handle.version, mapped_signal_files._version))
-    return
+                 filename, msr.version, msf_version))
 
 
 def validate_and_merge_alphabets(in_fns):
@@ -72,9 +73,9 @@ def validate_and_merge_alphabets(in_fns):
     """
     all_alphabets = []
     for in_fn in in_fns:
-        with MAPPED_SIGNAL_READER(in_fn) as hin:
-            all_alphabets.append(hin.get_alphabet_information())
-            check_version(hin, in_fn)
+        with MappedSignalReader(in_fn) as msr:
+            all_alphabets.append(msr.get_alphabet_information())
+            check_version(msr, in_fn)
 
     can_bases = all_alphabets[0].can_bases
     if not all((file_alphabet.can_bases == can_bases
@@ -136,15 +137,15 @@ def assert_all_alphabets_equal(in_fns):
 
     Also check file versions so this this doesn't short circuit a longer run.
     """
-    with MAPPED_SIGNAL_READER(in_fns[0]) as hin:
+    with MappedSignalReader(in_fns[0]) as msr:
         #  Copy alphabet and modification information from first file
-        merge_alphabet_info = hin.get_alphabet_information()
-        check_version(hin, in_fns[0])
+        merge_alphabet_info = msr.get_alphabet_information()
+        check_version(msr, in_fns[0])
 
     for in_fn in in_fns[1:]:
-        with MAPPED_SIGNAL_READER(in_fn) as hin:
-            file_alph_info = hin.get_alphabet_information()
-            check_version(hin, in_fn)
+        with MappedSignalReader(in_fn) as msr:
+            file_alph_info = msr.get_alphabet_information()
+            check_version(msr, in_fn)
         # assert that each alphabet equals the first one
         if not merge_alphabet_info.equals(file_alph_info):
             sys.stderr.write(
@@ -155,8 +156,8 @@ def assert_all_alphabets_equal(in_fns):
     return merge_alphabet_info
 
 
-def create_alphabet_conversion(hin, merge_alphabet_info):
-    file_alphabet_info = hin.get_alphabet_information()
+def create_alphabet_conversion(msr, merge_alphabet_info):
+    file_alphabet_info = msr.get_alphabet_information()
     file_alphabet_conv = np.zeros(file_alphabet_info.nbase, dtype=np.int16) - 1
     for file_base_code, file_base in enumerate(file_alphabet_info.alphabet):
         file_alphabet_conv[file_base_code] = \
@@ -170,29 +171,27 @@ def convert_reference(read, file_alphabet_conv):
 
 
 def add_file_reads(
-        hin, hout, input_fn, allow_mod_merge, merge_alphabet_info, input_limit,
+        msr, msw, input_fn, allow_mod_merge, merge_alphabet_info, input_limit,
         reads_written):
     if allow_mod_merge:
         # create integer alphabet conversion array
         file_alphabet_conv = create_alphabet_conversion(
-            hin, merge_alphabet_info)
+            msr, merge_alphabet_info)
 
     start_reads_written = len(reads_written)
-    read_ids = hin.get_read_ids()
+    read_ids = msr.get_read_ids()
     if input_limit is not None:
         np.random.shuffle(read_ids)
-    for read_id in read_ids:
-        if read_id in reads_written:
-            sys.stderr.write((
-                "* Read {} already present: not copying from " +
-                "{}.\n").format(read_id, input_fn))
-            continue
-
-        read = hin.get_read(read_id)
+    new_read_ids = list(set(read_ids).difference(reads_written))
+    if len(new_read_ids) < len(read_ids):
+        sys.stderr.write((
+            "* {} reads found in previous file: not copying from " +
+            "{}.\n").format(len(read_ids) - len(new_read_ids), input_fn))
+    for read in msr.reads(new_read_ids):
         if allow_mod_merge:
             read = convert_reference(read, file_alphabet_conv)
-        hout.write_read(read.get_read_dictionary())
-        reads_written.add(read_id)
+        msw.write_read(read.get_read_dictionary())
+        reads_written.add(read.read_id)
         # check if reads limit has been achieved
         if input_limit is not None and \
            len(reads_written) - start_reads_written >= input_limit:
@@ -223,12 +222,13 @@ def main():
         np.random.seed(args.seed)
     reads_written = set()
     sys.stderr.write("Writing reads to {}\n".format(args.output))
-    with MAPPED_SIGNAL_WRITER(args.output, merge_alphabet_info) as hout:
+    with MappedSignalWriter(
+            args.output, merge_alphabet_info, args.batch_format) as msw:
         for input_fn, input_limit in zip(input_fns, input_limits):
-            with MAPPED_SIGNAL_READER(input_fn,
-                                      load_in_mem=args.load_in_mem) as hin:
+            with MappedSignalReader(
+                    input_fn, load_in_mem=args.load_in_mem) as msr:
                 reads_written = add_file_reads(
-                    hin, hout, input_fn, args.allow_mod_merge,
+                    msr, msw, input_fn, args.allow_mod_merge,
                     merge_alphabet_info, input_limit, reads_written)
     sys.stderr.write("Copied {} reads in total.\n".format(len(reads_written)))
 

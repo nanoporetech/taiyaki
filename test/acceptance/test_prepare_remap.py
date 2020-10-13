@@ -2,8 +2,7 @@ import os
 import subprocess
 import unittest
 
-
-from taiyaki import mapped_signal_files
+from taiyaki.mapped_signal_files import MappedSignalReader
 
 
 class AcceptanceTest(unittest.TestCase):
@@ -63,12 +62,12 @@ class AcceptanceTest(unittest.TestCase):
         # format.
         # Also get a chunk and check that speed is within reasonable bounds
         self.assertTrue(os.path.exists(output_mapped_signal_file))
-        with mapped_signal_files.HDF5Reader(output_mapped_signal_file) as f:
-            testreport = f.check()
+        with MappedSignalReader(output_mapped_signal_file) as msr:
+            testreport = msr.check()
             print("Test report from checking mapped read file:")
             print('"', testreport, '"')
             self.assertEqual(testreport, "pass")
-            read0 = f.get_multiple_reads("all")[0]
+            read0 = next(msr.reads())
             chunk = read0.get_chunk_with_sample_length(1000, start_sample=10)
             # Defined start_sample to make it reproducible - otherwise randomly
             # located chunk is returned.
@@ -76,8 +75,6 @@ class AcceptanceTest(unittest.TestCase):
             print("chunk mean dwell time in samples = ", chunk_meandwell)
             assert 7 < chunk_meandwell < 13, (
                 "Chunk mean dwell time outside allowed range 7 to 13")
-
-        return
 
     def test_mod_prepare_remap(self):
         """Tests the prepare_mapped_reads.py script with modified bases"""
@@ -106,12 +103,12 @@ class AcceptanceTest(unittest.TestCase):
         # format
         # Also get a chunk and check that speed is within reasonable bounds
         self.assertTrue(os.path.exists(output_mapped_signal_file))
-        with mapped_signal_files.HDF5Reader(output_mapped_signal_file) as f:
-            testreport = f.check()
+        with MappedSignalReader(output_mapped_signal_file) as msr:
+            testreport = msr.check()
             print("Test report from checking mapped read file:")
             print('"', testreport, '"')
             self.assertEqual(testreport, "pass")
-            read0 = f.get_multiple_reads("all")[0]
+            read0 = next(msr.reads())
             chunk = read0.get_chunk_with_sample_length(1000, start_sample=10)
             # Defined start_sample to make it reproducible - otherwise randomly
             # located chunk is returned.
@@ -119,5 +116,3 @@ class AcceptanceTest(unittest.TestCase):
             print("chunk mean dwell time in samples = ", chunk_meandwell)
             assert 7 < chunk_meandwell < 13, (
                 "Chunk mean dwell time outside allowed range 7 to 13")
-
-        return

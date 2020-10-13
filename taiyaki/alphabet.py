@@ -45,9 +45,9 @@ class AlphabetInfo(object):
 
         Output is in cat_mod model output ordering.
 
-        :param read_data: list of ReadData objects, as return from
-            mapped_signal_files.HDF5.get_multiple_reads
-        :param N: Number of reads to sample for inverse frequency estimation
+        Args:
+            read_data (list): :class:`signal_mapping.SignalMappings` objects
+            N (int): Number of reads to sample for inverse frequency estimation
         """
         N = min(N, len(read_data))
         # sample N reads
@@ -76,9 +76,9 @@ class AlphabetInfo(object):
 
         Output is in cat_mod model output ordering.
 
-        :param read_data: list of ReadData objects, as return from
-            mapped_signal_files.HDF5.get_multiple_reads
-        :param N: Number of reads to sample for inverse frequency estimation
+        Args:
+            read_data (list): :class:`signal_mapping.SignalMappings` objects
+            N (int): Number of reads to sample for inverse frequency estimation
         """
         N = min(N, len(read_data))
         # sample N reads

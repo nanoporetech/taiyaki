@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from itertools import islice
 import numpy as np
 import os
 import time
@@ -111,19 +112,18 @@ def main():
             '* Will train from a subset of {} strands\n'.format(len(read_ids)))
     else:
         log.write('* Reads not filtered by id\n')
-        read_ids = 'all'
+        read_ids = None
 
     if args.limit is not None:
         log.write('* Limiting number of strands to {}\n'.format(args.limit))
 
-    with mapped_signal_files.HDF5Reader(args.input) as per_read_file:
-        alphabet_info = per_read_file.get_alphabet_information()
+    with mapped_signal_files.MappedSignalReader(args.input) as msr:
+        alphabet_info = msr.get_alphabet_information()
         assert alphabet_info.nbase == 4, (
             'Squiggle prediction with modified base training data is ' +
             'not currenly supported.')
         # load list of signal_mapping.SignalMapping objects
-        read_data = per_read_file.get_multiple_reads(
-            read_ids, max_reads=args.limit)
+        read_data = list(islice(msr.reads(read_ids), args.limit))
 
     if len(read_data) == 0:
         log.write('* No reads remaining for training, exiting.\n')

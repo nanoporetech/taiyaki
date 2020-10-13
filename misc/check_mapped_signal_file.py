@@ -7,7 +7,7 @@ from collections import Counter
 
 import numpy as np
 
-from taiyaki import mapped_signal_files
+from taiyaki.mapped_signal_files import MappedSignalReader
 from taiyaki.maths import MAD_SD_FACTOR, med_mad
 
 
@@ -50,15 +50,15 @@ def main():
     out_fp = sys.stdout if args.output is None else open(args.output, 'w')
     sys.stderr.write('* Reading data from file\n')
     out_fp.write('*' * 10 + ' General Metrics ' + '*' * 10 + '\n')
-    with mapped_signal_files.HDF5Reader(args.input) as msf:
-        alphabet_info = msf.get_alphabet_information()
+    with MappedSignalReader(args.input) as msr:
+        alphabet_info = msr.get_alphabet_information()
         out_fp.write('Alphabet: {}\n'.format(str(alphabet_info)))
-        read_ids = msf.get_read_ids()
+        read_ids = msr.get_read_ids()
         out_fp.write('Total reads: {}\n'.format(len(read_ids)))
         if args.num_reads is not None:
             np.random.shuffle(read_ids)
             read_ids = read_ids[:args.num_reads]
-        reads = msf.get_multiple_reads(read_ids)
+        reads = list(msr.reads(read_ids))
 
     sys.stderr.write('* Computing sanity check metrics\n')
     out_fp.write('\n\n' + '*' * 10 + ' Sanity Checks ' + '*' * 10 + '\n')
