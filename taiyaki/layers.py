@@ -1488,16 +1488,29 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         self.can_labels = np.array(can_labels)
         self.mod_labels = np.array(mod_labels)
 
-        return
-
     def compute_layer_mods_info(self):
         """ Sort alphabet into canonical grouping and rearrange mod_long_names
 
-        Returns:
-            None: Layer adjusted in-place
+        Sets attributes:
+            - output_alphabet: Alphabet with canonical bases followed by that
+                bases related modified bases
+            - ordered_mod_long_names: Modified base long names ordered as found
+                in output_alphabet
+            - can_nmods: Number of modified bases for each canonical base
+            - can_mods_offsets: canonical base offset into flip-flop output
+                layer
+            - can_indices: modified base indices from linear layer
+                corresponding to each canonical base
         """
-        self.output_alphabet = ''.join(b[1] for b in sorted(zip(
-            self.collapse_alphabet, self.alphabet)))
+        self.output_alphabet = ''
+        for can_b in self.can_bases:
+            # add canonical bases in order found in self.can_bases
+            self.output_alphabet += can_b
+            # add modified bases pertaining to each canonical base in the order
+            # found in self.alphabet
+            for b, can_bi in zip(self.alphabet, self.collapse_alphabet):
+                if can_bi == can_b and b != can_b:
+                    self.output_alphabet.append(b)
         self.ordered_mod_long_names = (
             None if self.mod_long_names is None else
             [self.mod_name_conv[b] for b in self.alphabet
@@ -1520,8 +1533,6 @@ class GlobalNormFlipFlopCatMod(nn.Module):
             self.can_indices.append(np.concatenate([
                 [0], np.arange(curr_n_mods + 1, curr_n_mods + 1 + bi_nmods)]))
             curr_n_mods += bi_nmods
-
-        return
 
     def __init__(self, insize, alphabet_info, has_bias=True,
                  _never_use_cupy=False):
@@ -1567,8 +1578,6 @@ class GlobalNormFlipFlopCatMod(nn.Module):
         self.lsm = nn.LogSoftmax(2)
         self.linear = nn.Linear(insize, self.size, bias=self.has_bias)
         self.reset_parameters()
-
-        return
 
     @property
     def nbase(self):
