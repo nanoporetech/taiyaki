@@ -1510,7 +1510,7 @@ class GlobalNormFlipFlopCatMod(nn.Module):
             # found in self.alphabet
             for b, can_bi in zip(self.alphabet, self.collapse_alphabet):
                 if can_bi == can_b and b != can_b:
-                    self.output_alphabet.append(b)
+                    self.output_alphabet += b
         self.ordered_mod_long_names = (
             None if self.mod_long_names is None else
             [self.mod_name_conv[b] for b in self.alphabet
