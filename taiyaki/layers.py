@@ -1865,8 +1865,8 @@ def flipflop_logpartition(x, _never_use_cupy=False):
     """  Log-partition function for flipflop model
 
     Args:
-            x (:class:`tensor`): CRF weights output by network (T B W)
-    _never_use_cupy (bool): Don'y use accelerated function, even if
+        x (:class:`tensor`): CRF weights output by network (T B W)
+         _never_use_cupy (bool): Don't use accelerated function, even if
         available.
 
     Returns:
