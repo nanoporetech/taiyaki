@@ -31,7 +31,8 @@ def get_parser():
         '--max_read_length', metavar='bases', default=None, type=Maybe(int),
         help='Don\'t attempt remapping for reads longer than this')
     parser.add_argument(
-        '--mod', nargs=3, metavar=('base', 'canonical', 'name'),
+        '--mod', nargs=3,
+        metavar=('mod_base', 'canonical_base', 'mod_long_name'),
         default=[], action='append', help='Modified base description')
     parser.add_argument(
         '--batch_format', action='store_true',
