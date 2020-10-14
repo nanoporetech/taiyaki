@@ -68,7 +68,7 @@ class AcceptanceTest(unittest.TestCase):
             print('"', testreport, '"')
             self.assertEqual(testreport, "pass")
             read0 = next(msr.reads())
-            chunk = read0.get_chunk_with_sample_length(1000, start_sample=10)
+            chunk = read0.get_chunk_with_sample_length(1000, start_sample=10000)
             # Defined start_sample to make it reproducible - otherwise randomly
             # located chunk is returned.
             chunk_meandwell = chunk.sig_len / (chunk.seq_len + 0.0001)
