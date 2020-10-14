@@ -212,7 +212,7 @@ if __name__ == '__main__':
         optimizer.zero_grad()
         outputs = network(indata)
         lossvector = ctc.crf_flipflop_loss(outputs, seqs, seqlens, 1.0)
-        lossvector += flipflop_logpartition(outputs) / float(outputs.shape[2])
+        lossvector += flipflop_logpartition(outputs) / float(outputs.shape[0])
         loss = lossvector.mean()
         loss.backward()
 
