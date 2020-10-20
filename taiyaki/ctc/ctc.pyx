@@ -59,8 +59,8 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
     libctc.crf_flipflop_cost(&logprob[0, 0, 0], nstate, nblk, nbatch,
                              &moveidxs[0], &stayidxs[0], &seqlen[0],
                              &costs_np[0])
-    assert np.all(costs_np <= 0.), (
-        "Error: costs must not be positive, got {}").format(costs_np)
+    assert np.all(np.isfinite(costs_np)), (
+        "Error: all costs must finite, got {}").format(costs_np)
     return -costs / nblk
 
 
@@ -102,8 +102,8 @@ def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
     libctc.crf_flipflop_grad(&logprob[0, 0, 0], nstate, nblk, nbatch,
                              &moveidxs[0], &stayidxs[0], &seqlen[0],
                              &costs_np[0], &grads_np[0, 0, 0])
-    assert np.all(costs_np <= 0.), (
-        "Error: costs must not be positive, got {}").format(costs_np)
+    assert np.all(np.isfinite(costs_np)), (
+        "Error: all costs must finite, got {}").format(costs_np)
     assert np.all(np.isfinite(grads_np)), "Gradients not finite"
     return -costs / nblk, -grads / nblk
 
@@ -190,8 +190,8 @@ def cat_mod_flipflop_cost(
     libctc.cat_mod_flipflop_cost(
         &logprob[0, 0, 0], nstate, nblk, nbatch, &moveidxs[0], &stayidxs[0],
         &modmoveidxs[0], &modmovefacts[0], &seqlen[0], &costs_np[0])
-    assert np.all(costs_np <= 0.), (
-        "Error: costs must not be positive, got {}").format(costs_np)
+    assert np.all(np.isfinite(costs_np)), (
+        "Error: all costs must finite, got {}").format(costs_np)
     return -costs / nblk
 
 
@@ -239,8 +239,8 @@ def cat_mod_flipflop_grad(
         &logprob[0, 0, 0], nstate, nblk, nbatch, &moveidxs[0], &stayidxs[0],
         &modmoveidxs[0], &modmovefacts[0], &seqlen[0], &costs_np[0],
         &grads_np[0, 0, 0])
-    assert np.all(costs_np <= 0.), (
-        "Error: costs must not be positive, got {}").format(costs_np)
+    assert np.all(np.isfinite(costs_np)), (
+        "Error: all costs must finite, got {}").format(costs_np)
     assert np.all(np.isfinite(grads_np)), "Gradients not finite"
     return -costs / nblk, -grads / nblk
 

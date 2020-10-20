@@ -15,6 +15,7 @@ from taiyaki import alphabet, constants, ctc, flipflopfings, helpers, maths
 from taiyaki.cmdargs import FileExists, Maybe, NonNegative, Positive
 from taiyaki.constants import MODEL_LOG_FILENAME
 from taiyaki.common_cmdargs import add_common_command_args
+from taiyaki.layers import flipflop_logpartition
 
 
 def get_parser():
@@ -211,7 +212,8 @@ if __name__ == '__main__':
         optimizer.zero_grad()
         outputs = network(indata)
         lossvector = ctc.crf_flipflop_loss(outputs, seqs, seqlens, 1.0)
-        loss = lossvector.sum() / (seqlens > 0.0).float().sum()
+        lossvector += flipflop_logpartition(outputs) / float(outputs.shape[0])
+        loss = lossvector.mean()
         loss.backward()
 
         gradnorm_uncapped = torch.nn.utils.clip_grad_norm_(
