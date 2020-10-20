@@ -13,7 +13,17 @@
 
 /**
  *  Training / ground truth functions
- **/
+
+
+ * The network outputs give a number w(b,t) for each block b and transition t, so w is an (nblocks x 40) matrix.
+ * These are the transition weights 'logprob' below.
+ * A path is a sequence of transitions p = [t0,t1,t2...]
+ * The network outputs imply a score for each path, which is an un-normalised 'probability' Q(p) = exp(-w(0,t0) - w(1,t1) - w(2,t2) ...)
+ * The partition function is Z = sum_p Q(p) - sum is over all paths.
+ * The loss function (cost)  is L = - log( sum_{p:B(p)=s} Q(p) ) / Z ) - that is, the negative log of the total
+ * normalised probability of all paths consistent with sequence s.
+
+**/
 
 /*   Calculate forward probabilities for a flip-flop step
 

@@ -4,6 +4,23 @@
 
 #include "c_flipflopfwdbwd.h"
 
+
+/**
+ *  Functions to calculate log-partition functions, forward and backward. The backward function is used in guiding beam search,
+ *   and forward function is used for testing. 
+
+ * The network outputs give a number w(b,t) for each block b and transition t, so w is an (nblocks x 40) matrix.
+ * These are the transition weights 'score' below.
+ * A path is a sequence of transitions p = [t0,t1,t2...]
+ * The network outputs imply a score for each path, which is an un-normalised 'probability'  Q(p) = exp(-w(0,t0) - w(1,t1) - w(2,t2) ...)
+ * The partition function is Z = sum_p Q(p) - sum is over all paths.
+ * Forward and backward functions in this file calculate a matrix of restricted partition functions Z(b,t)
+ * For example the backward partition function matrix B(b,t) = sum_p' Q(p') where the sum is over all paths covering blocks after b
+ * and having transition t at block b.
+
+**/
+
+
 static float logsumexpf(float x, float y){
     float absdel = fabsf(x - y);
     //return fmaxf(x, y) + log1pf(exp(-(double)absdel));

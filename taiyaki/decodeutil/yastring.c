@@ -5,6 +5,11 @@
 
 #define YASTRING_INITIAL_LENGTH  32
 
+/**
+ * Usability library for C strings
+**/
+
+
 //  An empty string
 static const yastring const yastring_null = {NULL, 0, 0};
 

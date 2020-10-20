@@ -3,6 +3,9 @@
 #ifndef YASTRING_H
 #define YASTRING_H
 
+/**
+ * Usability library for C strings
+**/
 
 #include <stdlib.h>
 

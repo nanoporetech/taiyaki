@@ -9,6 +9,27 @@
 #include "qsort.h"
 #include "yastring.h"
 
+/**
+ * Functions for beam search basecalling using hash function for fast prefix comparison
+
+ * The network outputs give a number w(b,t) for each block b and transition t, so w is an (nblocks x 40) matrix.
+ * A path is a sequence of transitions p = [t0,t1,t2...]
+ * The network outputs imply a score for each path, which is an un-normalised 'probability'  Q(p) = exp(-w(0,t0) - w(1,t1) - w(2,t2) ...)
+ * A beam element is the prefix of a sequence (not a path).
+ * We begin with length-1 beam elements and extend from left (b=0) to right.
+ * Beam extensions with the same sequence are merged below the comment 'sort by hash then merge'.
+ * Without guiding, each candidate extension is evaluated according to score = sum_(paths in beam element) Q(p)
+ *  and we keep the max_beam_width best at each step
+ * The ordering of hashes is used as a way of grouping equivalent sequences (i.e. there's no other significance to the hash order)
+ * When guiding is switched on, the backward function from c_flipflopfwdbwd.c is used to calculate B(b,t) = sum_p' Q(p'), where
+ * the sum is over all paths covering blocks after b and having transition t at block b - this is combined with the score above and used
+ * to evaluate beam elements.
+ 
+ * qsort library is used, rather than C standard sorting functions, for speed.
+**/
+
+
+
 #define MAX(X, Y) (((X) >= (Y)) ? (X) : (Y))
 #define MIN(X, Y) (((X) <= (Y)) ? (X) : (Y))
 #define MOVE_IDX(FROM, TO, N) ((FROM) + 2 * (N) * (((TO) < (N)) ? (TO) : (N)))
