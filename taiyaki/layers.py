@@ -1317,7 +1317,7 @@ class GlobalNormFlipFlop(nn.Module):
     """  Transform into flip-flop transition scores
 
         Transforming input "x" by scale * activation( x W + b)
-        
+
     Warning:
         Global normalisation is no longer performed by the layer, instead
     being the responsibility of the loss function or other downstream
@@ -1413,7 +1413,7 @@ class GlobalNormFlipFlop(nn.Module):
 
 class GlobalNormFlipFlopCatMod(nn.Module):
     """ Flip-flop layer with additional modified base output stream
-    
+
     Warning:
         Global normalisation is no longer performed by the layer, instead
     being the responsibility of the loss function or other downstream
