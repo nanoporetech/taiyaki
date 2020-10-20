@@ -1314,10 +1314,15 @@ def global_norm_flipflop(scores):
 
 
 class GlobalNormFlipFlop(nn.Module):
-    """  Globally normalize scores for flip-flop model.
+    """  Transform into flip-flop transition scores
 
-        Global normalisation is performed after transforming input "x" by
-            scale * activation( x W + b)
+        Transforming input "x" by scale * activation( x W + b)
+        
+    Warning:
+        Global normalisation is no longer performed by the layer, instead
+    being the responsibility of the loss function or other downstream
+    calculations.  Name has been kept for compatibility but may be changed in
+    a future release.
 
     Attributes:
         insize (int):  Size (number of features) expected for input tensor
@@ -1408,12 +1413,18 @@ class GlobalNormFlipFlop(nn.Module):
 
 class GlobalNormFlipFlopCatMod(nn.Module):
     """ Flip-flop layer with additional modified base output stream
+    
+    Warning:
+        Global normalisation is no longer performed by the layer, instead
+    being the responsibility of the loss function or other downstream
+    calculations.  Name has been kept for compatibility but may be changed in
+    a future release.
 
     Attributes (can_nmods, output_alphabet and modified_base_long_names) define
     a modified base model and their names and structure is stable.
 
     The cat_mod model outputs bases in a specific order. This ordering groups
-    modified base labels with thier corresponding canonical bases.
+    modified base labels with their corresponding canonical bases.
 
     For example alphabet='ACGTZYXW', collapse_alphabet='ACGTCAAT' would produce
     cat_mod ordering of `AYXCZGTW`.
