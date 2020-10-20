@@ -7,8 +7,9 @@ import torch
 
 from ont_fast5_api import fast5_interface
 
-from taiyaki import basecall_helpers, fast5utils, helpers, qscores
-from taiyaki.cmdargs import AutoBool, FileExists, NonNegative, Positive
+from taiyaki import basecall_helpers, decodeutil, fast5utils, helpers, qscores
+from taiyaki.cmdargs import (AutoBool, FileExists, NonNegative,
+                             ParseToNamedTuple, Positive)
 from taiyaki.common_cmdargs import add_common_command_args
 from taiyaki.decode import flipflop_make_trans, flipflop_viterbi
 from taiyaki.flipflopfings import nstate_flipflop, path_to_str
@@ -30,6 +31,10 @@ def get_parser():
         recursive version""".split())
 
     parser.add_argument(
+        '--beam', default=None, metavar=('width', 'guided'), nargs=2,
+        type=(int, bool), action=ParseToNamedTuple,
+        help='Use beam search decoding')
+    parser.add_argument(
         "--chunk_size", type=Positive(int), metavar="blocks",
         default=basecall_helpers._DEFAULT_CHUNK_SIZE,
         help="Size of signal chunks sent to GPU is chunk_size * model stride")
@@ -37,16 +42,18 @@ def get_parser():
         '--fastq', default=False, action=AutoBool,
         help='Write output in fastq format (default is fasta)')
     parser.add_argument(
-        "--max_concurrent_chunks", type=Positive(int),
-        default=128, help="Maximum number of chunks to call at "
+        "--max_concurrent_chunks", type=Positive(int), default=128,
+        help="Maximum number of chunks to call at "
         "once. Lower values will consume less (GPU) RAM.")
     parser.add_argument(
         "--overlap", type=NonNegative(int), metavar="blocks",
         default=basecall_helpers._DEFAULT_OVERLAP,
         help="Overlap between signal chunks sent to GPU")
     parser.add_argument(
-        "--qscore_offset", type=float,
-        default=0.0,
+        '--posterior', default=True, action=AutoBool,
+        help='Use posterior-viterbi decoding')
+    parser.add_argument(
+        "--qscore_offset", type=float, default=0.0,
         help="Offset to apply to q scores in fastq (after scale)")
     parser.add_argument(
         "--qscore_scale", type=float, default=1.0,
@@ -57,6 +64,9 @@ def get_parser():
     parser.add_argument(
         '--scaling', action=FileExists, default=None,
         help='Path to TSV containing per-read scaling params')
+    parser.add_argument(
+        '--temperature', default=1.0, type=float,
+        help='Scaling factor applied to network outputs before decoding')
     parser.add_argument(
         "model", action=FileExists,
         help="Model checkpoint file to use for basecalling")
@@ -107,7 +117,8 @@ def get_signal(read_filename, read_id):
 
 def worker_init(device, modelname, chunk_size, overlap,
                 read_params, alphabet, max_concurrent_chunks,
-                fastq, qscore_scale, qscore_offset):
+                fastq, qscore_scale, qscore_offset, beam, posterior,
+                temperature):
     global all_read_params
     global process_read_partial
 
@@ -126,7 +137,7 @@ def worker_init(device, modelname, chunk_size, overlap,
                            model, chunk_size, overlap, read_params,
                            n_can_state, stride, alphabet,
                            max_concurrent_chunks, fastq, qscore_scale,
-                           qscore_offset)
+                           qscore_offset, beam, posterior, temperature)
         return (read_id, *res)
 
 
@@ -140,7 +151,8 @@ def worker(args):
 def process_read(
         read_filename, read_id, model, chunk_size, overlap, read_params,
         n_can_state, stride, alphabet, max_concurrent_chunks,
-        fastq=False, qscore_scale=1.0, qscore_offset=0.0):
+        fastq=False, qscore_scale=1.0, qscore_offset=0.0, beam=None,
+        posterior=True, temperature=1.0):
     """Basecall a read, dividing the samples into chunks before applying the
     basecalling network and then stitching them back together.
 
@@ -163,6 +175,9 @@ def process_read(
             otherwise generate fasta.
         qscore_scale (float): Scaling factor for Q score calibration.
         qscore_offset (float): Offset for Q score calibration.
+        beam (None or NamedTuple): Use beam search decoding
+        posterior (bool): Decode using posterior probability of transitions
+        temperature (float): Multiplier for network output
 
     Returns:
         tuple of str and str and int: strings containing the called bases and
@@ -189,15 +204,26 @@ def process_read(
     with torch.no_grad():
         device = next(model.parameters()).device
         chunks = torch.tensor(chunks, device=device)
-        out = []
+        trans = []
         for some_chunks in torch.split(chunks, max_concurrent_chunks, 1):
-            out.append(model(some_chunks))
-        out = torch.cat(out, 1)
+            trans.append(model(some_chunks)[:, :, :n_can_state])
+        trans = torch.cat(trans, 1) * temperature
 
-        trans = flipflop_make_trans(out[:, :, :n_can_state])
-        _, _, chunk_best_paths = flipflop_viterbi((trans + 1e-8).log())
-        best_path = basecall_helpers.stitch_chunks(
-            chunk_best_paths, chunk_starts, chunk_ends, stride)
+        if posterior:
+            trans = (flipflop_make_trans(trans) + 1e-8).log()
+
+        if beam is not None:
+            trans = basecall_helpers.stitch_chunks(trans, chunk_starts,
+                                                   chunk_ends, stride)
+            best_path, score = decodeutil.beamsearch(trans.cpu().numpy(),
+                                                     beam_width=beam.width,
+                                                     guided=beam.guided)
+        else:
+            _, _, chunk_best_paths = flipflop_viterbi(trans)
+            best_path = basecall_helpers.stitch_chunks(
+                chunk_best_paths, chunk_starts, chunk_ends,
+                stride).cpu().numpy()
+
         if fastq:
             chunk_errprobs = qscores.errprobs_from_trans(trans,
                                                          chunk_best_paths)
@@ -210,7 +236,7 @@ def process_read(
         # This makes our basecalls agree with Guppy's, and removes the
         # problem that there is no entry transition for the first path
         # element, so we don't know what the q score is.
-        basecall = path_to_str(best_path.cpu().numpy(), alphabet=alphabet,
+        basecall = path_to_str(best_path, alphabet=alphabet,
                                include_first_source=False)
 
     return basecall, qstring, len(signal)
@@ -248,7 +274,8 @@ def main():
     initargs = [args.device, args.model, args.chunk_size, args.overlap,
                 all_read_params, args.alphabet,
                 args.max_concurrent_chunks, args.fastq, args.qscore_scale,
-                args.qscore_offset]
+                args.qscore_offset, args.beam, args.posterior,
+                args.temperature]
     pool = Pool(args.jobs, initializer=worker_init, initargs=initargs)
     with open_file_or_stdout(args.output) as fh:
         for read_id, basecall, qstring, read_nsample in \

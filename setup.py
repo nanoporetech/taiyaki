@@ -46,7 +46,16 @@ try:
              os.path.join("taiyaki/ctc", "c_cat_mod_flipflop.c")],
             include_dirs=[np.get_include()],
             extra_compile_args=["-O3", "-fopenmp", "-std=c11", "-mavx2"],
-            extra_link_args=["-fopenmp"])])
+            extra_link_args=["-fopenmp"]),
+        Extension(
+            "taiyaki.decodeutil.decodeutil",
+            [os.path.join("taiyaki/decodeutil", "decodeutil.pyx"),
+             os.path.join("taiyaki/decodeutil", "c_flipflopfwdbwd.c"),
+             os.path.join("taiyaki/decodeutil", "c_hashdecode.c"),
+             os.path.join("taiyaki/decodeutil", "fasthash.c"),
+             os.path.join("taiyaki/decodeutil", "yastring.c")],
+            include_dirs=[np.get_include()],
+            extra_compile_args=["-O3", "-std=c11"])])
 except ImportError:
     extensions = []
     sys.stderr.write(
