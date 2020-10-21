@@ -470,8 +470,8 @@ class BatchHDF5Reader(AbstractMappedSignalReader):
         except StopIteration:
             # if curr_batch is exhausted, get next batch. If batch_iter is
             # exhausted complete iterator
-            self.curr_batch = self._load_reads_batch(
-                next(self.batch_iter)).values()
+            self.curr_batch = iter(self._load_reads_batch(
+                next(self.batch_iter)).values())
             return next(self.curr_batch)
 
     def _some_reads(self, read_ids):
