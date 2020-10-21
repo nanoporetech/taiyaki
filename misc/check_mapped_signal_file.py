@@ -66,12 +66,12 @@ def main():
     out_fp.write((
         'Median of medians of normalized signal: {:.6f} (should usually ' +
         'be close to 0)\n').format(np.median(current_meds)))
-    current_mads = np.array([np.median(np.abs(read.get_current() - r_med))
-                             for read, r_med in zip(reads, current_meds)])
+    current_mads = np.array([
+        np.median(np.abs(read.get_current() - r_med)) * MAD_SD_FACTOR
+        for read, r_med in zip(reads, current_meds)])
     out_fp.write((
-        'Median of MADs of normalized signal: {:.6f} (should usually ' +
-        'be close to {:.6f})\n').format(
-            np.median(current_mads), 1 / MAD_SD_FACTOR))
+        'Median of standardized MADs of normalized signal: {:.6f} ' +
+        '(should usually be close to 1.0)\n').format(np.median(current_mads)))
     all_seqs = np.concatenate([read.Reference for read in reads])
     seq_counts = np.bincount(all_seqs)
     total_bases = np.sum(seq_counts)
