@@ -188,7 +188,7 @@ def process_read(
     """
     signal = get_signal(read_filename, read_id)
     if signal is None:
-        return None, 0
+        return None, None, 0
     if model.metadata['reverse']:
         signal = signal[::-1]
 
@@ -233,11 +233,11 @@ def process_read(
                                                        qscore_scale,
                                                        qscore_offset)
 
-        # This makes our basecalls agree with Guppy's, and removes the
-        # problem that there is no entry transition for the first path
-        # element, so we don't know what the q score is.
-        basecall = path_to_str(best_path, alphabet=alphabet,
-                               include_first_source=False)
+    # This makes our basecalls agree with Guppy's, and removes the
+    # problem that there is no entry transition for the first path
+    # element, so we don't know what the q score is.
+    basecall = path_to_str(best_path, alphabet=alphabet,
+                            include_first_source=False)
 
     return basecall, qstring, len(signal)
 
@@ -280,7 +280,7 @@ def main():
     with open_file_or_stdout(args.output) as fh:
         for read_id, basecall, qstring, read_nsample in \
                 pool.imap_unordered(worker, fast5_reads):
-            if basecall is not None:
+            if basecall is not None and len(basecall) > 0:
                 fh.write("{}{}\n{}\n".format(
                     startcharacter, read_id,
                     basecall[::-1] if args.reverse else basecall))
