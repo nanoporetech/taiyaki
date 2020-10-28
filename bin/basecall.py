@@ -237,7 +237,7 @@ def process_read(
     # problem that there is no entry transition for the first path
     # element, so we don't know what the q score is.
     basecall = path_to_str(best_path, alphabet=alphabet,
-                            include_first_source=False)
+                           include_first_source=False)
 
     return basecall, qstring, len(signal)
 
