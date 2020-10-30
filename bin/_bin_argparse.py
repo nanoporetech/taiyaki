@@ -35,7 +35,7 @@ def get_train_flipflop_parser():
         '--niteration', metavar='batches', type=Positive(int),
         default=150000, help='Maximum number of batches to train for')
     trn_grp.add_argument(
-        '--weight_decay', default=0.0, metavar='penalty',
+        '--weight_decay', default=0.01, metavar='penalty',
         type=NonNegative(float),
         help='Adam weight decay (L2 normalisation penalty)')
     trn_grp.add_argument(
