@@ -121,6 +121,10 @@ pep8: venv
 	source venv/bin/activate && \
 		pep8 --ignore E203,E402 --max-line-length=79 ${pyFiles}
 
+flake8: venv
+	source venv/bin/activate && \
+		flake8 -j 2 --show-source --statistics --tee  ${pyFiles}
+
 
 .PHONY: workflow
 workflow: rebuild
@@ -142,3 +146,14 @@ workflow: rebuild
 multiGPU_test:
 	./workflow/test_multiGPU.sh
 
+.PHONY: is_git_clean
+is_git_clean:
+	[ $$(git status -s --untracked-files=no | wc -l) -eq 0 ]
+
+.PHONY: push_untested
+push_untested: is_git_clean autopep8 flake8
+	git commit -a -m 'Autopep8' || true
+	git push -u origin $$(basename `git symbolic-ref HEAD`)
+
+.PHONY: push
+push: test push_untested
