@@ -60,7 +60,9 @@ def crf_flipflop_cost(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
                              &moveidxs[0], &stayidxs[0], &seqlen[0],
                              &costs_np[0])
     assert np.all(np.isfinite(costs_np)), (
-        "Error: all costs must finite, got {}").format(costs_np)
+        "Error: all costs must be finite, got {}\n"
+        "Try restarting from a checkpoint with a lower learning rate."
+    ).format(costs_np)
     return -costs / nblk
 
 
@@ -103,8 +105,11 @@ def crf_flipflop_grad(np.ndarray[np.float32_t, ndim=3, mode="c"] logprob,
                              &moveidxs[0], &stayidxs[0], &seqlen[0],
                              &costs_np[0], &grads_np[0, 0, 0])
     assert np.all(np.isfinite(costs_np)), (
-        "Error: all costs must finite, got {}").format(costs_np)
-    assert np.all(np.isfinite(grads_np)), "Gradients not finite"
+        "Error: all costs must be finite, got {}.\n"
+        "Try restarting from a checkpoint with a lower learning rate."
+    ).format(costs_np)
+    assert np.all(np.isfinite(grads_np)), ("Error: Gradients not finite.\n"
+        "Try restarting from a checkpoint with a lower learning rate.")
     return -costs / nblk, -grads / nblk
 
 
@@ -191,7 +196,9 @@ def cat_mod_flipflop_cost(
         &logprob[0, 0, 0], nstate, nblk, nbatch, &moveidxs[0], &stayidxs[0],
         &modmoveidxs[0], &modmovefacts[0], &seqlen[0], &costs_np[0])
     assert np.all(np.isfinite(costs_np)), (
-        "Error: all costs must finite, got {}").format(costs_np)
+        "Error: all costs must be finite, got {}.\n"
+        "Try restarting from a checkpoint with a lower learning rate."
+    ).format(costs_np)
     return -costs / nblk
 
 
@@ -240,8 +247,11 @@ def cat_mod_flipflop_grad(
         &modmoveidxs[0], &modmovefacts[0], &seqlen[0], &costs_np[0],
         &grads_np[0, 0, 0])
     assert np.all(np.isfinite(costs_np)), (
-        "Error: all costs must finite, got {}").format(costs_np)
-    assert np.all(np.isfinite(grads_np)), "Gradients not finite"
+        "Error: all costs must be finite, got {}.\n"
+        "Try restarting from a checkpoint with a lower learning rate."
+    ).format(costs_np)
+    assert np.all(np.isfinite(grads_np)), ("Error: Gradients not finite.\n"
+        "Try restarting from a checkpoint with a lower learning rate.")
     return -costs / nblk, -grads / nblk
 
 
