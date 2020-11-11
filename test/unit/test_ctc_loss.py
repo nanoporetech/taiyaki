@@ -48,10 +48,10 @@ class CtcGradientTest(unittest.TestCase):
         paths = {}
         weights = {}
 
-        paths['015'] = [0,    0,    1,    5,    5]
-        weights['015'] = [1.0,   1.0,  0.5,  1.0]
+        paths['015'] = [0, 0, 1, 5, 5]
+        weights['015'] = [1.0, 1.0, 0.5, 1.0]
 
-        paths['237'] = [2,    2,    3,    7,    7]
+        paths['237'] = [2, 2, 3, 7, 7]
         weights['237'] = [1.0, 0.5, 1.0, 1.0]
 
         weights['510'] = [0.0]  # No weight for this sequence/path
