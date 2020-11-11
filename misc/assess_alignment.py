@@ -117,8 +117,7 @@ def samacc(align_fn, min_coverage=0.6):
             if mismatch > 0:
                 entropy += perr * np.log2(perr / 3.0)
 
-            if (read.query not in res
-                or res[read.query].accuracy < accuracy):
+            if read.query not in res or res[read.query].accuracy < accuracy:
                 res[read.query] = ACC_METRICS(
                     reference=read.reference_name,
                     query=read.query_name,
@@ -132,7 +131,7 @@ def samacc(align_fn, min_coverage=0.6):
                     coverage=coverage,
                     id=float(correct) / float(bins[0]),
                     accuracy=accuracy,
-                    information=bins[0] * (2.0 + entropy)))
+                    information=bins[0] * (2.0 + entropy))
 
     return list(res.values())
 
