@@ -188,7 +188,7 @@ def get_filename(read):
     """ Get filename from read object
 
     Args:
-        read (ont_fast5_api read object): the read object
+        read (:ont_fast5_api:`Fast5Read`): the read object
 
     Returns:
         str: filename
@@ -215,7 +215,7 @@ def get_channel_info(read):
     """Get channel info from read object. 
 
     Args:
-        read (ont_fast5_api read object): the read object
+        read (:ont_fast5_api:`Fast5Read`): the read object
 
     Returns:
         dict: channel info including digitisation, range, offset, sampling_rate
@@ -244,7 +244,7 @@ def get_read_attributes(read):
     """Get read attributes from read object.
 
     Args:
-        read (ont_fast5_api read object): the read object
+        read (:ont_fast5_api:`Fast5Read`): the read object
 
     Returns:
         dict: read attributes including start_time, read_id, duration
@@ -281,7 +281,7 @@ def read_summary(read):
     """Print summary of information in fast5 file on a particular read object.
 
     Args:
-        read (ont_fast5_api read object): the read object
+        read (:ont_fast5_api:`Fast5Read`): the read object
 
     Examples:
         from ont_fast5_api import fast5_interface
