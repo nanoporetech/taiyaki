@@ -11,7 +11,7 @@ import pysam
 from scipy.stats import gaussian_kde
 from scipy.optimize import minimize_scalar
 
-from taiyaki.cmdargs import AutoBool, proportion
+from taiyaki.cmdargs import AutoBool, Maybe, proportion
 
 
 ACC_METRICS = namedtuple('ACC_METRICS', (
@@ -48,7 +48,7 @@ def get_parser():
         '--coverage', metavar='proportion', default=0.6, type=proportion,
         help='Minimum coverage')
     parser.add_argument(
-        '--data_name', default=None,
+        '--data_name', default=None, type=Maybe(str),
         help="Data name. If not set file name is used.")
     parser.add_argument(
         '--figure_format', default="png",
