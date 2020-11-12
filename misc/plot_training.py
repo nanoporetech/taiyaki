@@ -19,7 +19,7 @@ def get_parser():
     """Get argparser object.
 
     Returns:
-        argparse.ArgumentParser : the argparser object
+        :argparse:`ArgumentParser` : the argparser object
     """
     parser = argparse.ArgumentParser(
         description='Plot graphs of training loss',
@@ -60,7 +60,7 @@ def moving_average(a, n=3):
         n (int, optional) : square window length
 
     Returns:
-        :np:ndarray : 1D output array
+        :np:`ndarray` : 1D output array
 
     Note: If length of a is less than n, and for elements earlier than the nth, 
         average as many points as available.
