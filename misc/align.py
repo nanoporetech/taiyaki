@@ -68,11 +68,11 @@ def call_bwa_mem(fin, fout, genome, clargs=''):
         genome (str): path to reference to align against
         clargs (str): optional cmd line arguments to pass to bwa as a string
 
-    Returns: 
+    Returns:
         str: stdout of bwa command
 
-    Raises: 
-        :subprocess:`CalledProcessError`: subprocess error message from bwa call
+    Raises:
+        :subprocess:`CalledProcessError`: subprocess err. message from bwa call
     """
     command_line = "bwa mem {} {} {} > {}".format(clargs, genome, fin, fout)
     try:

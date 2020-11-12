@@ -56,7 +56,7 @@ class AcceptanceTest(unittest.TestCase):
         return len(read_ids)
 
     def test_merge(self):
-        """Test that merging two 'normal' mapped signal files produces the 
+        """Test that merging two 'normal' mapped signal files produces the
         output expected."""
         test_work_dir = self.work_dir("test_merge")
         merged_mapped_signal_file = os.path.join(
@@ -95,7 +95,7 @@ class AcceptanceTest(unittest.TestCase):
         self.assertTrue(numreads_in > 2)
 
     def test_merge_batch(self):
-        """Test that merging two 'batch' mapped signal files produces the 
+        """Test that merging two 'batch' mapped signal files produces the
         output expected."""
         test_work_dir = self.work_dir("test_merge_batch")
         merged_mapped_signal_file = os.path.join(

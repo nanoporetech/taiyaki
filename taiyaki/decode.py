@@ -15,17 +15,17 @@ except ImportError:
 def flipflop_viterbi(scores, _never_use_cupy=False):
     """ Find highest scoring flipflop paths for a batch of score matrices.
     Args:
-        scores (:torch:`Tensor`): batch of score matrices with dimensions 
-            [T, batch size, S] where T is the number of blocks (time axis) and S
-            is the number of distinct flipflop transitions. For 4 bases S = 40, 
-            and in general S = 2 * nbase * (nbase + 1). Note that the input 
-            scores should be on a log scale, i.e. the score of a path is 
+        scores (:torch:`Tensor`): batch of score matrices with dimensions
+            [T, batch size, S] where T is the number of blocks (time axis) and
+            S is the number of distinct flipflop transitions. For 4 bases
+            S = 40, and in general S = 2 * nbase * (nbase + 1). Note that the
+            input scores should be on a log scale, i.e. the score of a path is
             determined by summing the scores of the individual transitions.
         _never_use_cupy (bool): this method delegates to cupy implementation if
             possible, unless _never_use_cupy=True, defaults to False
 
     Returns:
-        tuple(:torch:`Tensor`, :torch:`Tensor`, :torch:`Tensor`): 
+        tuple(:torch:`Tensor`, :torch:`Tensor`, :torch:`Tensor`):
             fwd scores tensor, traceback tensor, flipflop path tensor
     """
     use_cupy = all([
@@ -43,18 +43,18 @@ def flipflop_make_trans(scores, _never_use_cupy=False):
     """ Calculates posterior probabilities (not logs!) from raw model output.
 
     Args:
-        scores (:torch:`Tensor`): batch of score matrices with dimensions 
-            [T, batch size, S] where T is the number of blocks (time axis) and S
-            is the number of distinct flipflop transitions. For 4 bases S = 40, 
-            and in general S = 2 * nbase * (nbase + 1).  This should consist of 
+        scores (:torch:`Tensor`): batch of score matrices with dimensions
+            [T, batch size, S] where T is the number of blocks (time axis) and
+            S is the number of distinct flipflop transitions. For 4 bases
+            S = 40, and in general S=2*nbase*(nbase+1). This should consist of
             globally normalised transition scores for a flipflop CRF.
         _never_use_cupy (bool): this method delegates to cupy implementation if
             possible, unless _never_use_cupy=True, defaults to False
 
-    Returns: 
+    Returns:
         :torch:`Tensor`: floats of shape (T x batch size x S) containing
-             posterior transition probabilities (not logs!)  It can be verified 
-             that this is equivalent to the derivative of the log-partition 
+             posterior transition probabilities (not logs!)  It can be verified
+             that this is equivalent to the derivative of the log-partition
              function with respect to the raw scores.
     """
     use_cupy = all([
@@ -74,17 +74,17 @@ def flipflop_make_trans(scores, _never_use_cupy=False):
 
 @torch.no_grad()
 def _flipflop_viterbi(scores):
-    """ Find highest scoring flipflop paths for a batch of score matrices. This 
+    """ Find highest scoring flipflop paths for a batch of score matrices. This
         is an idiomatic pytorch implementation.
 
     Args:
-        scores (:torch:`Tensor`): batch of score matrices with dimensions 
-            [T, batch size, S] where T is the number of blocks (time axis) and S
-            is the number of distinct flipflop transitions. For 4 bases S = 40, 
-            and in general S = 2 * nbase * (nbase + 1).
+        scores (:torch:`Tensor`): batch of score matrices with dimensions
+            [T, batch size, S] where T is the number of blocks (time axis) and
+            S is the number of distinct flipflop transitions. For 4 bases
+            S = 40, and in general S = 2 * nbase * (nbase + 1).
 
     Returns:
-        tuple(:torch:`Tensor`, :torch:`Tensor`, :torch:`Tensor`): 
+        tuple(:torch:`Tensor`, :torch:`Tensor`, :torch:`Tensor`):
             fwd scores tensor, traceback tensor, flipflop path tensor
     """
     T, N, S = scores.shape
