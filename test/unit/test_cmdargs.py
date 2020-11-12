@@ -44,7 +44,8 @@ class CmdArgsTest(unittest.TestCase):
             self.assertAlmostEqual(x, f(x))
 
     def test_nonnegative_invalid_float_values(self):
-        """Test that invalid floats don't get through non-negative arg check."""
+        """Test that invalid floats don't get through non-negative arg
+        check."""
         f = cmdargs.NonNegative(float)
         for x in [-1.0, -self.EPS, -1e-5]:
             with self.assertRaises(argparse.ArgumentTypeError):
@@ -71,7 +72,7 @@ class CmdArgsTest(unittest.TestCase):
             self.assertAlmostEqual(x, f(x))
 
     def test_proportion_invalid_float_values(self):
-        """Test that invalid floats don't get through proportion (0-1) arg 
+        """Test that invalid floats don't get through proportion (0-1) arg
         check."""
         f = cmdargs.proportion
         for x in [-1e-30, -self.EPS, -1e-5, 1.0 + 1e-5, 1.0 + self.EPS]:

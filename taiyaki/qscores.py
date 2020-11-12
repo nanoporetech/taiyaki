@@ -11,9 +11,9 @@ def qchar_from_qscore(score, zerochar=33):
     """Return ASCII character(s) encoding q score from score.
 
     Args:
-        score (float or list or :np:`ndarray`) : float or list or 1D input array 
-            of error prob = 10^(-score/10)
-        zerochar (int, optional) : ASCII code character encoding probability 1 
+        score (float or list or :np:`ndarray`) : float or list or 1D input
+            array of error prob = 10^(-score/10)
+        zerochar (int, optional) : ASCII code character encoding probability 1
             (score 0)
 
     Returns:
@@ -33,8 +33,8 @@ def qscore_from_errprob(errprob):
     Args:
         errprob (scalar or :np:`ndarray`): probability of error
 
-    Returns: 
-	scalar or :np:`ndarray`: -10 log_10(errprob)
+    Returns:
+        scalar or :np:`ndarray`: -10 log_10(errprob)
     """
     return -10.0 * np.log10(errprob)
 
@@ -44,7 +44,7 @@ def qchar_from_errprob(errprob, qscore_scale, qscore_offset):
 
     Args:
         errprob (scalar or :np:`ndarray`) : probability of error
-        qscore_scale (scalar): qscore <-- qscore * qscore_scale + qscore_offset,
+        qscore_scale (scalar): qscore <-- qscore*qscore_scale + qscore_offset,
             before encoding it as a character
         qscore_offset (scalar): see qscore_scale above
 
@@ -56,7 +56,7 @@ def qchar_from_errprob(errprob, qscore_scale, qscore_offset):
 
 
 def transitions_into_base(b, nbases, device):
-    """Return all transition-matrix indices for all transitions into base 
+    """Return all transition-matrix indices for all transitions into base
     (flip or flop).
 
     Args:
@@ -66,11 +66,11 @@ def transitions_into_base(b, nbases, device):
             E.g. 'cpu', 1, 'cuda:1'
 
     Returns:
-        :torch:`Tensor` : 1D tensor of longs representing indices 
+        :torch:`Tensor` : 1D tensor of longs representing indices
             (in range 0 to 39) for ACGT.
 
     Note:
-        All transitions, including those where no base is emitted, are included.
+        All transitions, inc. those where no base is emitted, are included.
     """
     # Transition A to b_flip
     colstart = nbases * 2 * b
@@ -97,22 +97,22 @@ def errprobs_from_trans(trans, path):
     errorprob = 1-p
 
     Args:
-    	trans (:torch:`Tensor`): Tensor of floats with shape 
-            (nblocks x batchsize x nstates) where nstates = 40 for 4-base models
-            containing posterior transition weights (not logs!)
-        
-        path (:torch:`Tensor`): Tensor of longs with shape 
-            ((nblocks+1) x batchsize) containing flip-flop states (integers 0-7 
-            for 4-base models). The transition that goes with trans[n,bn,:] is 
+        trans (:torch:`Tensor`): Tensor of floats with shape
+            (nblocks x batchsize x nstates) where nstates = 40 for 4-base
+            models containing posterior transition weights (not logs!)
+
+        path (:torch:`Tensor`): Tensor of longs with shape
+            ((nblocks+1) x batchsize) containing flip-flop states (integers 0-7
+            for 4-base models). The transition that goes with trans[n,bn,:] is
             the one from path[n,bn] to path[n+1,bn].
 
     Returns:
-        :torch:`Tensor` : errorprob = tensor of floats with shape 
+        :torch:`Tensor` : errorprob = tensor of floats with shape
             ((nblocks+1) x batchsize) containing errorprob for each element of
-            the path, and -1.0 in row 0. Note that this doesn't matter since 
-            these probabilities are removed later on in the pipeline. The output
-            matrix must be the same shape as the path in order to be fed into 
-            the stitching function.
+            the path, and -1.0 in row 0. Note that this doesn't matter since
+            these probabilities are removed later on in the pipeline. The
+            output matrix must be the same shape as the path in order to be fed
+            into the stitching function.
     """
     nblocks, batchsize, flip_flop_transitions = trans.shape
     nbases = flipflopfings.nbase_flipflop(flip_flop_transitions)
@@ -146,23 +146,23 @@ def path_errprobs_to_qstring(errprobs, path, qscore_scale, qscore_offset):
     """Make qscore string from error probs, ignoring stays.
 
     Args:
-        errprobs (:torch:`Tensor` or :np:`ndarray`): 1D tensor of floats or 1D 
+        errprobs (:torch:`Tensor` or :np:`ndarray`): 1D tensor of floats or 1D
             input array containing error probabilities for each element of path
-        path (:torch:`Tensor` or :np:`ndarray`): 1D tensor of longs or 1D input 
-            array of ints containing flip-flop states for each block, same 
+        path (:torch:`Tensor` or :np:`ndarray`): 1D tensor of longs or 1D input
+            array of ints containing flip-flop states for each block, same
             length as errprobs
-        qscore_scale (scalar): qscore <-- qscore * qscore_scale + qscore_offset,
+        qscore_scale (scalar): qscore <-- qscore*qscore_scale + qscore_offset,
             before encoding it as a character
         qscore_offset (scalar): see qscore_scale above
 
-    Returns: 
-	str : representing quality scores encoded as ASCII characters
+    Returns:
+        str : representing quality scores encoded as ASCII characters
 
-    Note: 
-        Elements of the path where no base is emitted are not included in the 
-        qstring, and the source base for the first transition is also not 
-        included. So the qstring is the same length as the basecall (provided we
-        don't include the source base for the first transition in the basecall)
+    Note:
+        Elements of the path where no base is emitted are not included in the
+        qstring, and the source base for the first transition is also not
+        included. So the qstring is the same length as the basecall (provided
+        we don't inc. the source base for the first transition in the basecall)
     """
     filtered_probs = errprobs[1:][path[1:] != path[:-1]]
     if type(filtered_probs) == torch.Tensor:

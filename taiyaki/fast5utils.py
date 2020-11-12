@@ -48,13 +48,13 @@ def iterate_file_read_pairs(filepaths, read_ids, limit=None, verbose=0):
 
 
 def iterate_files_reads_unpaired(filepaths, read_ids, limit=None, verbose=0):
-    """ Iterate over unpaired lists of filepaths and read_ids, looking in all 
-    the files given and returning only those read_ids in the read_ids list. If 
+    """ Iterate over unpaired lists of filepaths and read_ids, looking in all
+    the files given and returning only those read_ids in the read_ids list. If
     read_ids is None then get all the reads in the files.
 
     Args:
         filepaths (list of str): list of filepaths
-        read_ids (list of str or None): list of read ids or None for all reads 
+        read_ids (list of str or None): list of read ids or None for all reads
             in each file
         limit (int, optional): Maximum number of tuples to produce
         verbose (int, optional): Output level of debug verbosity
@@ -90,40 +90,40 @@ def iterate_files_reads_unpaired(filepaths, read_ids, limit=None, verbose=0):
 
 def iterate_fast5_reads(
         path, strand_list=None, limit=None, verbose=0, recursive=False):
-    """ Iterate over reads in a directory of fast5 files or a single fast5 file. 
-        Files may be single or multi-read fast5s.
+    """ Iterate over reads in a directory of fast5 files or a single fast5
+        file. Files may be single or multi-read fast5s.
 
     Args:
         path (str): Directory (or filename for a single file)
-        strand_list (str or None, optional): Path to file containing list of 
-            files and/or read ids to iterate over (as described in notes) or 
+        strand_list (str or None, optional): Path to file containing list of
+            files and/or read ids to iterate over (as described in notes) or
             None for all files and reads
-        limit (int or None, optional): Maximum number of reads to consider or 
+        limit (int or None, optional): Maximum number of reads to consider or
             None for all
-        verbose (int, optional): 0 prints no messages, 1 prints a message for 
+        verbose (int, optional): 0 prints no messages, 1 prints a message for
             every file read, 2 prints the list of files before starting as well
         recursive (bool, optional): Search path recursively for fast5 files
 
     Yields:
-        (tuple(str, str)): filepath and read_id for each read. You may say, "why 
-            not yield an ont_fast_api object instead of a nasty tuple?" I would 
-            say: "yes, I did try that, but it led to unfathomable nastiness when 
-            I fed these objects in as arguments to multiple processes."
+        (tuple(str, str)): filepath and read_id for each read. You may say,
+            "why not yield an ont_fast_api object instead of a nasty tuple?" I
+            would say: "yes, I tried that, but it led to unfathomable nastiness
+            when I fed these objects in as arguments to multiple processes."
 
     Notes:
-        If strand_list is given, then only return the reads spcified, according 
+        If strand_list is given, then only return the reads spcified, according
         to the following rules:
 
         (A) If the strand list file has a column 'read_id' and no column
-            'filename' or 'filename_fast5' then look through all fast5 files in 
+            'filename' or 'filename_fast5' then look through all fast5 files in
             the path and return all reads with read_ids in that column.
         (B) If the strand list file has a column 'filename' or 'filename_fast5'
-            and no column 'read_id' then look through all filenames specified 
+            and no column 'read_id' then look through all filenames specified
             and return all reads in them.
-        (C) If the strand list has a column 'filename' or 'filename_fast5' _and_ 
-            a column 'read_id' then loop through the rows in the strand list, 
-            returning the appropriate tuple for each row. We check that each 
-            file exists and contains the read_id.
+        (C) If the strand list has a column 'filename' or 'filename_fast5'
+            _and_ a column 'read_id' then loop through the rows in the strand
+            list, returning the appropriate tuple for each row. We check that
+            each file exists and contains the read_id.
 
     Example:
         read_iterator = iterate_fast5_reads('directory')
@@ -212,7 +212,7 @@ def get_filename(read):
 
 
 def get_channel_info(read):
-    """Get channel info from read object. 
+    """Get channel info from read object.
 
     Args:
         read (:ont_fast5_api:`Fast5Read`): the read object

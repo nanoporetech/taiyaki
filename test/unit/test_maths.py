@@ -11,7 +11,7 @@ class MathsTest(unittest.TestCase):
         np.random.seed(0xdeadbeef)
 
     def test_004_med_mad(self):
-        """Test to see if med_mad works without setting axis (so flattening)."""
+        """Test to see if med_mad works with axis not set (so flattening)."""
         x = np.array(
             [[0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 1.0, 1.0], [0.0, 0.5, 0.5, 1.0]])
         factor = 1

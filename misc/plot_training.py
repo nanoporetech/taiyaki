@@ -53,8 +53,7 @@ def get_parser():
 
 
 def moving_average(a, n=3):
-    """ Generate moving average. 
-
+    """ Generate moving average.
     Args:
         a (:np:`ndarray`) : 1D input array
         n (int, optional) : square window length
@@ -62,7 +61,7 @@ def moving_average(a, n=3):
     Returns:
         :np:`ndarray` : 1D output array
 
-    Note: If length of a is less than n, and for elements earlier than the nth, 
+    Note: If length of a is less than n, and for elements earlier than the nth,
         average as many points as available.
     """
     x = np.cumsum(a, dtype=float)
