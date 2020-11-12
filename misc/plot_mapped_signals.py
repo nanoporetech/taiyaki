@@ -31,7 +31,7 @@ def get_parser():
         help='Max number of reads to read from each file. Not used if ' +
         'read_ids are given')
     parser.add_argument(
-        '--read_ids',  nargs='+', default=[],
+        '--read_ids', nargs='+', default=[],
         help='One or more read_ids. If not present, plots the first ' +
         '[--nreads] in each file')
     parser.add_argument(
@@ -58,7 +58,7 @@ def get_parser():
         help='Do not display status messages.')
 
     parser.add_argument(
-        'mapped_signal_files',  nargs='+',
+        'mapped_signal_files', nargs='+',
         help='Inputs: one or more mapped signal files')
 
     return parser

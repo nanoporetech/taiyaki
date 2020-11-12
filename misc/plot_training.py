@@ -45,7 +45,7 @@ def get_parser():
     parser.add_argument(
         'output', help='Output png file')
     parser.add_argument(
-        'input_directories',  nargs='+',
+        'input_directories', nargs='+',
         help='One or more directories containing {} and {} files'.format(
             BATCH_LOG_FILENAME, VAL_LOG_FILENAME))
 

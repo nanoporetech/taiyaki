@@ -89,7 +89,7 @@ def samacc(align_fn, min_coverage=0.6):
     :returns: list of ACC_METRICS namedtuples containing accuracy metrics for
         each valid alignment.
     """
-    res = []
+    res = {}
     with pysam.AlignmentFile(align_fn, 'r') as sf:
         for read in sf.fetch(until_eof=True):
             if read.flag != 0 and read.flag != 16:
@@ -111,27 +111,29 @@ def samacc(align_fn, min_coverage=0.6):
             readlen = bins[0] + bins[1]
             perr = min(0.75, float(mismatch) / readlen)
             pmatch = 1.0 - perr
+            accuracy = float(correct) / alnlen
 
             entropy = pmatch * np.log2(pmatch)
             if mismatch > 0:
                 entropy += perr * np.log2(perr / 3.0)
 
-            res.append(ACC_METRICS(
-                reference=read.reference_name,
-                query=read.query_name,
-                strand='-' if read.is_reverse else '+',
-                reference_start=read.reference_start,
-                reference_end=read.reference_end,
-                match=bins[0],
-                mismatch=mismatch,
-                insertion=bins[1],
-                deletion=bins[2],
-                coverage=coverage,
-                id=float(correct) / float(bins[0]),
-                accuracy=float(correct) / alnlen,
-                information=bins[0] * (2.0 + entropy)))
+            if read.query not in res or res[read.query].accuracy < accuracy:
+                res[read.query] = ACC_METRICS(
+                    reference=read.reference_name,
+                    query=read.query_name,
+                    strand='-' if read.is_reverse else '+',
+                    reference_start=read.reference_start,
+                    reference_end=read.reference_end,
+                    match=bins[0],
+                    mismatch=mismatch,
+                    insertion=bins[1],
+                    deletion=bins[2],
+                    coverage=coverage,
+                    id=float(correct) / float(bins[0]),
+                    accuracy=accuracy,
+                    information=bins[0] * (2.0 + entropy))
 
-    return res
+    return list(res.values())
 
 
 def acc_plot(acc, mode, median, title, fill=PLOT_DO_FILL):

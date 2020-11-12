@@ -132,8 +132,8 @@ def flipflop_remap(transition_scores, sequence, alphabet=DEFAULT_ALPHABET,
     bases = np.array([alphabet.find(b) for b in sequence])
     flops = flipflopfings.flopmask(bases)
 
-    stay_index = np.where(flops, bases + (2 * nbase + 1)
-                          * nbase, bases + 2 * nbase * bases)
+    stay_index = np.where(flops, bases + (2 * nbase + 1) *
+                          nbase, bases + 2 * nbase * bases)
     from_base = (bases + flops * nbase)[:-1]
     to_base = np.maximum(bases, nbase * flops)[1:]
     step_index = from_base + 2 * nbase * to_base

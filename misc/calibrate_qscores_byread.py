@@ -143,8 +143,8 @@ def get_alignment_data(alignment_file):
         # Try to read the file as a Guppy alignment summary file
         read_ids = t['read_id']
         accuracies = t['alignment_accuracy']
-        alignment_lens = (t['alignment_strand_end']
-                          - t['alignment_strand_start'])
+        alignment_lens = (t['alignment_strand_end'] -
+                          t['alignment_strand_start'])
         print("Interpreted alignment file as Guppy output")
         accuracies[accuracies < 0] = np.nan
         return read_ids, accuracies, alignment_lens
@@ -157,10 +157,10 @@ def get_alignment_data(alignment_file):
         read_ids = t['query']
         accuracies = t['accuracy']
         # Query length in alignment not available directly in taiyaki summary
-        alignment_lens = (t['reference_end']
-                          - t['reference_start']
-                          + t['insertion']
-                          - t['deletion'])
+        alignment_lens = (t['reference_end'] -
+                          t['reference_start'] +
+                          t['insertion'] -
+                          t['deletion'])
         print("Interpreted alignment file as Taiyaki output")
         return read_ids, accuracies, alignment_lens
     except ValueError:

@@ -64,7 +64,7 @@ def get_train_flipflop_parser():
         '--warmup_batches', type=int, default=200,
         help='Over first n batches, increase learning rate like cosine.')
     trn_grp.add_argument(
-        '--lr_warmup',  metavar='rate', type=Positive(float),
+        '--lr_warmup', metavar='rate', type=Positive(float),
         help='Start learning rate for warmup. Defaults to lr_min.')
     trn_grp.add_argument(
         '--min_momentum', type=Positive(float),

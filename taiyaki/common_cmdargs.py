@@ -38,7 +38,7 @@ def add_common_command_args(parser, arglist):
             help='Integer specifying which GPU to use, or "cpu" to use CPU ' +
             'only. Other accepted formats: "cuda" (use default GPU), "cuda:2" '
             'or "cuda2" (use GPU 2).')),
-        ('eps', lambda:  parser.add_argument(
+        ('eps', lambda: parser.add_argument(
             '--eps', default=1e-6, metavar='adjustment',
             type=Positive(float), help='Small value to stabilise optimiser')),
         ('filter_max_dwell', lambda: parser.add_argument(

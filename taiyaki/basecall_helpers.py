@@ -76,8 +76,8 @@ def stitch_chunks(out, chunk_starts, chunk_ends, stride, path_stitching=False):
         # middle chunks
         for i in range(1, nchunks - 1):
             start = (chunk_ends[i - 1] - chunk_starts[i]) // (2 * stride)
-            end = (chunk_ends[i] + chunk_starts[i + 1]
-                   - 2 * chunk_starts[i]) // (2 * stride)
+            end = (chunk_ends[i] + chunk_starts[i + 1] -
+                   2 * chunk_starts[i]) // (2 * stride)
             if path_stitching:
                 start += 1
                 end += 1
