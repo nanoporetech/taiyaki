@@ -56,7 +56,7 @@ def moving_average(a, n=3):
     """ Generate moving average. 
 
     Args:
-        a (:np:ndarray) : 1D input array
+        a (:np:`ndarray`) : 1D input array
         n (int, optional) : square window length
 
     Returns:
