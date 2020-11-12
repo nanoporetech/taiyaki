@@ -13,7 +13,7 @@ def get_parser():
     """Get argparser object.
 
     Returns:
-        argparse.ArgumentParser : the argparser object
+        :argparse:`ArgumentParser` : the argparser object
     """
     parser = argparse.ArgumentParser(
         description='Predict squiggle from sequence',
