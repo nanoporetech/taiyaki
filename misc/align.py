@@ -72,7 +72,7 @@ def call_bwa_mem(fin, fout, genome, clargs=''):
         str: stdout of bwa command
 
     Raises: 
-        subprocess.CalledProcessError: subprocess error message from bwa call
+        :subprocess:`CalledProcessError`: subprocess error message from bwa call
     """
     command_line = "bwa mem {} {} {} > {}".format(clargs, genome, fin, fout)
     try:
