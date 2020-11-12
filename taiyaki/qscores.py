@@ -11,7 +11,7 @@ def qchar_from_qscore(score, zerochar=33):
     """Return ASCII character(s) encoding q score from score.
 
     Args:
-        score (float or list or :np:ndarray) : float or list or 1D input array 
+        score (float or list or :np:`ndarray`) : float or list or 1D input array 
             of error prob = 10^(-score/10)
         zerochar (int, optional) : ASCII code character encoding probability 1 
             (score 0)
@@ -31,10 +31,10 @@ def qscore_from_errprob(errprob):
     """Return q score from probability of error.
 
     Args:
-        errprob (scalar or :np:ndarray): probability of error
+        errprob (scalar or :np:`ndarray`): probability of error
 
     Returns: 
-	scalar or :np:ndarray: -10 log_10(errprob)
+	scalar or :np:`ndarray`: -10 log_10(errprob)
     """
     return -10.0 * np.log10(errprob)
 
@@ -43,7 +43,7 @@ def qchar_from_errprob(errprob, qscore_scale, qscore_offset):
     """Return character(s) representing quality score from errorprob.
 
     Args:
-        errprob (scalar or :np:ndarray) : probability of error
+        errprob (scalar or :np:`ndarray`) : probability of error
         qscore_scale (scalar): qscore <-- qscore * qscore_scale + qscore_offset,
             before encoding it as a character
         qscore_offset (scalar): see qscore_scale above
@@ -146,9 +146,9 @@ def path_errprobs_to_qstring(errprobs, path, qscore_scale, qscore_offset):
     """Make qscore string from error probs, ignoring stays.
 
     Args:
-        errprobs (:torch:`Tensor` or :np:ndarray): 1D tensor of floats or 1D 
+        errprobs (:torch:`Tensor` or :np:`ndarray`): 1D tensor of floats or 1D 
             input array containing error probabilities for each element of path
-        path (:torch:`Tensor` or :np:ndarray): 1D tensor of longs or 1D input 
+        path (:torch:`Tensor` or :np:`ndarray`): 1D tensor of longs or 1D input 
             array of ints containing flip-flop states for each block, same 
             length as errprobs
         qscore_scale (scalar): qscore <-- qscore * qscore_scale + qscore_offset,
