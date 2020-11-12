@@ -15,7 +15,7 @@ def get_parser():
     """Get argparser object.
 
     Returns:
-        argparse.ArgumentParser : the argparser object
+        :argparse:`ArgumentParser` : the argparser object
     """
     parser = argparse.ArgumentParser(
         description='Align reads to reference. Use assess_alignment.py to ' +
