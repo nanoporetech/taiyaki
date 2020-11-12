@@ -13,8 +13,16 @@ from taiyaki.fileio import readtsv
 ##################################################
 
 def iterate_file_read_pairs(filepaths, read_ids, limit=None, verbose=0):
-    """ Iterate over pairs of (filepath, read_id), yielding a tuple (filepath,
-    read_id) at each step. Yield a maximum of limit tuples in total.
+    """Iterate over file and read id pairs.
+
+    Args:
+        filepaths (list of str): list of filepaths
+        read_ids (list of str): list of read ids
+        limit (int, optional): Maximum number of tuples to produce
+        verbose (int, optional): Output level of debug verbosity
+
+    Yields:
+        tuple(str, str): containing filepath and read id
     """
     nyielded = 0
     for filepath, read_id in zip(filepaths, read_ids):
@@ -40,12 +48,19 @@ def iterate_file_read_pairs(filepaths, read_ids, limit=None, verbose=0):
 
 
 def iterate_files_reads_unpaired(filepaths, read_ids, limit=None, verbose=0):
-    """ Iterate over lists of filepaths and read_ids, looking in all the files
-    given and returning only those read_ids in the read_ids list.
-    read_ids may be None: in that case get all the reads in the files.
+    """ Iterate over unpaired lists of filepaths and read_ids, looking in all 
+    the files given and returning only those read_ids in the read_ids list. If 
+    read_ids is None then get all the reads in the files.
+
+    Args:
+        filepaths (list of str): list of filepaths
+        read_ids (list of str or None): list of read ids or None for all reads 
+            in each file
+        limit (int, optional): Maximum number of tuples to produce
+        verbose (int, optional): Output level of debug verbosity
 
     Yields:
-        Tuple (filepath, read_id) at each step.
+        tuple(str, str): containing filepath and read id
     """
     nyielded = 0
     for filepath in filepaths:
@@ -75,40 +90,40 @@ def iterate_files_reads_unpaired(filepaths, read_ids, limit=None, verbose=0):
 
 def iterate_fast5_reads(
         path, strand_list=None, limit=None, verbose=0, recursive=False):
-    """ Return iterator yielding reads in a directory of fast5 files or a single
-    fast5 file.
-
-    Each read is specified by a tuple (filepath, read_id)
-    Files may be single or multi-read fast5s
-
-    You may say, "why not yield an ont_fast_api object instead of this nasty
-    tuple?" I would then say. "yes, I did try that, but it led to unfathomable
-    nastiness when I fed these objects in as arguments to multiple processes."
-
-    If strand_list is given, then only return the reads spcified, according to
-    the following rules:
-
-        (A) If the strand list file has a column 'read_id' and no column
-                'filename' or 'filename_fast5' then look through all fast5
-                files in the path and return all reads with read_ids in that
-                 column.
-        (B) If the strand list file has a column 'filename' or 'filename_fast5'
-                and no column 'read_id' then look through all filenames
-                specified and return all reads in them.
-        (C) If the strand list has a column 'filename' or 'filename_fast5'
-                _and_ a column 'read_id' then loop through the rows in the
-                strand list, returning the appropriate tuple for each row. We
-                check that each file exists and contains the read_id.
+    """ Iterate over reads in a directory of fast5 files or a single fast5 file. 
+        Files may be single or multi-read fast5s.
 
     Args:
-        path : Directory ( or filename for a single file)
-        strand_list : Path to file containing list of files and/or read ids
-            to iterate over.
-        limit : Limit number of reads to consider
-        verbose : an integer. verbose=0 prints no progress messages,
-            verbose=1 prints a message for every file read. Verbose =2 prints
-            the list of files before starting as well.
-        recursive : Search path recursively for fast5 files.
+        path (str): Directory (or filename for a single file)
+        strand_list (str or None, optional): Path to file containing list of 
+            files and/or read ids to iterate over (as described in notes) or 
+            None for all files and reads
+        limit (int or None, optional): Maximum number of reads to consider or 
+            None for all
+        verbose (int, optional): 0 prints no messages, 1 prints a message for 
+            every file read, 2 prints the list of files before starting as well
+        recursive (bool, optional): Search path recursively for fast5 files
+
+    Yields:
+        (tuple(str, str)): filepath and read_id for each read. You may say, "why 
+            not yield an ont_fast_api object instead of a nasty tuple?" I would 
+            say: "yes, I did try that, but it led to unfathomable nastiness when 
+            I fed these objects in as arguments to multiple processes."
+
+    Notes:
+        If strand_list is given, then only return the reads spcified, according 
+        to the following rules:
+
+        (A) If the strand list file has a column 'read_id' and no column
+            'filename' or 'filename_fast5' then look through all fast5 files in 
+            the path and return all reads with read_ids in that column.
+        (B) If the strand list file has a column 'filename' or 'filename_fast5'
+            and no column 'read_id' then look through all filenames specified 
+            and return all reads in them.
+        (C) If the strand list has a column 'filename' or 'filename_fast5' _and_ 
+            a column 'read_id' then loop through the rows in the strand list, 
+            returning the appropriate tuple for each row. We check that each 
+            file exists and contains the read_id.
 
     Example:
         read_iterator = iterate_fast5_reads('directory')
@@ -168,42 +183,57 @@ def iterate_fast5_reads(
 ######################################################
 # FUNCTIONS TO READ INFORMATION FROM ONT FAST5 FILES #
 ######################################################
-"""
-These functions start with a read object generated by the ONT fast5 api.
-For example
-
-SINGLE READ
-
-    from ont_fast5_api import fast5_interface
-    s5 = get_fast5_file(singleReadFile, 'r')
-    read_id = s5.get_read_ids()[0]
-    read = s5.get_read(read_id)
-    read_summary(read)
-
-MULTI-READ
-
-    m5 = get_fast5_file(multiReadFile, 'r')
-    for nread,read_id in enumerate(m5.get_read_ids()):
-        read = m5.get_read(read_id)
-        read_summary(read)
-"""
-
 
 def get_filename(read):
-    """ Get filename
+    """ Get filename from read object
+
+    Args:
+        read (ont_fast5_api read object): the read object
+
+    Returns:
+        str: filename
+
+    Examples:
+        from ont_fast5_api import fast5_interface
+
+        #SINGLE READ
+        s5 = fast5_interface.get_fast5_file(singleReadFile, 'r')
+        read_id = s5.get_read_ids()[0]
+        read = s5.get_read(read_id)
+        get_filename(read)
+
+        #MULTI-READ
+        m5 = fast5_interface.get_fast5_file(multiReadFile, 'r')
+        for nread,read_id in enumerate(m5.get_read_ids()):
+            read = m5.get_read(read_id)
+            get_filename(read)
     """
     return read.handle[read.global_key + 'context_tags'].attrs['filename']
 
 
 def get_channel_info(read):
-    """Get channel info for read. This is a dict including
-    digitisation, range, offset, sampling_rate.
+    """Get channel info from read object. 
 
     Args:
-        read: an ont_fast5_api read object
+        read (ont_fast5_api read object): the read object
 
     Returns:
-        Dict-like object containing channel info
+        dict: channel info including digitisation, range, offset, sampling_rate
+
+    Examples:
+        from ont_fast5_api import fast5_interface
+
+        #SINGLE READ
+        s5 = fast5_interface.get_fast5_file(singleReadFile, 'r')
+        read_id = s5.get_read_ids()[0]
+        read = s5.get_read(read_id)
+        get_channel_info(read)
+
+        #MULTI-READ
+        m5 = fast5_interface.get_fast5_file(multiReadFile, 'r')
+        for nread,read_id in enumerate(m5.get_read_ids()):
+            read = m5.get_read(read_id)
+            get_channel_info(read)
     """
     # This is how it is done in _load_raw() in AbstractFast5File in
     # ont_fast5_api.fast5_file.py
@@ -211,14 +241,28 @@ def get_channel_info(read):
 
 
 def get_read_attributes(read):
-    """Get read attributes for read. This is a dict including
-    start_time, read_id, duration, etc
+    """Get read attributes from read object.
 
     Args:
-        read: an ont_fast5_api read object
+        read (ont_fast5_api read object): the read object
 
     Returns:
-        Dict-like object containing attributes
+        dict: read attributes including start_time, read_id, duration
+
+    Examples:
+        from ont_fast5_api import fast5_interface
+
+        #SINGLE READ
+        s5 = fast5_interface.get_fast5_file(singleReadFile, 'r')
+        read_id = s5.get_read_ids()[0]
+        read = s5.get_read(read_id)
+        get_read_attributes(read)
+
+        #MULTI-READ
+        m5 = fast5_interface.get_fast5_file(multiReadFile, 'r')
+        for nread,read_id in enumerate(m5.get_read_ids()):
+            read = m5.get_read(read_id)
+            get_read_attributes(read)
     """
     # In a multi-read file, they should be here...
     r = read.handle['Raw'].attrs
@@ -234,10 +278,25 @@ def get_read_attributes(read):
 
 
 def read_summary(read):
-    """Print summary of information available in fast5 file on a particular read
+    """Print summary of information in fast5 file on a particular read object.
 
     Args:
-        read: an ont_fast5_api read object
+        read (ont_fast5_api read object): the read object
+
+    Examples:
+        from ont_fast5_api import fast5_interface
+
+        #SINGLE READ
+        s5 = fast5_interface.get_fast5_file(singleReadFile, 'r')
+        read_id = s5.get_read_ids()[0]
+        read = s5.get_read(read_id)
+        read_summary(read)
+
+        #MULTI-READ
+        m5 = fast5_interface.get_fast5_file(multiReadFile, 'r')
+        for nread,read_id in enumerate(m5.get_read_ids()):
+            read = m5.get_read(read_id)
+            read_summary(read)
     """
     print("ONT interface: read information")
     dacs = read.get_raw_data()

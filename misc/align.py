@@ -12,6 +12,11 @@ from assess_alignment import (
 
 
 def get_parser():
+    """Get argparser object.
+
+    Returns:
+        argparse.ArgumentParser : the argparser object
+    """
     parser = argparse.ArgumentParser(
         description='Align reads to reference. Use assess_alignment.py to ' +
         'obtain accuracy metrics',
@@ -55,16 +60,19 @@ QUANTILES = [5, 25, 50, 75, 95]
 
 
 def call_bwa_mem(fin, fout, genome, clargs=''):
-    """Call bwa aligner using the subprocess module
+    """Call bwa aligner using the subprocess module.
 
-    :param fin: input sequence filename
-    :param fout: filename for the output sam file
-    :param genome: path to reference to align against
-    :param clargs: optional command line arguments to pass to bwa as a string
+    Args:
+        fin (str): input sequence filename
+        fout (str): filename for the output sam file
+        genome (str): path to reference to align against
+        clargs (str): optional cmd line arguments to pass to bwa as a string
 
-    :returns: stdout of bwa command
+    Returns: 
+        str: stdout of bwa command
 
-    :raises: subprocess.CalledProcessError
+    Raises: 
+        subprocess.CalledProcessError: subprocess error message from bwa call
     """
     command_line = "bwa mem {} {} {} > {}".format(clargs, genome, fin, fout)
     try:

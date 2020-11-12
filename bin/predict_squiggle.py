@@ -10,6 +10,11 @@ from taiyaki.common_cmdargs import add_common_command_args
 
 
 def get_parser():
+    """Get argparser object.
+
+    Returns:
+        argparse.ArgumentParser : the argparser object
+    """
     parser = argparse.ArgumentParser(
         description='Predict squiggle from sequence',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)

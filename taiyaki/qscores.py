@@ -8,57 +8,69 @@ from taiyaki.constants import SMALL_VAL
 
 
 def qchar_from_qscore(score, zerochar=33):
-    """Return ASCII character encoding q score from score
+    """Return ASCII character(s) encoding q score from score.
 
-    :param score   : floating point number: error prob = 10^(-score/10)
-                     (or list or np array of numbers)
-    :param zerochar: ASCII code for character encoding probability 1 (score 0)
+    Args:
+        score (float or list or :np:ndarray) : float or list or 1D input array 
+            of error prob = 10^(-score/10)
+        zerochar (int, optional) : ASCII code character encoding probability 1 
+            (score 0)
 
-    :returns: char representing quality score, or str if input is vector
+    Returns:
+        str: representing quality score(s)
 
-    :note:
-    With default zerochar=33, we use ASCII 33(!) for 0, 34(") for 1 and so on,
-    rounding score to nearest int."""
+    Note:
+        With default zerochar=33, we use ASCII 33(!) for 0, 34(") for 1 etc,
+        rounding score to nearest int.
+    """
     asciicodes = (np.array(score) + zerochar + 0.5).astype(np.int8)
     return asciicodes.tostring().decode('ascii')
 
 
 def qscore_from_errprob(errprob):
-    """Return q score from probability of error
+    """Return q score from probability of error.
 
-    :param errprob : probability of error, may be scalar or numpy array
+    Args:
+        errprob (scalar or :np:ndarray): probability of error
 
-    :returns: q = -10 log_10(errprob)
+    Returns: 
+	scalar or :np:ndarray: -10 log_10(errprob)
     """
     return -10.0 * np.log10(errprob)
 
 
 def qchar_from_errprob(errprob, qscore_scale, qscore_offset):
-    """Return character representing quality score from errorprob.
+    """Return character(s) representing quality score from errorprob.
 
-    :param errprob : probability of error, or np array of probs
-    :param qscore_scale: qscore <-- qscore * qscore_scale + qscore_offset
-                         before coding as char
-    :param qscore_offset: see qscore_scale above
+    Args:
+        errprob (scalar or :np:ndarray) : probability of error
+        qscore_scale (scalar): qscore <-- qscore * qscore_scale + qscore_offset,
+            before encoding it as a character
+        qscore_offset (scalar): see qscore_scale above
 
-    :returns: char representing quality score, or str of chars
+    Returns:
+        str : representing quality score(s)
     """
     qscore = qscore_scale * qscore_from_errprob(errprob) + qscore_offset
     return qchar_from_qscore(qscore)
 
 
 def transitions_into_base(b, nbases, device):
-    """Return pytorch long tensor of all transition-matrix indices for
-    all transitions into base (flip or flop).
+    """Return all transition-matrix indices for all transitions into base 
+    (flip or flop).
 
-    :param b: base (integer in range 0 to (nbases-1) )
-    :param nbases: number of bases (4 for ACGT)
-    :param device: what pytorch device to use
+    Args:
+        b (int): base (in range 0 to (nbases-1))
+        nbases (int): number of bases (4 for ACGT)
+        device (str or int): device string or cuda device number.
+            E.g. 'cpu', 1, 'cuda:1'
 
-    :returns: 1D pytorch long tensor of indices (in range 0 to 39) for ACGT.
+    Returns:
+        :torch:`Tensor` : 1D tensor of longs representing indices 
+            (in range 0 to 39) for ACGT.
 
-    :note: all transitions, including those where no base is emitted, are
-           included.
+    Note:
+        All transitions, including those where no base is emitted, are included.
     """
     # Transition A to b_flip
     colstart = nbases * 2 * b
@@ -84,24 +96,23 @@ def errprobs_from_trans(trans, path):
 
     errorprob = 1-p
 
-    :param trans: pytorch float tensor of
-                  shape (nblocks x batchsize x nstates)
-                  where nstates = 40 for 4-base models
-                  containing posterior transition weights (not logs!)
-    :param path : pytorch long tensor of shape (nblocks+1) x batchsize
-                  containing flip-flop states (integers 0-7 for 4-base models).
-                  The transition that goes with trans[n,bn,:] is the one from
-                  path[n,bn] to path[n+1,bn]
+    Args:
+    	trans (:torch:`Tensor`): Tensor of floats with shape 
+            (nblocks x batchsize x nstates) where nstates = 40 for 4-base models
+            containing posterior transition weights (not logs!)
+        
+        path (:torch:`Tensor`): Tensor of longs with shape 
+            ((nblocks+1) x batchsize) containing flip-flop states (integers 0-7 
+            for 4-base models). The transition that goes with trans[n,bn,:] is 
+            the one from path[n,bn] to path[n+1,bn].
 
-    :returns: errprobs, pytorch float tensor of shape (nblocks+1) x batchsize
-                  containing errorprob for
-                  each element of the path, and -1.0 in row 0
-
-    :note: errprobs[0:,:,:]=-1.0, but this doesn't matter since these
-           probabilities are removed later on in the pipeline. The output
-           matrix must be the same shape as the path in order to be
-           fed into the stitching function.
-
+    Returns:
+        :torch:`Tensor` : errorprob = tensor of floats with shape 
+            ((nblocks+1) x batchsize) containing errorprob for each element of
+            the path, and -1.0 in row 0. Note that this doesn't matter since 
+            these probabilities are removed later on in the pipeline. The output
+            matrix must be the same shape as the path in order to be fed into 
+            the stitching function.
     """
     nblocks, batchsize, flip_flop_transitions = trans.shape
     nbases = flipflopfings.nbase_flipflop(flip_flop_transitions)
@@ -132,24 +143,26 @@ def errprobs_from_trans(trans, path):
 
 
 def path_errprobs_to_qstring(errprobs, path, qscore_scale, qscore_offset):
-    """Make qscore string from error probs, ignoring stays
+    """Make qscore string from error probs, ignoring stays.
 
-    :param errprobs: 1D pytorch float tensor or numpy float vector containing
-                    error probabilities for each element of a path
-    :param path: 1D pytorch long tensor or numpy int array containing flip-flop
-                    states for each block, same length as errprobs
-    :param qscore_scale: qscore <-- qscore * qscore_scale + qscore_offset
-                         before coding as chars
-    :param qscore_offset: see qscore_scale above
+    Args:
+        errprobs (:torch:`Tensor` or :np:ndarray): 1D tensor of floats or 1D 
+            input array containing error probabilities for each element of path
+        path (:torch:`Tensor` or :np:ndarray): 1D tensor of longs or 1D input 
+            array of ints containing flip-flop states for each block, same 
+            length as errprobs
+        qscore_scale (scalar): qscore <-- qscore * qscore_scale + qscore_offset,
+            before encoding it as a character
+        qscore_offset (scalar): see qscore_scale above
 
-    :returns: python str containing qscores encoded as ASCII characters
+    Returns: 
+	str : representing quality scores encoded as ASCII characters
 
-    :note: Elements of the path where no base is emitted are not included
-           in the qstring, and the source base for the first transition is
-           also not included.
-           So the qstring is the same length as the basecall (provided we
-           don't include the source base for the first transition in the
-           basecall)
+    Note: 
+        Elements of the path where no base is emitted are not included in the 
+        qstring, and the source base for the first transition is also not 
+        included. So the qstring is the same length as the basecall (provided we
+        don't include the source base for the first transition in the basecall)
     """
     filtered_probs = errprobs[1:][path[1:] != path[:-1]]
     if type(filtered_probs) == torch.Tensor:

@@ -16,6 +16,11 @@ if True:
 
 
 def get_parser():
+    """Get argparser object.
+
+    Returns:
+        argparse.ArgumentParser : the argparser object
+    """
     parser = argparse.ArgumentParser(
         description='Plot graphs of training loss',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -48,9 +53,18 @@ def get_parser():
 
 
 def moving_average(a, n=3):
-    """Moving average with square window length n.
-    If length of a is less than n, and for elements earlier
-    than the nth, average as many points as available."""
+    """ Generate moving average. 
+
+    Args:
+        a (:np:ndarray) : 1D input array
+        n (int, optional) : square window length
+
+    Returns:
+        :np:ndarray : 1D output array
+
+    Note: If length of a is less than n, and for elements earlier than the nth, 
+        average as many points as available.
+    """
     x = np.cumsum(a, dtype=float)
     m = len(x)
     if m > n:

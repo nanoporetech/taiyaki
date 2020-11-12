@@ -15,6 +15,11 @@ from taiyaki.prepare_mapping_funcs import (
 
 
 def get_parser():
+    """Get argparser object.
+
+    Returns:
+        argparse.ArgumentParser : the argparser object
+    """
     parser = argparse.ArgumentParser(
         description="Prepare data for model training and save to hdf5 file " +
         "by remapping with flip-flop model",
@@ -106,6 +111,11 @@ def main():
     kwargs['localpen'] = args.localpen
 
     def iter_jobs():
+        """Iterate over jobs.
+
+        Yields:
+            tuple (str, str, str) : (filename, read id, reference)
+        """
         references = bio.fasta_file_to_dict(
             args.references, alphabet=full_alphabet)
         for fn, read_id in fast5_reads:
