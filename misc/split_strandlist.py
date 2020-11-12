@@ -12,6 +12,11 @@ STRANDLIST_HEADER = "filename"
 
 
 def get_parser():
+    """Get argparser object.
+
+    Returns:
+        :argparse:`ArgumentParser` : the argparser object
+    """
     parser = argparse.ArgumentParser(
         description='Split a strand list into a number of smaller strand ' +
         'lists, or alternatively do the same thing starting with a ' +

@@ -10,7 +10,7 @@ from taiyaki.mapped_signal_files import MappedSignalReader
 
 
 class AcceptanceTest(unittest.TestCase):
-
+    """Test code for merging mappedsignal files"""
     @classmethod
     def setUpClass(self):
         test_directory = os.path.splitext(__file__)[0]
@@ -25,18 +25,29 @@ class AcceptanceTest(unittest.TestCase):
             util.DATA_DIR, "mapped_signal_file/mapped_reads_1.hdf5")
 
     def work_dir(self, test_name):
+        """Ensure a working directory has been created for this test.
+        Args:
+            test_name (str) : name of directory
+        """
         directory = os.path.join(self.testset_work_dir, test_name)
         util.maybe_create_dir(directory)
         return directory
 
     def test_usage(self):
+        """Check usage returns the correct exit code and stderr output."""
         cmd = [self.merge_script]
         # cmd = ['python3',self.merge_script]
         util.run_cmd(self, cmd).expect_exit_code(2).expect_stderr(
             util.any_line_starts_with(u"usage"))
 
     def count_reads(self, mapped_signal_file, print_readlist=True):
-        """Count the number of reads in a mapped signal file."""
+        """Count the number of reads in a mapped signal file.
+        Args:
+            mapped_signal_file (str): name of mapped signal file
+            print_readlist (bool, optional): print the names of reads found
+        Returns:
+            int: number of reads found
+        """
         with MappedSignalReader(mapped_signal_file) as msr:
             read_ids = msr.get_read_ids()
             if print_readlist:
@@ -45,6 +56,8 @@ class AcceptanceTest(unittest.TestCase):
         return len(read_ids)
 
     def test_merge(self):
+        """Test that merging two 'normal' mapped signal files produces the 
+        output expected."""
         test_work_dir = self.work_dir("test_merge")
         merged_mapped_signal_file = os.path.join(
             test_work_dir, 'merged_mappedsignalfile.hdf5')
@@ -82,6 +95,8 @@ class AcceptanceTest(unittest.TestCase):
         self.assertTrue(numreads_in > 2)
 
     def test_merge_batch(self):
+        """Test that merging two 'batch' mapped signal files produces the 
+        output expected."""
         test_work_dir = self.work_dir("test_merge_batch")
         merged_mapped_signal_file = os.path.join(
             test_work_dir, 'merged_mappedsignalfile_batch.hdf5')
