@@ -4,8 +4,10 @@ Version numbers: major.minor.patch
 * Minor version bump indicates a change in functionality that may affect users.
 * Patch version bump indicates bug-fixes or minor improvements not expected to affect users.
 
-## Unreleased
+## v5.3.0
 * Based on pytorch version 1.5
+* Acceleration loss function lead to signifcant performance improvement
+* Many bug fixes
 
 ## v5.0.0
 * Based on pytorch version 1.2
