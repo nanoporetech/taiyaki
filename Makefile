@@ -9,13 +9,14 @@ all: install
 # autodetect CUDA version if possible
 CUDA ?= $(shell (which nvcc && nvcc --version) | grep -oP "(?<=release )[0-9.]+")
 
-PY3_MINOR = $(shell $(PYTHON) -c "import sys; print(sys.version_info.minor)")
+# torch wheel filename schematics changed from Python 3.8
+PY3_MINOR = $(shell $(PYTHON) -c "import sys; m=sys.version_info.minor; m=str(m)+'m' if m in [5, 6, 7] else m; print(m)")
 
 # Determine correct torch package to install
-TORCH_CUDA_ = https://download.pytorch.org/whl/cpu/torch-1.5.1%2Bcpu-cp3${PY3_MINOR}-cp3${PY3_MINOR}m-linux_x86_64.whl
-TORCH_CUDA_9.2 = https://download.pytorch.org/whl/cu92/torch-1.5.1%2Bcu92-cp3${PY3_MINOR}-cp3${PY3_MINOR}m-linux_x86_64.whl
-TORCH_CUDA_10.1 = https://download.pytorch.org/whl/cu101/torch-1.5.1%2Bcu101-cp3${PY3_MINOR}-cp3${PY3_MINOR}m-linux_x86_64.whl
-TORCH_CUDA_10.2 = https://download.pytorch.org/whl/cu102/torch-1.5.1-cp3${PY3_MINOR}-cp3${PY3_MINOR}m-linux_x86_64.whl
+TORCH_CUDA_ = https://download.pytorch.org/whl/cpu/torch-1.5.1%2Bcpu-cp3${PY3_MINOR}-cp3${PY3_MINOR}-linux_x86_64.whl
+TORCH_CUDA_9.2 = https://download.pytorch.org/whl/cu92/torch-1.5.1%2Bcu92-cp3${PY3_MINOR}-cp3${PY3_MINOR}-linux_x86_64.whl
+TORCH_CUDA_10.1 = https://download.pytorch.org/whl/cu101/torch-1.5.1%2Bcu101-cp3${PY3_MINOR}-cp3${PY3_MINOR}-linux_x86_64.whl
+TORCH_CUDA_10.2 = https://download.pytorch.org/whl/cu102/torch-1.5.1-cp3${PY3_MINOR}-cp3${PY3_MINOR}-linux_x86_64.whl
 TORCH_Linux ?= $(TORCH_CUDA_$(CUDA))
 TORCH_Darwin = torch
 TORCH ?= $(TORCH_$(shell uname -s))
