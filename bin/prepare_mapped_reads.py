@@ -134,7 +134,7 @@ def main():
     # results is an iterable of dicts
     # each dict is a set of return values from a single read
     generate_output_from_results(
-        results, args.output, alphabet_info, args.batch_format)
+        results, args.output, alphabet_info, batch_format=args.batch_format)
 
 
 if __name__ == '__main__':
